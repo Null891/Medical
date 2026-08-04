@@ -309,15 +309,212 @@ const Motion = (() => {
     document.documentElement.setAttribute('data-screen', String(name || ''));
   }
 
+  /* ═══════════ HAPTICS ═══════════
+     A short pulse on the two actions that commit something: saving a
+     meal and confirming a delete. Deliberately nowhere else.
+
+     Vibration is the one output channel that cannot be ignored, muted,
+     or looked away from, so it is spent only where a real change just
+     happened. Buzzing on every tap trains people to feel nothing, and
+     on a phone in a quiet clinic waiting room it is rude.
+
+     Guarded three ways: the API may not exist, it may exist and throw
+     inside an iframe, and reduced-motion users have asked for less
+     physical feedback, which reasonably includes this. */
+  const HAPTIC = { commit: 12, warn: [10, 60, 10] };
+
+  function haptic(kind) {
+    if (typeof navigator === 'undefined' || !navigator.vibrate) return;
+    if (reduced()) return;
+    const pattern = HAPTIC[kind];
+    if (!pattern) return;
+    try { navigator.vibrate(pattern); } catch (e) { /* never fatal */ }
+  }
+
+  /* ═══════════ SOUND ═══════════
+     One tone, on saving a meal, off by default.
+
+     Off by default is the whole design. A health app that makes noise
+     unasked will be muted at the system level within a day, and that
+     mute takes the accessibility uses of audio with it. So it is opt-in
+     from Settings and it plays exactly one sound.
+
+     Synthesised rather than a file: a 40ms sine at 660Hz with a soft
+     envelope is a few lines of WebAudio, costs no download, and cannot
+     be mistaken for a notification from something else. No sample, no
+     asset, nothing to cache.
+
+     The enabled flag is passed IN rather than read from settings. This
+     module is not allowed to touch the data layer at all — a lint
+     enforces it — and the reason is worth keeping: the moment
+     decoration can read state, somebody eventually lets it write
+     state, and then an animation is deciding something. */
+  let audioCtx = null;
+
+  function chime(enabled) {
+    if (!enabled) return;
+    if (typeof window === 'undefined') return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    try {
+      audioCtx = audioCtx || new Ctx();
+      // Browsers suspend audio until a gesture; a save IS a gesture.
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(660, t);
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.09);
+      // Envelope, not a square edge: an abrupt start clicks.
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.06, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + 0.22);
+    } catch (e) { /* audio is never load-bearing */ }
+  }
+
+  /* ═══════════ MAGNETIC CURSOR ═══════════
+     Primary buttons lean a few pixels toward an approaching pointer.
+
+     Capped at 6px and only inside the button's own box, so the control
+     never moves away from where somebody is aiming — magnetism that
+     can pull a target out from under a click is an accessibility
+     problem wearing a design trend's clothes. Fine pointers only. */
+  const MAGNET_MAX = 6;
+
+  function magnetic() {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (reduced()) return;
+
+    let pending = false, last = null;
+    document.addEventListener('pointermove', (e) => {
+      last = e;
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        const btn = last.target && last.target.closest && last.target.closest('.btn--primary');
+        document.querySelectorAll('.btn--primary.is-magnet').forEach(b => {
+          if (b !== btn) { b.classList.remove('is-magnet'); b.style.removeProperty('transform'); }
+        });
+        if (!btn) return;
+        const r = btn.getBoundingClientRect();
+        const dx = (last.clientX - (r.left + r.width / 2)) / (r.width / 2);
+        const dy = (last.clientY - (r.top + r.height / 2)) / (r.height / 2);
+        btn.classList.add('is-magnet');
+        btn.style.setProperty('transform',
+          `translate(${(dx * MAGNET_MAX).toFixed(1)}px, ${(dy * MAGNET_MAX).toFixed(1)}px)`);
+      });
+    }, { passive: true });
+
+    document.addEventListener('pointerleave', () => {
+      document.querySelectorAll('.btn--primary.is-magnet').forEach(b => {
+        b.classList.remove('is-magnet'); b.style.removeProperty('transform');
+      });
+    }, true);
+  }
+
+  /* ═══════════ DAYLIGHT AND SEASON ═══════════
+     The canvas warms and cools with the actual time of day, and shifts
+     a few degrees with the season.
+
+     This is atmosphere, and it is held to the same rule as everything
+     else here: it names a state on the root element and the stylesheet
+     decides what that means. No colour is chosen in JavaScript, and no
+     status colour is touched — a green ring is the same green at
+     midnight in December as at noon in June, because it means the same
+     thing. Only the neutral canvas moves.
+
+     Season comes from the month, which is wrong for the southern
+     hemisphere. It is labelled by month name in the data rather than
+     "winter", so nothing in the app ever states a season out loud. */
+  function daylight(now) {
+    if (typeof document === 'undefined') return null;
+    const d = now || new Date();
+    const h = d.getHours();
+    const phase = h < 6 ? 'night' : h < 10 ? 'dawn' : h < 17 ? 'day' : h < 20 ? 'dusk' : 'night';
+    // Quarters by month, named neutrally: no claim about anybody's weather.
+    const quarter = ['q1', 'q1', 'q2', 'q2', 'q2', 'q3', 'q3', 'q3', 'q4', 'q4', 'q4', 'q1'][d.getMonth()];
+    document.documentElement.setAttribute('data-daylight', phase);
+    document.documentElement.setAttribute('data-quarter', quarter);
+    return { phase, quarter };
+  }
+
+  /* ═══════════ PARALLAX ═══════════
+     The atmosphere layer drifts at a fraction of scroll speed, so the
+     page has depth without anything readable moving. Content is never
+     parallaxed: text that lags its own scroll is a nausea trigger, and
+     this app's users skew toward exactly the people who feel it. */
+  function parallax() {
+    if (typeof window === 'undefined' || reduced()) return;
+    const root = document.documentElement;
+    let pending = false;
+    window.addEventListener('scroll', () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        root.style.setProperty('--scroll-drift', (window.scrollY * -0.04).toFixed(1) + 'px');
+      });
+    }, { passive: true });
+  }
+
+  /* ═══════════ ONE EASTER EGG ═══════════
+     Seven taps on the brand mark prints the anchor table's own quality
+     report to the console.
+
+     It is a joke that only lands for somebody who opens dev tools, and
+     what it reveals is the least flattering thing about the build:
+     how many values are still unverified. An easter egg that showed
+     something impressive would be advertising; this one is closer to
+     an admission, which is more in character. */
+  function easterEgg() {
+    if (typeof document === 'undefined') return;
+    const mark = document.querySelector('.rail__mark, .rail__brand');
+    if (!mark) return;
+    let taps = 0, timer = null;
+    mark.addEventListener('click', () => {
+      taps++;
+      clearTimeout(timer);
+      timer = setTimeout(() => { taps = 0; }, 1200);
+      if (taps < 7) return;
+      taps = 0;
+      try {
+        const s = window.RenalRoute && window.RenalRoute.stats;
+        if (!s) return;
+        console.info('%cRenalRoute — what we still do not know',
+          'font-weight:700;font-size:13px');
+        console.table({
+          'anchor rows': s.total,
+          'missing potassium': s.missingK,
+          'missing phosphorus': s.missingP,
+          'missing sodium': s.missingNa,
+          'categories with no swaps': s.thinCategories.length
+        });
+        console.info('Every value is unverified test data. That is the joke.');
+      } catch (e) { /* an easter egg may never break anything */ }
+    });
+  }
+
   function init() {
     spotlight();
     condenseNav();
     livingBackground();
+    magnetic();
+    parallax();
+    daylight();
+    easterEgg();
+    // Re-check the light every ten minutes; a session can outlive dusk.
+    if (typeof setInterval !== 'undefined') setInterval(() => daylight(), 600000);
   }
 
   return {
     ripple, ringsAcknowledge, bloom, morph,
     loaderHtml, livingChart, setScreen, init,
-    FACTS, reduced
+    haptic, chime, daylight, magnetic, parallax, easterEgg,
+    HAPTIC, MAGNET_MAX, FACTS, reduced
   };
 })();

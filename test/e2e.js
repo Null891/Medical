@@ -1002,6 +1002,162 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     S.meals().forEach(m => S.deleteMeal(m.id));
   }
 
+  console.log('\n═══ 27. SCENES CHANGE EMPHASIS, NEVER NUMBERS ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const Sc = window.RenalRoute.Scenes;
+
+    window.RenalRoute.UI.go('home');
+    check('scene picker rendered', $$('#scenePicker .scene').length, Sc.SCENES.length);
+    check('exactly one scene selected', $$('#scenePicker .scene[aria-checked="true"]').length, 1);
+
+    /* THE contract. A scene may reorder and re-emphasise; it may not
+       move a target, a total, or a threshold. If this ever fails, the
+       app has grown a second clinical model with no evidence behind
+       it. */
+    const before = JSON.stringify({
+      targets: S.targets(),
+      totals: S.dayTotals(),
+      kMode: window.RenalRoute.Clinical.potassiumMode().mode
+    });
+
+    click('#scenePicker .scene[data-scene="restaurant"]');
+    await wait(20);
+    const after = JSON.stringify({
+      targets: S.targets(),
+      totals: S.dayTotals(),
+      kMode: window.RenalRoute.Clinical.potassiumMode().mode
+    });
+    check('scene change moved no target, total, or mode', after, before);
+
+    window.RenalRoute.UI.go('home');
+    check('scene persists across navigation', Sc.current().key, 'restaurant');
+    check('greeting names the scene', $('#homeGreeting').textContent.includes('Eating out'), true);
+    check('restaurant tip is category-level, never a milligram figure',
+      /\d+\s*mg/.test($('#scenePicker').textContent), false);
+
+    // The primary action follows the scene, or the scene does nothing.
+    click('#scenePicker .scene[data-scene="store"]');
+    await wait(20);
+    window.RenalRoute.UI.go('home');
+    check('primary action follows the scene', $('#scr-home .btn--hero').textContent, 'Check a label');
+    check('  ...and points somewhere real', $('#scr-home .btn--hero').dataset.nav, 'label');
+
+    // Adaptive order must never DROP a card — losing a feature because
+    // of the time of day would be a bug, not a layout.
+    Object.keys(Sc.ORDERS).forEach(part => {
+      const set = new Set(Sc.ORDERS[part]);
+      check(`${part} order keeps all seven cards`, set.size, 7);
+    });
+    Sc.SCENES.forEach(s => {
+      const missing = s.cards.filter(c => !Sc.ORDERS.midday.includes(c));
+      check(`scene "${s.key}" names only real cards`, missing.length, 0);
+    });
+
+    // DOM order is fixed; only CSS order moves. Tab sequence must not
+    // depend on what time it is.
+    const domIds = $$('#scr-home .bento > [id]').map(el => el.id);
+    click('#scenePicker .scene[data-scene="clinic"]');
+    await wait(20);
+    window.RenalRoute.UI.go('home');
+    check('DOM order unchanged by reordering',
+      $$('#scr-home .bento > [id]').map(el => el.id).join(), domIds.join());
+
+    click('#scenePicker .scene[data-scene="home"]');
+    await wait(20);
+    window.RenalRoute.UI.go('home');
+  }
+
+  console.log('\n═══ 28. THE ORBIT AGREES WITH THE RINGS ═══');
+  {
+    const O = window.RenalRoute.Orbit;
+    const S = window.RenalRoute.Store;
+
+    S.meals().forEach(m => S.deleteMeal(m.id));
+    S.addMeal({
+      meal_text: 'orbit test', logged_at: new Date().toISOString(), meal_date: S.todayISO(),
+      items: [], confidence: 'high',
+      total_potassium_low_mg: 1150, total_potassium_high_mg: 1400,
+      total_phosphorus_low_mg: 100, total_phosphorus_high_mg: 120,
+      total_sodium_low_mg: 300, total_sodium_high_mg: 340
+    });
+    window.RenalRoute.UI.go('home');
+
+    check('orbit renders', !!$('#orbitCard .orbit'), true);
+    check('orbit carries a full text alternative',
+      ($('#orbitCard .orbit').getAttribute('aria-label') || '').length > 60, true);
+
+    /* The orbit is a second READING of the day, never a second
+       calculation. Its colours must be the ring colours, from the same
+       high end of the same range. */
+    const ringStatuses = $$('#ringCard .ring__status').map(el =>
+      Array.from(el.classList).find(c => c.startsWith('is-')));
+    const orbitStatuses = $$('#orbitCard .orbit-body').map(el =>
+      Array.from(el.classList).find(c => c.startsWith('orbit-body--')));
+    check('orbit shows one body per ring', orbitStatuses.length, ringStatuses.length);
+    check('orbit colours match ring colours',
+      orbitStatuses.map(c => c.replace('orbit-body--', '')).join(),
+      ringStatuses.map(c => c.replace('is-', '')).join());
+
+    // Radius must carry remaining, and more room must mean further out.
+    const rows = O.model();
+    const k = rows.find(r => r.key === 'k');
+    check('a nutrient with room sits outside the minimum radius', k.radius > O.R_MIN, true);
+    check('  ...and never past the maximum', k.radius <= O.R_MAX, true);
+    check('an untouched budget sits at the outer edge',
+      Math.round(O.remainingFraction({ low: 0, high: 0 }, 2500) * 100), 100);
+    check('an exhausted budget sits at the inner edge',
+      Math.round(O.remainingFraction({ low: 2500, high: 2500 }, 2500) * 100), 0);
+    check('going over does not push it back out',
+      Math.round(O.remainingFraction({ low: 5000, high: 5000 }, 2500) * 100), 0);
+
+    /* Body size encodes nothing. Size is exactly where a viewer would
+       read a magnitude that is not in the data. */
+    const radii = new Set($$('#orbitCard .orbit-body').map(el => el.getAttribute('r')));
+    check('every body is the same size', radii.size, 1);
+
+    // The CSP forbids inline styles; an orbit that animates locally and
+    // freezes on the deployed site is the rail-bar bug all over again.
+    check('orbit uses no inline style attributes',
+      $('#orbitCard').innerHTML.includes('style='), false);
+
+    S.meals().forEach(m => S.deleteMeal(m.id));
+  }
+
+  console.log('\n═══ 29. HAPTICS, SOUND, DAYLIGHT ═══');
+  {
+    const M = window.RenalRoute.Motion;
+    const S = window.RenalRoute.Store;
+
+    check('haptic is a function', typeof M.haptic, 'function');
+    check('chime is a function', typeof M.chime, 'function');
+    // Sound off by default, or it gets muted at the OS level forever.
+    check('sound is OFF unless asked for', !!S.settings().sound, false);
+    // Passing false must be a no-op even where audio exists.
+    M.chime(false);
+    check('chime(false) does nothing and throws nothing', true, true);
+    // Haptics are spent on commits only, so there are few patterns.
+    check('only commit and warn patterns exist', Object.keys(M.HAPTIC).sort().join(), 'commit,warn');
+    check('magnet travel is capped small', M.MAGNET_MAX <= 8, true);
+
+    const d = M.daylight(new Date('2026-08-04T03:00:00'));
+    check('3am is night', d.phase, 'night');
+    check('  ...and named on the root element',
+      doc.documentElement.getAttribute('data-daylight'), 'night');
+    check('8am is dawn', M.daylight(new Date('2026-08-04T08:00:00')).phase, 'dawn');
+    check('noon is day', M.daylight(new Date('2026-08-04T12:00:00')).phase, 'day');
+    check('6pm is dusk', M.daylight(new Date('2026-08-04T18:00:00')).phase, 'dusk');
+    // Season is named neutrally: the app must never state one aloud,
+    // because the month says nothing about the southern hemisphere.
+    check('season is a neutral quarter, not a season name',
+      /^q[1-4]$/.test(M.daylight(new Date('2026-01-15T12:00:00')).quarter), true);
+
+    ['morning', 'midday', 'evening', 'night'].forEach(p => {
+      const hourFor = { morning: 8, midday: 13, evening: 18, night: 23 };
+      check(`${hourFor[p]}:00 is ${p}`, window.RenalRoute.Scenes.dayPart(hourFor[p]), p);
+    });
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

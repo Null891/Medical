@@ -62,7 +62,7 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
-    Insights, Passport,
+    Insights, Passport, Scenes, Orbit,
     /* Guarded, unlike its neighbours. Object shorthand would be a BARE
        reference, and a bare reference to a module that failed to load
        is a ReferenceError that takes the whole boot down — which is

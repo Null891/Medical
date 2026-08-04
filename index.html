@@ -127,11 +127,18 @@
 
       <div id="labModeBanners"></div>
 
+      <!-- Where are you? Scenes answer "what am I doing", which is the
+           question people actually have; tabs answer "which feature",
+           which is not. A scene changes emphasis and order ONLY —
+           never a number, a threshold, or what gets flagged. -->
+      <div id="scenePicker"></div>
+
       <!-- Bento: one column on a phone, deliberately uneven on a wide
            screen. The rings take four of six columns because they are
            the answer to the question the app exists to ask. -->
       <div class="bento">
         <div class="bento__hero" id="ringCard"></div>
+        <div class="bento__side" id="orbitCard"></div>
         <div class="bento__side" id="statBlocks"></div>
 
         <div class="bento__action">
@@ -360,6 +367,15 @@
           <input type="checkbox" id="highContrastToggle">
           <span>Higher contrast — stronger borders and darker body text</span>
         </label>
+
+        <!-- Off by default, and it stays that way. An app that makes
+             noise unasked gets muted at the system level within a day,
+             and that mute takes every accessibility use of audio with
+             it. One tone, on saving a meal, only if asked for. -->
+        <label class="switch mt-2">
+          <input type="checkbox" id="soundToggle">
+          <span>Sound — a short tone when a meal is saved</span>
+        </label>
       </div>
 
       <!-- Your data: take it with you, or get rid of it. Separate from
@@ -558,6 +574,8 @@
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
 <script src="js/motion.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/orbit.js"></script>
 <script src="js/insights.js"></script>
 <script src="js/passport.js"></script>
 <script src="js/exporter.js"></script>

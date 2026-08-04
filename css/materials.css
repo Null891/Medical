@@ -667,3 +667,156 @@
   }
   #passportCopy, #passportPrint, #passportBack { display: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   HEALTH ORBIT — the centrepiece
+   ───────────────────────────────────────────────────────────────
+   Radius carries the meaning: further out = more room left today.
+   Colour is the same status colour the rings use, from the same high
+   end of the same range. Body size is fixed and encodes nothing,
+   because size is exactly where a viewer would read a magnitude that
+   is not there.
+
+   Periods live here rather than in an inline style, because the CSP
+   sets style-src 'self' and a style="" attribute would be dropped on
+   the deployed site while working perfectly on a local file.
+   ═══════════════════════════════════════════════════════════════ */
+
+.orbit-card { text-align: center; }
+.orbit { display: block; width: 100%; max-width: 300px; margin: 0 auto; height: auto; }
+
+.orbit-core { fill: var(--color-tint-accent); stroke: var(--color-hairline); stroke-width: 1; }
+.orbit-core-label { font-size: 13px; font-weight: 650; fill: var(--color-text-primary); }
+.orbit-core-sub   { font-size: 10px; fill: var(--color-text-secondary); }
+
+.orbit-track { stroke: var(--color-track); stroke-width: 1; stroke-dasharray: 2 5; }
+
+.orbit-body { stroke: var(--color-surface); stroke-width: 2; }
+.orbit-body--ok     { fill: var(--color-status-ok); }
+.orbit-body--warn   { fill: var(--color-status-warn); }
+.orbit-body--danger { fill: var(--color-status-danger); }
+.orbit-body--none   { fill: var(--color-text-secondary); }
+.orbit-label { font-size: 9px; font-weight: 700; fill: #fff; pointer-events: none; }
+
+/* The bodies counter-rotate inside their arm so their labels stay
+   upright — a rotating "Na" is a legibility cost paid for nothing. */
+.orbit-arm  { transform-origin: 50% 50%; animation: orbitSpin linear infinite; }
+.orbit-spin { transform-origin: 50% 50%; animation: orbitCounter linear infinite; }
+.orbit-arm--k,  .orbit-arm--k  .orbit-spin { animation-duration: 54s; }
+.orbit-arm--p,  .orbit-arm--p  .orbit-spin { animation-duration: 68s; }
+.orbit-arm--na, .orbit-arm--na .orbit-spin { animation-duration: 82s; }
+.orbit-arm--k  { animation-delay: -6s;  }
+.orbit-arm--p  { animation-delay: -26s; }
+.orbit-arm--na { animation-delay: -46s; }
+.orbit-arm--k  .orbit-spin { animation-delay: -6s;  }
+.orbit-arm--p  .orbit-spin { animation-delay: -26s; }
+.orbit-arm--na .orbit-spin { animation-delay: -46s; }
+
+@keyframes orbitSpin    { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
+@keyframes orbitCounter { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
+
+.orbit-legend { max-width: 34ch; margin: var(--space-2) auto 0; }
+
+/* Motion is the least important thing about this picture: the radii
+   carry every bit of the meaning, and they are static. Stopping the
+   orbit costs a reader nothing at all. */
+@media (prefers-reduced-motion: reduce) {
+  .orbit-arm, .orbit-spin { animation: none; }
+}
+@media print {
+  .orbit-arm, .orbit-spin { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCENES — where are you?
+   ═══════════════════════════════════════════════════════════════ */
+.scenes {
+  display: flex; gap: var(--space-2);
+  overflow-x: auto; padding-bottom: var(--space-1);
+  margin-bottom: var(--space-3);
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.scene {
+  flex: 0 0 auto; scroll-snap-align: start;
+  min-height: 44px; min-width: 132px; max-width: 200px;
+  text-align: left; padding: 10px var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-capsule);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-out),
+              border-color var(--motion-fast) var(--ease-out);
+}
+.scene:hover { border-color: var(--color-accent); }
+/* Selected state pairs a fill with a weight change, never colour alone
+   — the same rule every status indicator in this app follows. */
+.scene.is-on {
+  background: var(--color-tint-accent);
+  border-color: var(--color-accent);
+}
+.scene.is-on .scene__name { font-weight: 700; }
+.scene__name  { display: block; font-size: var(--type-body); font-weight: 550; }
+.scene__blurb { display: block; font-size: var(--type-caption); color: var(--color-text-secondary); line-height: 1.35; }
+.scene-tip { margin-bottom: var(--space-3); }
+
+@media (prefers-reduced-motion: reduce) { .scene { transition: none; } }
+@media print { .scenes, .scene-tip { display: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   ADAPTIVE ORDER
+   ───────────────────────────────────────────────────────────────
+   CSS order only. The DOM order never moves, so the tab sequence and
+   screen-reader order never move either — only the visual arrangement
+   follows the clock and the scene. Reparenting nodes would restart
+   every entrance animation and could pull focus out from under
+   somebody mid-interaction.
+   ═══════════════════════════════════════════════════════════════ */
+.ord-0 { order: 0; } .ord-1 { order: 1; } .ord-2 { order: 2; }
+.ord-3 { order: 3; } .ord-4 { order: 4; } .ord-5 { order: 5; }
+.ord-6 { order: 6; } .ord-7 { order: 7; } .ord-8 { order: 8; }
+
+/* Order needs a flex or grid parent to mean anything. On a phone the
+   bento is a plain block, so it becomes a column here. */
+@media (max-width: 1179px) {
+  #scr-home .bento { display: flex; flex-direction: column; }
+}
+
+/* Magnetic primary buttons. Capped at 6px in JS and transformed here,
+   so the control leans toward an approaching pointer without ever
+   moving out from under a click. */
+.btn--primary.is-magnet { transition: transform var(--motion-hover) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .btn--primary.is-magnet { transform: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   DAYLIGHT AND SEASON
+   ───────────────────────────────────────────────────────────────
+   The neutral canvas warms and cools with the clock and drifts a few
+   degrees across the year. Status colours are NEVER touched: a green
+   ring is the same green at midnight in December as at noon in June,
+   because it means the same thing. Only the background moves, and only
+   by a few percent — enough that the app feels like it knows what time
+   it is, never enough to change a contrast ratio.
+   ═══════════════════════════════════════════════════════════════ */
+:root[data-daylight="dawn"]  .app { --color-canvas: #FDF6EC; }
+:root[data-daylight="day"]   .app { --color-canvas: #FBF7F2; }
+:root[data-daylight="dusk"]  .app { --color-canvas: #FAF3EC; }
+:root[data-daylight="night"] .app { --color-canvas: #F7F4F1; }
+
+/* Seasonal drift, one step further, applied only to the atmosphere
+   layer so no reading surface changes at all. */
+:root[data-quarter="q1"] .app::before { filter: blur(60px) hue-rotate(-6deg); }
+:root[data-quarter="q2"] .app::before { filter: blur(60px) hue-rotate(4deg); }
+:root[data-quarter="q3"] .app::before { filter: blur(60px) hue-rotate(10deg); }
+:root[data-quarter="q4"] .app::before { filter: blur(60px) hue-rotate(-2deg); }
+
+/* Parallax on the atmosphere only. Content is never parallaxed: text
+   that lags its own scroll is a nausea trigger, and this app's users
+   skew toward the people most likely to feel it. */
+.app::before { will-change: transform; }
+@media (prefers-reduced-motion: no-preference) {
+  .app::before { translate: 0 var(--scroll-drift, 0px); }
+}
+
+/* In high contrast, the canvas stops moving entirely. */
+:root[data-contrast="high"] .app { --color-canvas: #FFFFFF; }

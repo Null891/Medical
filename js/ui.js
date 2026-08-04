@@ -332,8 +332,8 @@ const UI = (() => {
        escaping were load-bearing when the safety actually comes from the
        assignment target. Left explicit so nobody "restores" it and then
        switches to innerHTML trusting a variable that does nothing. */
-    $('#homeGreeting').textContent = p.display_name
-      ? `${part}, ${p.display_name}` : part;
+    $('#homeGreeting').textContent = (p.display_name
+      ? `${part}, ${p.display_name}` : part) + Scenes.greetingSuffix();
     $('#homeDayLine').textContent = dayLine();
     $('#homeDate').textContent = new Date().toLocaleDateString('en-US',
       { weekday: 'long', month: 'long', day: 'numeric' });
@@ -341,8 +341,10 @@ const UI = (() => {
     $('#footerDisclaimer').textContent = COPY.footerDisclaimer;
 
     renderModeBanners();
+    renderScenePicker();
     $('#ringCard').innerHTML = Rings.render();
     Rings.countUp($('#ringCard'));
+    $('#orbitCard').innerHTML = Orbit.render();
     $('#statBlocks').innerHTML = Rings.renderStats();
     renderQuickAdd();
     renderMealList();
@@ -351,6 +353,7 @@ const UI = (() => {
     $('#trendsCard').innerHTML = Trends.render();
     if (typeof Motion !== 'undefined') Motion.livingChart($('#trendsCard'));
     renderInsights();
+    applyAdaptiveOrder();
     maybeBloom();
   }
 
@@ -1078,6 +1081,10 @@ const UI = (() => {
     if (typeof Motion !== 'undefined') {
       Motion.ripple($('#saveMealBtn'));
       Motion.ringsAcknowledge(300);
+      // The two channels that cost the user something if overused, so
+      // they are spent only here: a meal was actually committed.
+      Motion.haptic('commit');
+      Motion.chime(!!Store.settings().sound);
     }
     go('home');
   }
@@ -1162,6 +1169,69 @@ const UI = (() => {
         ${esc(COPY.coverage.thin)}</p>` : ''}
       <p class="note mt-2">${esc(COPY.coverage.verify)}</p>
     </div>`;
+  }
+
+  /* ═══════════ scenes ═══════════
+     Five buttons that change what the app leads with. A scene never
+     changes a number, a threshold, a target, or what gets flagged —
+     only emphasis and order. Sodium guidance in a restaurant is the
+     same guidance as at home; the restaurant scene puts it first,
+     because that is where it is needed.
+
+     Rendered as a radio group, not a menu: exactly one is true at a
+     time, and the current one has to be visible without opening
+     anything. */
+  function renderScenePicker() {
+    const host = $('#scenePicker');
+    if (!host) return;
+    const cur = Scenes.current();
+
+    host.innerHTML = `<div class="scenes" role="radiogroup" aria-label="Where are you?">
+      ${Scenes.SCENES.map(s => `
+        <button type="button" class="scene${s.key === cur.key ? ' is-on' : ''}"
+          role="radio" aria-checked="${s.key === cur.key}" data-scene="${esc(s.key)}">
+          <span class="scene__name">${esc(s.name)}</span>
+          <span class="scene__blurb">${esc(s.blurb)}</span>
+        </button>`).join('')}
+    </div>
+    ${cur.tip ? `<div class="card m-paper scene-tip"><p class="note">${esc(cur.tip)}</p></div>` : ''}`;
+
+    /* The primary action follows the scene. In a shop the thing you
+       want is the label checker, and making somebody navigate to it
+       past a "Log a meal" button is the whole problem scenes exist to
+       fix. */
+    const hero = $('#scr-home .btn--hero');
+    if (hero) {
+      hero.textContent = cur.lead.label;
+      hero.dataset.nav = cur.lead.nav;
+    }
+  }
+
+  /* Adaptive order. Same cards, same numbers, different lead —
+     driven by clock time and the current scene, never by anything
+     learned. A health app whose layout moves for reasons the user
+     cannot see is a health app people stop trusting. */
+  const CARD_SLOTS = {
+    rings: '#ringCard', stats: '#statBlocks', quick: '#quickAdd',
+    list: '#homeList', today: '#todayFeed', trends: '#trendsCard',
+    insights: '#insightsCard'
+  };
+
+  function applyAdaptiveOrder() {
+    const bento = $('#scr-home .bento');
+    if (!bento) return;
+    const { cards } = Scenes.order();
+    /* CSS `order` rather than moving nodes: reparenting would restart
+       every entrance animation and, worse, move focus out from under
+       anybody who was mid-interaction. The DOM order stays fixed, so
+       the tab sequence and screen-reader order stay fixed with it —
+       only the visual arrangement follows the clock. */
+    cards.forEach((key, i) => {
+      const el = $(CARD_SLOTS[key]);
+      if (!el) return;
+      el.classList.remove(...Array.from(el.classList).filter(c => c.startsWith('ord-')));
+      el.classList.add('ord-' + i);
+    });
   }
 
   /* ═══════════ health passport ═══════════
@@ -1689,12 +1759,30 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
+      if (el.dataset.scene) {
+        const s = Scenes.set(el.dataset.scene);
+        renderHome();
+        // Landing you where the scene is for. Picking "At the store"
+        // and then having to find the label checker yourself would be
+        // the scene doing nothing but changing a label.
+        if (s.opens && s.opens !== 'home') go(s.opens);
+        return;
+      }
+      if (el.dataset.scene) {
+        const sc = Scenes.set(el.dataset.scene);
+        renderHome();
+        /* Land where the scene is for. Picking "At the store" and then
+           having to find the label checker yourself would be the scene
+           changing a label and nothing else. */
+        if (sc.opens && sc.opens !== 'home') go(sc.opens);
+        return;
+      }
       if (el.dataset.meal) {
         /* The row grows into the page it opens. Measured before the
            screen swap, drawn after, so the ghost travels from where the
@@ -1977,6 +2065,16 @@ const UI = (() => {
       toast('Text size updated');
     }));
     paintSizeButtons(Store.settings().textSize || 'normal');
+
+    /* Sound is opt-in and previews itself the moment it is switched on
+       — a toggle for something you cannot hear until later is a toggle
+       people flip twice and then give up on. */
+    const snd = $('#soundToggle');
+    snd.checked = !!Store.settings().sound;
+    snd.addEventListener('change', () => {
+      Store.setSetting('sound', snd.checked);
+      if (snd.checked && typeof Motion !== 'undefined') Motion.chime(true);
+    });
 
     const hc = $('#highContrastToggle');
     hc.checked = !!Store.settings().highContrast;
