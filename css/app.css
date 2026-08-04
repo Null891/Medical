@@ -722,6 +722,90 @@ button { font: inherit; color: inherit; }
 .tab[aria-current="page"] { color: var(--color-accent); }
 .tab[aria-current="page"] .tab__icon .fillable { fill: var(--color-accent); fill-opacity: .18; }
 
+/* ═══════════════════════════════════════════════════════════════
+   VISUAL IDENTITY
+
+   The honest problem with this app was the screenshot test: strip the
+   logo and it was any modern dashboard. The fix is not more widgets. It
+   is one idea, drawn consistently — and this app already HAS an idea
+   nobody else builds around: the empty part of the arc is what you have
+   left.
+
+   So the incomplete arc becomes the mark, the gap becomes the motif,
+   and every surface below reinforces it. Everything here is atmosphere
+   only: nothing in this block changes a number, a threshold, or a word.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Aurora: a very slow field of warm light behind the app. Two
+   oversized radial blooms drifting on a 40s cycle. At 5% opacity it is
+   below conscious notice and reads as "lit" rather than "flat". ── */
+.app::before {
+  content: ""; position: fixed; inset: -20%;
+  pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(38% 34% at 22% 18%, var(--color-accent) 0%, transparent 62%),
+    radial-gradient(32% 30% at 82% 72%, var(--color-cta) 0%, transparent 60%);
+  opacity: .05;
+  filter: blur(60px);
+  animation: aurora 40s ease-in-out infinite alternate;
+}
+@keyframes aurora {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to   { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+/* Grain. Barely there, but it stops large flat fields reading as plastic. */
+.app::after {
+  content: ""; position: fixed; inset: 0;
+  pointer-events: none; z-index: 0; opacity: .022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.main, .tabbar { position: relative; z-index: 1; }
+
+/* ── Cinematic lighting: depth from light, not from more colour.
+   The hero sits at full strength; supporting surfaces step back. ── */
+#ringCard > .card { background: var(--color-surface); }
+#statBlocks > .card, #quickAdd > .card { opacity: .97; }
+#trendsCard > .card, #todayFeed > .card, #coverageCard > .card { opacity: .94; }
+
+/* ── Colored shadows. The status colour bleeds a few pixels beneath the
+   card that carries it, so a good day and a bad day FEEL different
+   before either is read. Kept under 12% so it never becomes a glow. ── */
+#ringCard > .card { box-shadow: var(--shadow-card); transition: box-shadow 600ms var(--ease-out); }
+.app:has(.ring__status.is-ok) #ringCard > .card {
+  box-shadow: var(--shadow-card), 0 18px 40px -24px color-mix(in srgb, var(--color-status-ok) 55%, transparent);
+}
+.app:has(.ring__status.is-warn) #ringCard > .card {
+  box-shadow: var(--shadow-card), 0 18px 40px -24px color-mix(in srgb, var(--color-status-warn) 55%, transparent);
+}
+.app:has(.ring__status.is-danger) #ringCard > .card {
+  box-shadow: var(--shadow-card), 0 18px 40px -24px color-mix(in srgb, var(--color-status-danger) 60%, transparent);
+}
+
+/* ── Breathing. One pixel, ten seconds. Nobody sees it; the room feels
+   occupied rather than paused. ── */
+.ring__svg { animation: breathe 10s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-1px) scale(1.006); }
+}
+
+/* ── Hover physics: the card lifts, its shadow stretches, and the
+   surface warms. Three properties moving together is what reads as
+   physical rather than as a colour change. ── */
+.card { transition: transform var(--motion-standard) var(--ease-out),
+                    box-shadow var(--motion-standard) var(--ease-out); }
+.quickadd__btn, .meal, .result { will-change: transform; }
+.meal:hover, .quickadd__btn:hover, .result:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -18px rgba(0,0,0,.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app::before { animation: none; }
+  .ring__svg { animation: none; }
+  .meal:hover, .quickadd__btn:hover, .result:hover { transform: none; }
+}
+
 /* ───────────── Toast ───────────── */
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + var(--space-3));
@@ -759,6 +843,60 @@ button { font: inherit; color: inherit; }
     min-height: 48px; padding: 0 var(--space-3); border-radius: var(--radius-field); }
   .tab__label { font-size: var(--type-body); }
   .tab[aria-current="page"] { background: var(--color-tint-accent); }
+
+  /* ── THE RAIL, EARNING ITS WIDTH ──
+     Four tabs in a 232px column left roughly 500px of nothing below
+     them. It now carries the mark, today at a glance, the two actions
+     people actually repeat, one rotating fact, and the disclaimer that
+     has to be somewhere anyway. */
+  .tabbar { width: 268px; flex: 0 0 268px; overflow-y: auto; }
+
+  .rail__brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 var(--space-3) var(--space-4);
+  }
+  .rail__mark { width: 28px; height: 28px; flex: 0 0 28px; }
+  .rail__mark-track { stroke: var(--color-track); fill: none; }
+  .rail__mark-fill  { stroke: var(--color-accent); fill: none; }
+  .rail__word { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+
+  .rail__rest {
+    margin-top: var(--space-4); padding: var(--space-3) var(--space-2) 0;
+    border-top: 1px solid var(--color-hairline);
+    display: grid; gap: var(--space-3);
+  }
+  .rail__glance { display: grid; gap: 10px; }
+  .rail__row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 8px; }
+  .rail__name { font-size: 13px; color: var(--color-text-secondary); }
+  .rail__val  { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .rail__bar  { grid-column: 1 / -1; height: 4px; border-radius: 2px;
+                background: var(--color-track); overflow: hidden; }
+  .rail__bar i { display: block; height: 100%; border-radius: 2px;
+                 transition: width 700ms var(--ease-out); }
+
+  .rail__actions { display: grid; gap: 6px; }
+  .rail__action {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 44px; padding: 0 var(--space-2);
+    background: none; border: 0; border-radius: var(--radius-field);
+    color: var(--color-text-primary); font-size: var(--type-caption);
+    font-weight: 600; text-align: left; cursor: pointer;
+    transition: background var(--motion-hover) var(--ease-out);
+  }
+  .rail__action svg { width: 18px; height: 18px; flex: 0 0 18px; color: var(--color-accent); }
+  .rail__action:hover { background: var(--color-surface-warm); }
+
+  .rail__tip {
+    padding: var(--space-2); border-radius: var(--radius-field);
+    background: var(--color-tint-accent); color: var(--color-accent);
+    font-size: 12px; line-height: 1.5;
+  }
+  .rail__foot { font-size: 11px; line-height: 1.5; color: var(--color-text-secondary); padding: 0 var(--space-2); }
+}
+/* Phones get four tabs and nothing else — the rail furniture is desktop
+   real estate, not something to cram into a 64px bar. */
+@media (max-width: 899px) {
+  .rail__brand, .rail__rest { display: none; }
   .main { max-width: var(--content-max-wide); padding: var(--space-5) var(--space-4) var(--space-6); }
   .toast { bottom: var(--space-4); left: auto; right: var(--space-4); transform: none; }
 }
@@ -808,3 +946,27 @@ button { font: inherit; color: inherit; }
   #scr-home > #ringCard .ring__svg { max-width: 132px; }
   #scr-home > #ringCard .ring__left { font-size: 26px; }
 }
+
+/* Width utilities in 5% steps. These exist because the CSP forbids
+   inline style attributes; a bar 4px tall cannot express finer. */
+.w-0 { width: 0%; }
+.w-5 { width: 5%; }
+.w-10 { width: 10%; }
+.w-15 { width: 15%; }
+.w-20 { width: 20%; }
+.w-25 { width: 25%; }
+.w-30 { width: 30%; }
+.w-35 { width: 35%; }
+.w-40 { width: 40%; }
+.w-45 { width: 45%; }
+.w-50 { width: 50%; }
+.w-55 { width: 55%; }
+.w-60 { width: 60%; }
+.w-65 { width: 65%; }
+.w-70 { width: 70%; }
+.w-75 { width: 75%; }
+.w-80 { width: 80%; }
+.w-85 { width: 85%; }
+.w-90 { width: 90%; }
+.w-95 { width: 95%; }
+.w-100 { width: 100%; }

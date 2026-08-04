@@ -433,6 +433,19 @@
 
   <!-- ───────── BOTTOM TAB BAR ───────── -->
   <nav class="tabbar" aria-label="Main">
+    <!-- Desktop-only rail furniture. Hidden on phones, where the bar is
+         four tabs and nothing else. -->
+    <div class="rail__brand" aria-hidden="true">
+      <svg class="rail__mark" viewBox="0 0 32 32" fill="none">
+        <!-- The mark is the app's own idea drawn once: an arc that is
+             deliberately incomplete, because the gap IS the product. -->
+        <circle cx="16" cy="16" r="12.5" class="rail__mark-track" stroke-width="3"/>
+        <circle cx="16" cy="16" r="12.5" class="rail__mark-fill" stroke-width="3"
+                stroke-dasharray="47 78.5" stroke-linecap="round" transform="rotate(-77 16 16)"/>
+      </svg>
+      <span class="rail__word">RenalRoute</span>
+    </div>
+
     <button type="button" class="tab" data-nav="home" aria-current="page">
       <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M12 3.2 3.6 10v10.2h5.6v-6h5.6v6h5.6V10z"/></svg>
       <span class="tab__label">Home</span>
@@ -449,6 +462,31 @@
       <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="3.4"/><path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.3 6.3l1.6 1.6M16.1 16.1l1.6 1.6M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6" stroke-linecap="round"/></svg>
       <span class="tab__label">Settings</span>
     </button>
+
+    <!-- Everything below here is the rail earning its width. -->
+    <div class="rail__rest">
+      <div class="rail__glance" id="railGlance"></div>
+
+      <div class="rail__actions">
+        <button type="button" class="rail__action" data-nav="log">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Log a meal
+        </button>
+        <button type="button" class="rail__action" data-nav="label">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+            <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8"/>
+          </svg>
+          Check a label
+        </button>
+      </div>
+
+      <div class="rail__tip" id="railTip"></div>
+
+      <p class="rail__foot">Educational estimates.<br>Not medical advice.</p>
+    </div>
   </nav>
 </div>
 

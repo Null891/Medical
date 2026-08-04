@@ -396,6 +396,34 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19r. THE RAIL EARNS ITS WIDTH ═══');
+  window.RenalRoute.Seed.run();
+  click('[data-nav="home"]'); await wait(40);
+  check('rail carries the brand mark', !!$('.rail__mark'), true);
+  check('  ...an incomplete arc, the apps own idea', !!$('.rail__mark-fill'), true);
+  check('glance shows all three nutrients', $$('#railGlance .rail__row').length, 3);
+  check('  ...as bars, not a second dashboard of numbers',
+    $$('#railGlance .rail__bar').length, 3);
+  // CSP forbids inline styles; widths MUST come from classes or every
+  // bar silently flattens to zero on the deployed site.
+  check('bar width is a class, never an inline style',
+    $('#railGlance .rail__bar i').hasAttribute('style'), false);
+  check('  ...and that class is a real 5% step',
+    /\bw-(0|5|10|15|20|25|30|35|40|45|50|55|60|65|70|75|80|85|90|95|100)\b/.test(
+      $('#railGlance .rail__bar i').className), true);
+  check('two repeat actions offered', $$('.rail__action').length, 2);
+  check('  ...both routing somewhere real',
+    Array.from($$('.rail__action')).every(b => ['log','label'].includes(b.dataset.nav)), true);
+  check('a rotating fact is present', $('#railTip').textContent.length > 20, true);
+  check('disclaimer lives in the rail too',
+    $('.rail__foot').textContent.includes('Not medical advice'), true);
+  // No targets: the rail must not render bars against nothing.
+  window.RenalRoute.Store.skipTargets();
+  window.RenalRoute.UI.renderHome(); await wait(30);
+  check('no-target rail says so instead of drawing empty bars',
+    $('#railGlance').textContent.includes('No targets set'), true);
+  check('  ...and draws no bars at all', $$('#railGlance .rail__bar').length, 0);
+
   console.log('\n═══ 19q. COUNT-UP LANDS ON THE TRUE NUMBER ═══');
   window.RenalRoute.Seed.run();
   click('[data-nav="home"]'); await wait(40);

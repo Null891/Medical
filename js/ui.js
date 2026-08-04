@@ -341,6 +341,7 @@ const UI = (() => {
     renderQuickAdd();
     renderMealList();
     renderToday();
+    renderRail();
     $('#trendsCard').innerHTML = Trends.render();
   }
 
@@ -981,6 +982,56 @@ const UI = (() => {
   }
 
   const NUTRIENT_WORD = { k: 'potassium', p: 'phosphorus', na: 'sodium' };
+
+  /* ═══════════ the rail ═══════════
+     Four tabs in a 232px column left ~500px of nothing underneath them,
+     which is what "the sidebar looks empty" actually meant. It now
+     carries today at a glance, the two actions people repeat most, and
+     one rotating fact.
+
+     Deliberately NOT a second dashboard: three thin bars, no numbers
+     competing with the hero, no status words. The rail answers "roughly
+     where am I" so the main column can answer it properly. */
+  function renderRail() {
+    const glance = $('#railGlance');
+    const tip = $('#railTip');
+    if (!glance) return;
+
+    if (!Store.hasTargets()) {
+      glance.innerHTML = `<p class="rail__name">No targets set yet.</p>`;
+    } else {
+      glance.innerHTML = Rings.model().map(r => {
+        if (r.suppressed) {
+          return `<div class="rail__row">
+            <span class="rail__name">${r.name}</span>
+            <span class="rail__val">—</span>
+          </div>`;
+        }
+        const pct = Math.min(100, Math.round((r.high / r.target) * 100));
+        /* Width comes from a class, never an inline style. The CSP sets
+           style-src 'self', which blocks style="" attributes — this would
+           have worked on file:// and silently flattened every bar to zero
+           on the deployed site. Rounded to the nearest 5% because a bar
+           4px tall cannot express finer than that anyway. */
+        const step = Math.round(pct / 5) * 5;
+        return `<div class="rail__row">
+          <span class="rail__name">${r.name}</span>
+          <span class="rail__val is-${r.status.key}">${pct}%</span>
+          <span class="rail__bar"><i class="bg-${r.status.key} w-${step}"></i></span>
+        </div>`;
+      }).join('');
+    }
+
+    // One fact, rotating daily rather than per render — a tip that
+    // changes every time you look at it reads as noise.
+    if (tip) {
+      const facts = COPY.emptyFacts || [];
+      if (facts.length) {
+        const day = Math.floor(Date.now() / 86400000);
+        tip.textContent = facts[day % facts.length];
+      }
+    }
+  }
 
   /* ═══════════ what this build does not know ═══════════
      Every limitation here was already computed and shown only to the
