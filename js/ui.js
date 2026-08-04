@@ -959,11 +959,17 @@ const UI = (() => {
       </label>
       <label class="field">
         <span class="field__label">CKD stage (optional)</span>
-        <select id="setStage">
-          ${['not_sure', 'G3a', 'G3b', 'G4', 'G5'].map(s =>
-            `<option value="${s}" ${p.ckd_stage === s ? 'selected' : ''}>${s === 'not_sure' ? 'Prefer not to say' : s}</option>`
-          ).join('')}
-        </select>
+        <div class="select-wrap">
+          <select id="setStage">
+            ${['not_sure', 'G3a', 'G3b', 'G4', 'G5'].map(s =>
+              `<option value="${s}" ${p.ckd_stage === s ? 'selected' : ''}>${s === 'not_sure' ? 'Prefer not to say' : s}</option>`
+            ).join('')}
+          </select>
+          <svg class="select-wrap__chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+               stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
         <span class="field__note">Education only — never changes targets.</span>
       </label>`;
 

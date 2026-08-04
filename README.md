@@ -160,7 +160,8 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 cd test
 npm install     # once — pulls jsdom
 node verify.js  # 64 unit assertions
-node e2e.js     # 107 end-to-end assertions in a real DOM
+node e2e.js     # 150 end-to-end assertions in a real DOM
+node probe.js   # 10 edge-case assertions (empty, no-target, hostile input)
 ```
 
 `package.json` lives in `test/` on purpose. A `package.json` at the repo root would make Vercel treat this static site as a Node project and try to build it.

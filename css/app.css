@@ -151,6 +151,28 @@ button { font: inherit; color: inherit; }
 .card--warm { background: var(--color-surface-warm); }
 .card--dev { background: var(--color-surface-warm); border-style: dashed; }
 
+/* Polish, restrained on purpose.
+   Numbers get tabular figures so a column of milligram values lines up
+   and does not jitter as it updates — the single cheapest thing that
+   makes data look considered rather than assembled. Everything else
+   here is feedback, not decoration: this audience does not need the
+   interface performing for them. */
+.ring__left, .statblock__left, .statblock__read, .field__count,
+.readout, .trend__head .note {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Disabled controls should read as "not yet", not as broken. */
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:disabled:active { transform: none; }
+
+/* Cards that lead somewhere say so on hover; cards that don't, don't. */
+.quickadd__btn:active, .meal:active, .result:active { transform: scale(.995); }
+@media (prefers-reduced-motion: reduce) {
+  .quickadd__btn:active, .meal:active, .result:active { transform: none; }
+}
+
 /* ───────────── Buttons — capsule, ≥44px, press feedback ───────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
