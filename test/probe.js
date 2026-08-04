@@ -57,6 +57,14 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   chk('no <script> element injected anywhere', doc.querySelectorAll('#quickAdd script, #homeList script, #trendsCard script').length, 0);
   chk('payload renders as literal text', doc.body.textContent.includes('<script>alert(1)</script>'), true);
 
+  console.log('\n--- G. HOSTILE DISPLAY NAME THROUGH THE GREETING ---');
+  R.Store.updateProfile({ display_name: '<img src=x onerror=alert(1)>' });
+  R.UI.renderHome(); await wait(20);
+  chk('greeting injects no element', doc.querySelectorAll('#homeGreeting img').length, 0);
+  chk('  ...payload renders as literal text',
+    $('#homeGreeting').textContent.indexOf('<img src=x') !== -1, true);
+  R.Store.updateProfile({ display_name: 'Frank' });
+
   console.log('\n--- F. THEME ROUND TRIP UNDER RELOAD ---');
   R.Store.setSetting('theme','dark');
   chk('theme persisted', R.Store.settings().theme, 'dark');

@@ -236,5 +236,47 @@ const Rings = (() => {
     }).join('') + `</div>`;
   }
 
-  return { render, renderStats, model };
+  /* ═══════════ counting up ═══════════
+     Numbers arrive rather than appear. This is the one piece of pure
+     delight in the app, and it is allowed because it costs nothing and
+     lies about nothing: it counts to the real figure and stops.
+
+     It animates BOTH ends of the range in step, so the range never
+     briefly reads as a wrong pair on its way up — a half-animated
+     "463–120" would be a number this app never computed, on screen, in
+     a health tool. Ends together, or not at all.
+
+     600ms, ease-out, and skipped entirely under reduced motion, where
+     the final value is simply written. */
+  function countUp(root) {
+    if (!root || typeof window === 'undefined' || !window.requestAnimationFrame) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    root.querySelectorAll('.ring__left').forEach(el => {
+      const finalText = el.textContent;
+      // Only animate a plain low–high pair; anything else is left alone
+      // rather than guessed at.
+      const m = finalText.match(/^(−?)([\d,]+)–([\d,]+)$/);
+      if (!m) return;
+      const sign = m[1];
+      const lo = Number(m[2].replace(/,/g, ''));
+      const hi = Number(m[3].replace(/,/g, ''));
+      if (!isFinite(lo) || !isFinite(hi)) return;
+
+      const start = performance.now();
+      const DUR = 600;
+      const step = (now) => {
+        const t = Math.min(1, (now - start) / DUR);
+        const e = 1 - Math.pow(1 - t, 3);            // ease-out cubic
+        el.textContent = sign + Clinical.fmt(Math.round(lo * e)) +
+                         '–' + Clinical.fmt(Math.round(hi * e));
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = finalText;             // land on the exact string
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  return { render, renderStats, model, countUp };
 })();

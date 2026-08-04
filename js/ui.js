@@ -318,10 +318,16 @@ const UI = (() => {
 
   function renderHome() {
     const p = Store.profile();
-    const name = p.display_name ? esc(p.display_name) : '';
     const hour = new Date().getHours();
     const part = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    $('#homeGreeting').textContent = name ? `${part}, ${p.display_name}` : part;
+    /* textContent, not innerHTML — the browser escapes this for us, so a
+       display name of "<script>…" lands as literal characters. An esc()
+       call used to sit here and was discarded, which read as though
+       escaping were load-bearing when the safety actually comes from the
+       assignment target. Left explicit so nobody "restores" it and then
+       switches to innerHTML trusting a variable that does nothing. */
+    $('#homeGreeting').textContent = p.display_name
+      ? `${part}, ${p.display_name}` : part;
     $('#homeDayLine').textContent = dayLine();
     $('#homeDate').textContent = new Date().toLocaleDateString('en-US',
       { weekday: 'long', month: 'long', day: 'numeric' });
@@ -330,6 +336,7 @@ const UI = (() => {
 
     renderModeBanners();
     $('#ringCard').innerHTML = Rings.render();
+    Rings.countUp($('#ringCard'));
     $('#statBlocks').innerHTML = Rings.renderStats();
     renderQuickAdd();
     renderMealList();

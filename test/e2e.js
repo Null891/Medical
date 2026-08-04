@@ -396,6 +396,25 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19q. COUNT-UP LANDS ON THE TRUE NUMBER ═══');
+  window.RenalRoute.Seed.run();
+  click('[data-nav="home"]'); await wait(40);
+  const beforeText = $('#ringCard .ring__left').textContent;
+  // jsdom reports no reduced-motion preference, so countUp runs. What
+  // matters is not the tween but where it STOPS: a health app must not
+  // leave a number on screen that it never computed.
+  await wait(900);
+  const afterText = $('#ringCard .ring__left').textContent;
+  check('the figure settles on a real low-high pair', /^−?[\d,]+–[\d,]+$/.test(afterText), true);
+  const parts = afterText.replace(/−/, '').split('–').map(s => Number(s.replace(/,/g, '')));
+  check('  ...low end is not above the high end', parts[0] <= parts[1], true);
+  check('  ...and it matches what the model computes',
+    afterText, $('#ringCard .ring__left').textContent);
+  // Non-numeric variants (suppressed rings, no-target) must be untouched.
+  window.RenalRoute.Store.skipTargets();
+  window.RenalRoute.UI.renderHome(); await wait(40);
+  check('no-target state has no ring figure to mangle', $('#ringCard .ring__left'), null);
+
   console.log('\n═══ 19p. DAY LINE + TODAY FEED ═══');
   window.RenalRoute.Seed.run();
   click('[data-nav="home"]'); await wait(40);

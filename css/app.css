@@ -546,10 +546,22 @@ button { font: inherit; color: inherit; }
 .barcode-row { display: flex; gap: var(--space-2); align-items: stretch; }
 .barcode-row input { flex: 1 1 auto; min-width: 0; }
 .barcode-row .btn { flex: 0 0 auto; }
+/* The lens opens rather than appears. A camera cutting in instantly
+   reads as a glitch; 320ms of scale and fade reads as a shutter. The
+   motion also covers the real gap while getUserMedia negotiates, so it
+   is doing work rather than performing. */
 .scan-video {
   display: block; width: 100%; max-height: 240px;
   object-fit: cover; background: #000;
   border-radius: var(--radius-field); margin-bottom: var(--space-2);
+  animation: lensOpen var(--motion-modal) var(--ease-out) both;
+}
+@keyframes lensOpen {
+  from { opacity: 0; transform: scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-video { animation: none; }
 }
 
 .cookrow { margin-top: var(--space-2); }
