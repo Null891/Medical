@@ -485,6 +485,22 @@ button { font: inherit; color: inherit; }
 }
 .btn__icon { width: 20px; height: 20px; flex: 0 0 20px; }
 
+/* Listening state. A slow pulse on the border, not the icon — an icon
+   that throbs under someone's thumb while they talk is distracting, and
+   the whole point is that they are looking at the words appearing. */
+#micBtn.is-listening {
+  border-color: var(--color-cta);
+  color: var(--color-cta);
+  animation: micPulse 1.6s ease-in-out infinite;
+}
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-cta) 35%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-cta) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #micBtn.is-listening { animation: none; box-shadow: 0 0 0 3px var(--color-tint-danger); }
+}
+
 .photo-preview {
   display: block; width: 100%; max-height: 260px;
   object-fit: cover; border-radius: var(--radius-card);

@@ -383,6 +383,23 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19j. DICTATION + RESUME ═══');
+  click('[data-nav="log"]'); await wait(20);
+  // jsdom has no SpeechRecognition, so this asserts the progressive
+  // enhancement itself: no API, no button. A control that does nothing
+  // is worse than no control.
+  check('mic button hidden where speech is unsupported', vis('#micBtn'), false);
+  check('  ...and so is its privacy note', vis('#micNote'), false);
+  check('speechSupported() reports honestly here', !!(window.SpeechRecognition || window.webkitSpeechRecognition), false);
+
+  click('[data-nav="labs"]'); await wait(20);
+  check('last screen remembered', window.RenalRoute.Store.settings().lastScreen, 'labs');
+  click('[data-nav="log"]'); await wait(20);
+  check('  ...but the log flow is NOT remembered (drafts resume it instead)',
+    window.RenalRoute.Store.settings().lastScreen, 'labs');
+  click('[data-nav="settings"]'); await wait(20);
+  check('  ...settings is', window.RenalRoute.Store.settings().lastScreen, 'settings');
+
   console.log('\n═══ 19i. TEXT SIZE + HIGH CONTRAST ═══');
   click('[data-nav="settings"]'); await wait(20);
   check('three text sizes offered', $$('[data-textsize]').length, 3);

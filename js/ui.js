@@ -37,7 +37,14 @@ const UI = (() => {
       const active = t.dataset.nav === name;
       if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
-    if (name !== 'learn' && name !== 'detail') lastScreen = name;
+    if (name !== 'learn' && name !== 'detail') {
+      lastScreen = name;
+      // Remember where someone was. Reopening an app mid-task and being
+      // dumped back at the start is a small tax paid every single time;
+      // the log flow is excluded because a half-typed meal should resume
+      // from its draft, not from a stale step.
+      if (name !== 'log' && name !== 'onboarding') Store.setSetting('lastScreen', name);
+    }
     // Guarded: not every environment implements scrollTo, and a missing
     // scroll must never take the navigation down with it.
     try { window.scrollTo(0, 0); } catch (e) { /* non-fatal */ }
@@ -611,6 +618,78 @@ const UI = (() => {
     }
   }
 
+  /* ═══════════ dictation ═══════════
+     Typing a meal is the single most effortful thing this app asks for,
+     and the population it asks it of skews older, often with arthritis
+     or tremor or vision that makes a phone keyboard genuinely hard. So
+     the same text field can be filled by speaking.
+
+     Progressive enhancement, strictly: the button stays hidden unless
+     the browser exposes the API, because a control that does nothing is
+     worse than no control. Recognition runs in the browser or on the
+     device — nothing is uploaded by us, and the note says so, since
+     "this app is listening to me" is a fair thing to wonder.
+
+     Results land in the textarea and go nowhere else. The user reads
+     what was heard and presses Analyze themselves; a mis-heard meal
+     that logged itself would be a nutrient error nobody chose. */
+  let recognition = null;
+  let listening = false;
+
+  function speechSupported() {
+    return typeof window !== 'undefined' &&
+      !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }
+
+  function stopListening() {
+    listening = false;
+    $('#micLabel').textContent = 'Say it instead';
+    $('#micBtn').classList.remove('is-listening');
+    if (recognition) { try { recognition.stop(); } catch (e) { /* already stopped */ } }
+  }
+
+  function toggleDictation() {
+    if (!speechSupported()) return;
+    if (listening) { stopListening(); return; }
+
+    const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new Ctor();
+    recognition.lang = document.documentElement.lang || 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    const field = $('#mealText');
+    const startedWith = field.value ? field.value.trim() + ' ' : '';
+
+    recognition.onresult = (ev) => {
+      let text = '';
+      for (let i = 0; i < ev.results.length; i++) text += ev.results[i][0].transcript;
+      field.value = (startedWith + text).slice(0, 500);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    recognition.onerror = (ev) => {
+      stopListening();
+      // "no-speech" is someone changing their mind, not a failure worth
+      // an error message.
+      if (ev.error !== 'no-speech' && ev.error !== 'aborted') {
+        toast(ev.error === 'not-allowed'
+          ? 'Microphone permission was declined'
+          : "Didn't catch that — try again or type it");
+      }
+    };
+    recognition.onend = () => stopListening();
+
+    try {
+      recognition.start();
+      listening = true;
+      $('#micLabel').textContent = 'Listening — tap to stop';
+      $('#micBtn').classList.add('is-listening');
+    } catch (e) {
+      stopListening();
+      toast("Couldn't start the microphone");
+    }
+  }
+
   function clearPhoto() {
     $('#photoPreviewWrap').hidden = true;
     $('#photoPreview').removeAttribute('src');
@@ -1109,6 +1188,13 @@ const UI = (() => {
 
     // Photo path. The button proxies the file input so the control can be
     // styled and sized like every other 44px target in the app.
+    // Dictation reveals itself only where it actually works.
+    if (speechSupported()) {
+      $('#micBtn').hidden = false;
+      $('#micNote').hidden = false;
+      $('#micBtn').addEventListener('click', toggleDictation);
+    }
+
     $('#photoBtn').addEventListener('click', () => $('#photoInput').click());
     $('#photoInput').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];

@@ -34,8 +34,23 @@
       UI.go('onboarding');
       UI.renderOnboarding();
     } else {
-      UI.go('home');
+      // Resume where they were, but only somewhere it is safe to land.
+      const resumable = ['home', 'labs', 'settings'];
+      const last = Store.settings().lastScreen;
+      UI.go(resumable.includes(last) ? last : 'home');
     }
+  }
+
+  /* Offline support. Registered only over http(s) — a service worker
+     cannot install from file://, and attempting it throws noise into the
+     console of anyone who opens index.html by double-clicking it, which
+     is a supported way to run this build. */
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {
+        /* No offline cache is a degraded experience, never a broken one. */
+      });
+    });
   }
 
   // Expose a small surface for console testing against the Base44 build.

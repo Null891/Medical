@@ -12,6 +12,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex">
 <title>RenalRoute — what's left today</title>
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
 <!-- Runs before first paint so an explicit dark choice never flashes
@@ -154,6 +155,19 @@
           <span class="field__note">Plain words are fine — 'grilled chicken, baked potato with skin, and a glass of milk'.</span>
           <span class="field__count"><span id="mealCount">0</span>/500</span>
         </label>
+        <!-- Dictation. Hidden unless the browser actually supports it —
+             a button that does nothing is worse than no button. It fills
+             the same text field, so everything downstream is unchanged. -->
+        <button type="button" class="btn btn--ghost btn--block" id="micBtn" hidden>
+          <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+               stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+          </svg>
+          <span id="micLabel">Say it instead</span>
+        </button>
+        <p class="note" id="micNote" hidden>Speech is handled by your browser or phone, not by us.</p>
+
         <button type="button" class="btn btn--primary btn--block" id="analyzeBtn" disabled>Analyze meal</button>
 
         <!-- Photo path. The camera NAMES the food; the reference table
