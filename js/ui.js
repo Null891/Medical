@@ -782,6 +782,25 @@ const UI = (() => {
           ).join('') + `</div>`
         : '';
 
+      /* Cooking method, offered only where boiling genuinely changes the
+         number. This is the rare case where something the patient
+         already did — rather than something they should do differently —
+         changes what gets counted, so it belongs on the review screen
+         next to the portion, not in an education card they read once. */
+      const row = it.matched_anchor_id
+        ? ANCHOR_FOODS.find(f => f.id === it.matched_anchor_id) : null;
+      const cooking = (row && row.leachable)
+        ? `<div class="cookrow">
+             <span class="cookrow__q">How was it cooked?</span>
+             <div class="stepper" role="group" aria-label="Cooking method for ${esc(it.name)}">
+               <button type="button" data-leach="${idx}" data-on="0"
+                 aria-pressed="${!it._leached}">Baked or roasted</button>
+               <button type="button" data-leach="${idx}" data-on="1"
+                 aria-pressed="${!!it._leached}">Boiled &amp; drained</button>
+             </div>
+           </div>`
+        : '';
+
       return `<div class="itemrow">
         <div>
           <div class="itemrow__name">${esc(it.name)}</div>
@@ -789,7 +808,9 @@ const UI = (() => {
           <p class="itemrow__meta">${esc(it.portion_text || '')}</p>
           ${nums}
           ${it._note ? `<p class="itemrow__meta">${esc(it._note)}</p>` : ''}
+          ${it._leached ? `<p class="itemrow__meta itemrow__meta--good">${esc(COPY.leachApplied)}</p>` : ''}
           ${stepper}
+          ${cooking}
         </div>
         <div><button type="button" class="iconbtn" data-remove-item="${idx}"
           aria-label="Remove ${esc(it.name)}">✕</button></div>
@@ -799,6 +820,35 @@ const UI = (() => {
     const cards = Cards.generate(items, draft.text);
     draft.cards = cards;
     $('#reviewCards').innerHTML = cards.map(flagCardHtml).join('');
+  }
+
+  /* Applying and un-applying the cooking choice. Always recomputed from
+     the anchor row's own numbers rather than from whatever is currently
+     on the item, so toggling back and forth cannot compound a factor and
+     drift the value downward with every tap. Potassium only: boiling
+     leaches minerals broadly, but the published figures this is built on
+     are potassium figures, and quietly extending them to phosphorus and
+     sodium would be inventing evidence. */
+  function applyLeach(item, on) {
+    const row = ANCHOR_FOODS.find(f => f.id === item.matched_anchor_id);
+    if (!row || !row.leachable) return item;
+
+    const mult = item.quantity_multiplier || 1;
+    const baseLow = (row.k_low === null || row.k_low === undefined) ? null : row.k_low * mult;
+    const baseHigh = (row.k_high === null || row.k_high === undefined) ? null : row.k_high * mult;
+
+    const next = Object.assign({}, item, { _leached: !!on });
+    if (baseLow === null) return next;
+
+    if (on) {
+      const l = Clinical.leach(baseLow, baseHigh);
+      next.potassium_low_mg = l.low;
+      next.potassium_high_mg = l.high;
+    } else {
+      next.potassium_low_mg = Math.round(baseLow);
+      next.potassium_high_mg = Math.round(baseHigh);
+    }
+    return next;
   }
 
   function saveMeal() {
@@ -1093,7 +1143,7 @@ const UI = (() => {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
         '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],' +
-        '[data-del-lab],[data-repeat]');
+        '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
@@ -1115,7 +1165,18 @@ const UI = (() => {
       if (el.dataset.stepItem !== undefined) {
         const i = Number(el.dataset.stepItem);
         const mult = Number(el.dataset.mult);
+        const wasLeached = draft.items[i]._leached;
         draft.items[i] = Resolve.rescale(draft.items[i], mult);
+        // Rescaling rebuilds the item from the anchor row, which drops
+        // the cooking choice. Re-apply it rather than silently reverting
+        // a decision the user already made.
+        if (wasLeached) draft.items[i] = applyLeach(draft.items[i], true);
+        renderReview();
+        return;
+      }
+      if (el.dataset.leach !== undefined) {
+        const i = Number(el.dataset.leach);
+        draft.items[i] = applyLeach(draft.items[i], el.dataset.on === '1');
         renderReview();
         return;
       }

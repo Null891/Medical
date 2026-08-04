@@ -61,6 +61,9 @@ const COPY = {
   emptyExtraction:
     "We didn't spot any foods in that. Try naming them one at a time — for example: chicken, rice, green beans.",
   uncountedItem: "Not counted — we didn't have enough detail to estimate this item.",
+  leachApplied:
+    'Counted lower because boiling and draining removes potassium. The estimate stays deliberately ' +
+    'cautious — published reductions are larger than the one applied here.',
   nothingCounted: 'Logged, but nothing could be counted. Tap to add detail.',
   clarifyUse: 'Use this answer',
   clarifySkip: 'Skip — log it without counting',
@@ -272,7 +275,14 @@ const COPY = {
       title: 'Cooking tip: lowering potassium',
       body: [
         'Boiling and draining high-potassium vegetables — sometimes called leaching — can substantially lower ' +
-        'their potassium. Ask your dietitian whether and how to use it for the foods you cook most.'
+        'their potassium. Ask your dietitian whether and how to use it for the foods you cook most.',
+        'What matters is the water, not the waiting. Soaking alone, which is the version of this advice most ' +
+        'people are given, barely changes potassium. Boiling does the work: cut the vegetable small, use a ' +
+        'large pot of water, boil for at least ten minutes, then drain and discard that water. Studies of ' +
+        'potatoes report roughly half the potassium removed this way, and more when the pieces are shredded ' +
+        'or boiled twice.',
+        'When you tell RenalRoute a potato was boiled and drained, it counts it lower — but by less than those ' +
+        'studies found, because counting too little potassium is the mistake that matters here.'
       ]
     },
     ai: {

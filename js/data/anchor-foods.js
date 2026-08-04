@@ -131,7 +131,7 @@ const ANCHOR_FOODS = [
     aliases: ['baked potato with skin', 'baked potato skin on', 'potato with skin', 'jacket potato'],
     serving_text: '1 medium', serving_qty: 1, serving_unit: 'medium', serving_grams: 173,
     k_low: 926, k_high: 926, p_low: null, p_high: null, na_low: 10, na_high: 20,
-    additive_risk: false, phos_bio: 'plant', swap_pool: false, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: false, leachable: true, swap_affinity: 'cooked_side',
     source: 'AKF/USDA', verify: ['p', 'na'],
     note: 'Phosphorus absent from the source pack — must be added in data prep.' },
 
@@ -139,7 +139,7 @@ const ANCHOR_FOODS = [
     aliases: ['baked potato no skin', 'baked potato without skin', 'baked potato', 'potato'],
     serving_text: '1 medium', serving_qty: 1, serving_unit: 'medium', serving_grams: 156,
     k_low: 610, k_high: 610, p_low: null, p_high: null, na_low: 8, na_high: 16,
-    additive_risk: false, phos_bio: 'plant', swap_pool: false, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: false, leachable: true, swap_affinity: 'cooked_side',
     source: 'AKF/USDA', verify: ['p', 'na'] },
 
   { id: 'potato_boiled', food_name: 'Boiled potato', base_food: 'potato', category: 'vegetable',
@@ -153,14 +153,14 @@ const ANCHOR_FOODS = [
     aliases: ['sweet potato', 'sweet potatoes', 'mashed sweet potato', 'yam'],
     serving_text: '½ cup mashed', serving_qty: 0.5, serving_unit: 'cup', serving_grams: 125,
     k_low: 377, k_high: 377, p_low: null, p_high: null, na_low: null, na_high: null,
-    additive_risk: false, phos_bio: 'plant', swap_pool: false, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: false, leachable: true, swap_affinity: 'cooked_side',
     source: 'AKF/USDA', verify: ['p', 'na'] },
 
   { id: 'spinach_cooked', food_name: 'Cooked spinach', base_food: 'spinach', category: 'vegetable',
     aliases: ['cooked spinach', 'spinach cooked', 'boiled spinach', 'sauteed spinach'],
     serving_text: '½ cup', serving_qty: 0.5, serving_unit: 'cup', serving_grams: 90,
     k_low: 420, k_high: 420, p_low: null, p_high: null, na_low: null, na_high: null,
-    additive_risk: false, phos_bio: 'plant', swap_pool: false, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: false, leachable: true, swap_affinity: 'cooked_side',
     teaching_note: 'spinach',
     source: 'AKF/USDA', verify: ['p', 'na'] },
 
@@ -190,7 +190,7 @@ const ANCHOR_FOODS = [
     aliases: ['cooked cauliflower', 'cauliflower', 'steamed cauliflower', 'roasted cauliflower'],
     serving_text: '½ cup', serving_qty: 0.5, serving_unit: 'cup', serving_grams: 62,
     k_low: 88, k_high: 88, p_low: null, p_high: null, na_low: 9, na_high: 16,
-    additive_risk: false, phos_bio: 'plant', swap_pool: true, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: true, leachable: true, swap_affinity: 'cooked_side',
     source: 'AKF/USDA', verify: ['p', 'na'],
     note: 'Phosphorus absent from the source pack — must be added in data prep.' },
 
@@ -205,7 +205,7 @@ const ANCHOR_FOODS = [
     aliases: ['green beans', 'frozen green beans', 'string beans'],
     serving_text: '½ cup', serving_qty: 0.5, serving_unit: 'cup', serving_grams: 68,
     k_low: 113, k_high: 113, p_low: null, p_high: null, na_low: 2, na_high: 8,
-    additive_risk: false, phos_bio: 'plant', swap_pool: true, swap_affinity: 'cooked_side',
+    additive_risk: false, phos_bio: 'plant', swap_pool: true, leachable: true, swap_affinity: 'cooked_side',
     source: 'AKF/USDA', verify: ['p', 'na'] },
 
   { id: 'cucumber', food_name: 'Cucumber with peel', base_food: 'cucumber', category: 'vegetable',

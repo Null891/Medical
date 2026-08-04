@@ -50,6 +50,36 @@ const Clinical = (() => {
 
   const STALE_DAYS = 90;
 
+  /* ═══════════ leaching — cooking as a lever, not a hope ═══════════
+     Boiling a high-potassium vegetable in plenty of water and draining
+     it removes a large share of its potassium: the literature reports
+     roughly 50% for cubed pieces and up to 75% for shredded or
+     double-boiled, with small pieces and a big pot of water doing most
+     of the work. Soaking alone — the advice patients are most often
+     given — barely moves it, which is worth correcting rather than
+     repeating.
+
+     The factors below are what REMAINS after boiling and draining, and
+     they are deliberately more cautious than the evidence. Published
+     removal is 50-75%; this claims removal of only 25-50%. Under-stating
+     potassium is the one error direction that is genuinely unsafe here,
+     because it tells someone they have room they do not have, so the
+     conservatism runs in the safe direction.
+
+     [NEEDS VERIFICATION — the specific factors are a product choice made
+     conservative against published ranges, not a figure from a guideline.
+     A dietitian should confirm before this is presented as advice.] */
+  const LEACH_RETAIN_LOW = 0.50;
+  const LEACH_RETAIN_HIGH = 0.75;
+
+  function leach(kLow, kHigh) {
+    if (kLow === null || kLow === undefined) return { low: kLow, high: kHigh };
+    return {
+      low: Math.round(kLow * LEACH_RETAIN_LOW),
+      high: Math.round(kHigh * LEACH_RETAIN_HIGH)
+    };
+  }
+
   /* Ring colour thresholds — display-engineering choices, not clinical. */
   const RING_AMBER_AT = 0.70;   // high end ≥70% of target
   const BIG_ITEM_AT   = 0.33;   // single item ≥33% of target
@@ -235,6 +265,7 @@ const Clinical = (() => {
   return {
     TARGET_BOUNDS, EDUCATION_DEFAULTS, LAB_BOUNDS, STALE_DAYS,
     RING_AMBER_AT, BIG_ITEM_AT,
+    leach, LEACH_RETAIN_LOW, LEACH_RETAIN_HIGH,
     validateTarget, validateLab,
     potassiumMode, phosphorusMode,
     isPaused, swapsAllowed, restrictionToneAllowed, ringSuppressed,

@@ -195,6 +195,23 @@ check('  ...no raw salad vegetable is offered for a baked potato',
 check('  ...cauliflower reads 88 mg per ½ cup, as the demo script says',
   rOk.swaps[0].k_high + '/' + rOk.swaps[0].serving_text, '88/½ cup');
 
+console.log('\n═══ LEACHING — cooking as a lever ═══');
+const spudL = ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin');
+check('potatoes are marked leachable', spudL.leachable, true);
+check('raw salad veg are NOT (boiling them is not a thing)',
+  !!ANCHOR_FOODS.find(f => f.id === 'cucumber').leachable, false);
+const L = Clinical.leach(926, 926);
+check('926 mg boiled -> low end halves', L.low, 463);
+check('  ...high end retains 75%, the cautious side', L.high, 695);
+/* The safe direction matters more than the size of the effect. Published
+   removal is 50-75%; claiming removal of only 25-50% keeps the counted
+   figure ABOVE what the literature says remains. Understating potassium
+   is the error that tells someone they have room they do not have. */
+check('  ...claimed removal is smaller than published removal',
+  (926 - L.high) / 926 < 0.50, true);
+check('  ...and the result is still a range, never a point', L.low < L.high, true);
+check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
+
 console.log('\n═══ DATA-QUALITY REPORT (expected gaps, not failures) ═══');
 console.log(`  rows: ${ANCHOR_STATS.total} | missing K: ${ANCHOR_STATS.missingK} | ` +
             `missing P: ${ANCHOR_STATS.missingP} | missing Na: ${ANCHOR_STATS.missingNa}`);

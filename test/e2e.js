@@ -383,6 +383,36 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19k. COOKING METHOD CHANGES THE NUMBER ═══');
+  click('[data-nav="log"]'); await wait(20);
+  type('#mealText', 'grilled chicken, baked potato with skin, and a glass of milk');
+  click('#analyzeBtn'); await wait(600);
+  check('cooking control offered on the potato', $$('[data-leach]').length >= 2, true);
+  check('  ...and NOT on the chicken or milk', $$('[data-leach]').length, 2);
+  check('starts on baked, the way it was logged',
+    $('[data-leach][data-on="0"]').getAttribute('aria-pressed'), 'true');
+  check('potato counted at full 926 before any change',
+    $('#reviewItems').textContent.includes('926'), true);
+  click('[data-leach][data-on="1"]'); await wait(40);
+  check('boiled & drained lowers it', $('#reviewItems').textContent.includes('926'), false);
+  check('  ...to the cautious 463–695 range',
+    $('#reviewItems').textContent.includes('463') && $('#reviewItems').textContent.includes('695'), true);
+  check('  ...and says why, in the item row',
+    $('#reviewItems').textContent.includes('boiling and draining removes potassium'), true);
+  // Toggling repeatedly must not compound the factor downward.
+  click('[data-leach][data-on="0"]'); await wait(30);
+  click('[data-leach][data-on="1"]'); await wait(30);
+  click('[data-leach][data-on="0"]'); await wait(30);
+  check('toggling back and forth returns to exactly 926, no drift',
+    $('#reviewItems').textContent.includes('926'), true);
+  // Portion changes must not silently discard the cooking choice.
+  click('[data-leach][data-on="1"]'); await wait(30);
+  click('[data-step-item="1"][data-mult="2"]'); await wait(40);
+  check('changing portion keeps the cooking choice',
+    $('[data-leach][data-on="1"]').getAttribute('aria-pressed'), 'true');
+  check('  ...and scales it: 2x boiled = 926-1,389',
+    $('#reviewItems').textContent.includes('1,389'), true);
+
   console.log('\n═══ 19j. DICTATION + RESUME ═══');
   click('[data-nav="log"]'); await wait(20);
   // jsdom has no SpeechRecognition, so this asserts the progressive
