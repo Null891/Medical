@@ -40,7 +40,7 @@
 
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
-    Store, Clinical, Resolve, LLM, Cards, Rings, Seed, UI,
+    Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
     anchors: ANCHOR_FOODS,
     stats: ANCHOR_STATS,
     version: '1.0.0-reference'

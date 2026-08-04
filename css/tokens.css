@@ -164,6 +164,45 @@
   --shadow-modal: var(--dk-shadow-modal);
 }
 
+/* ── Text size ──
+   Scales the TOKENS, not a zoom on the page, so spacing and tap targets
+   grow with the type rather than the layout tearing. 16px is already the
+   floor; these are for people for whom the floor is not enough, which in
+   a CKD population is a lot of people. Browser zoom still stacks on top. */
+:root[data-textsize="large"] {
+  --type-body: 18px; --type-caption: 16px; --type-title: 22px; --type-numeral: 30px;
+  --space-2: 10px; --space-3: 18px; --space-4: 28px;
+}
+:root[data-textsize="xlarge"] {
+  --type-body: 21px; --type-caption: 18px; --type-title: 26px; --type-numeral: 34px;
+  --space-2: 12px; --space-3: 20px; --space-4: 32px;
+  --tabbar-h: 72px;
+}
+
+/* ── Higher contrast ──
+   Not a separate theme. It darkens secondary text and strengthens the
+   hairlines, which are the two places a warm, low-contrast palette
+   actually costs someone with reduced vision. The status colours are
+   left alone: they are already the most saturated things on screen, and
+   pushing them further would break their relationship to each other. */
+:root[data-contrast="high"] {
+  --color-text-secondary: #3D3931;
+  --color-hairline: #B8AC9A;
+  --color-track: #D8CCBB;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"]:not([data-theme="light"]) {
+    --color-text-secondary: #E4DCCF;
+    --color-hairline: #6A6053;
+    --color-track: #4A4238;
+  }
+}
+:root[data-theme="dark"][data-contrast="high"] {
+  --color-text-secondary: #E4DCCF;
+  --color-hairline: #6A6053;
+  --color-track: #4A4238;
+}
+
 /* Reduced motion is a first-class mode, not an afterthought.
    Vestibular sensitivity is elevated in chronically ill populations. */
 @media (prefers-reduced-motion: reduce) {

@@ -298,14 +298,37 @@
           <button type="button" class="segmented__btn" role="radio" aria-checked="false" data-theme-set="dark">Dark</button>
         </div>
         <p class="note mt-2">Automatic follows your device. Choose Light or Dark to override it — useful if your phone is dark all day but you read numbers more comfortably on white.</p>
+
+        <h3 class="h3 mt-2">Text size</h3>
+        <div class="segmented" role="radiogroup" aria-label="Text size">
+          <button type="button" class="segmented__btn" role="radio" aria-checked="true"  data-textsize="normal">Normal</button>
+          <button type="button" class="segmented__btn" role="radio" aria-checked="false" data-textsize="large">Large</button>
+          <button type="button" class="segmented__btn" role="radio" aria-checked="false" data-textsize="xlarge">Largest</button>
+        </div>
+        <p class="note mt-2">Scales the whole interface, so spacing and tap targets grow with the text instead of the layout breaking. Your browser's own zoom still works too.</p>
+
+        <label class="switch mt-2">
+          <input type="checkbox" id="highContrastToggle">
+          <span>Higher contrast — stronger borders and darker body text</span>
+        </label>
       </div>
 
-      <!-- Your data, and getting rid of it. Separate from the dev block
-           above because this one is for the person using the app. -->
+      <!-- Your data: take it with you, or get rid of it. Separate from
+           the dev block above because this one is for the person using
+           the app, not the person building it. -->
       <div class="card">
         <h2 class="h2">Your data</h2>
         <p class="note">Everything you log stays on this device, in this browser. Nothing is uploaded, and there is no account. Clearing your browser data removes it too.</p>
-        <button type="button" class="btn btn--danger btn--block mt-2" id="deleteAllBtn">Delete all my data</button>
+
+        <h3 class="h3 mt-2">Take it with you</h3>
+        <p class="note">A one-page summary is the thing to print or email before an appointment. The spreadsheet is every item you've logged, in case you want the raw numbers.</p>
+        <div class="dev-actions">
+          <button type="button" class="btn btn--secondary" id="exportSummaryBtn">Summary for my care team</button>
+          <button type="button" class="btn btn--ghost" id="exportCsvBtn">Download spreadsheet (CSV)</button>
+        </div>
+
+        <h3 class="h3 mt-2">Remove it</h3>
+        <button type="button" class="btn btn--danger btn--block" id="deleteAllBtn">Delete all my data</button>
       </div>
     </section>
 
@@ -367,6 +390,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/exporter.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/seed.js"></script>
 <script src="js/app.js"></script>

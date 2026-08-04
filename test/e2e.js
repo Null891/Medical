@@ -39,7 +39,7 @@ const doc = window.document;
 // in the same order index.html declares them.
 const scripts = [
   'js/theme.js', 'js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js', 'js/clinical.js',
-  'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/ui.js',
+  'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/exporter.js', 'js/ui.js',
   'js/seed.js', 'js/app.js'
 ];
 
@@ -382,6 +382,57 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('"Keep my data" closes without deleting', vis('#wipeModal'), false);
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
+
+  console.log('\n═══ 19i. TEXT SIZE + HIGH CONTRAST ═══');
+  click('[data-nav="settings"]'); await wait(20);
+  check('three text sizes offered', $$('[data-textsize]').length, 3);
+  check('defaults to Normal, no attribute', doc.documentElement.hasAttribute('data-textsize'), false);
+  click('[data-textsize="xlarge"]'); await wait(20);
+  check('Largest sets the attribute', doc.documentElement.getAttribute('data-textsize'), 'xlarge');
+  check('  ...and persists', window.RenalRoute.Store.settings().textSize, 'xlarge');
+  // Scaling tokens, not zooming. Asserted on the custom property rather
+  // than the computed font-size: jsdom does not resolve var() in
+  // getComputedStyle (it hands back the literal "var(--type-body)"),
+  // but it does resolve the property itself — which is the thing under
+  // test, i.e. that the cascade picked the larger token.
+  const bodyToken = window.getComputedStyle(doc.documentElement).getPropertyValue('--type-body').trim();
+  check('  ...the body token grows past the 16px floor', parseFloat(bodyToken) > 16, true);
+  const spaceToken = window.getComputedStyle(doc.documentElement).getPropertyValue('--space-3').trim();
+  check('  ...and spacing grows with it, so layout does not tear', parseFloat(spaceToken) > 16, true);
+  click('[data-textsize="normal"]'); await wait(20);
+  check('back to Normal removes it', doc.documentElement.hasAttribute('data-textsize'), false);
+
+  const hcEl = $('#highContrastToggle');
+  hcEl.checked = true; hcEl.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await wait(20);
+  check('high contrast sets its attribute', doc.documentElement.getAttribute('data-contrast'), 'high');
+  check('  ...and persists', window.RenalRoute.Store.settings().highContrast, true);
+  hcEl.checked = false; hcEl.dispatchEvent(new window.Event('change', { bubbles: true }));
+  await wait(20);
+  check('  ...and turns back off', doc.documentElement.hasAttribute('data-contrast'), false);
+
+  console.log('\n═══ 19h. EXPORT — data you can actually use ═══');
+  window.RenalRoute.Seed.run();
+  click('[data-nav="settings"]'); await wait(30);
+  check('both export controls offered', vis('#exportSummaryBtn') && vis('#exportCsvBtn'), true);
+  const sum = window.RenalRoute.Exporter.summaryText();
+  check('summary names the provenance of the targets', /set with care team|education ranges|no targets/.test(sum), true);
+  check('  ...states figures are ranges, not measurements', sum.includes('not a single measurement'), true);
+  check('  ...carries the not-a-medical-device line', sum.includes('not a medical device'), true);
+  check('  ...marks self-entered labs as self-entered', sum.includes('self-entered'), true);
+  check('  ...covers seven days', (sum.match(/nothing logged|K \d/g) || []).length >= 7, true);
+  const csvRows = window.RenalRoute.Exporter.csv().split('\r\n');
+  check('CSV has a header plus rows', csvRows.length > 1, true);
+  check('  ...header names the range columns', csvRows[0].includes('potassium_low_mg'), true);
+  // A cell starting with = is executed by Excel on open, and meal text
+  // is user-supplied — so it must be neutralised on the way out.
+  window.RenalRoute.Store.addMeal({ meal_text: '=cmd|calc', logged_at: new Date().toISOString(),
+    meal_date: window.RenalRoute.Store.todayISO(),
+    items: [{ name: '=HYPERLINK("x")', portion_text: '', source: 'anchor',
+      matched_anchor_id: 'banana', quantity_multiplier: 1 }], confidence: 'high' });
+  const csv2 = window.RenalRoute.Exporter.csv();
+  check('formula injection is neutralised in the CSV', csv2.includes('"\'=cmd|calc"'), true);
+  check('  ...including inside item names', csv2.includes('"\'=HYPERLINK'), true);
 
   console.log('\n═══ 19g. UNDO + DRAFT SAVING ═══');
   // Undo restores the exact record, not a lookalike.

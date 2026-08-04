@@ -15,7 +15,7 @@ const style=doc.createElement('style');
 style.textContent=['css/tokens.css','css/app.css'].map(f=>fs.readFileSync(path.join(APP,f),'utf8')).join('\n');
 doc.head.appendChild(style);
 for(const s of ['js/theme.js','js/data/copy.js','js/data/anchor-foods.js','js/store.js','js/clinical.js',
- 'js/resolve.js','js/llm.js','js/cards.js','js/rings.js','js/trends.js','js/ui.js','js/seed.js','js/app.js']){
+ 'js/resolve.js','js/llm.js','js/cards.js','js/rings.js','js/trends.js','js/exporter.js','js/ui.js','js/seed.js','js/app.js']){
   const el=doc.createElement('script');el.textContent=fs.readFileSync(path.join(APP,s),'utf8');doc.body.appendChild(el);}
 const $=s=>doc.querySelector(s);
 const click=s=>{const e=typeof s==='string'?$(s):s;e&&e.dispatchEvent(new window.MouseEvent('click',{bubbles:true,cancelable:true}));};

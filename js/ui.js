@@ -1225,6 +1225,15 @@ const UI = (() => {
       Store.reset(); location.reload();
     });
 
+    $('#exportSummaryBtn').addEventListener('click', () => {
+      if (!Store.meals().length) { toast('Nothing logged yet to summarise'); return; }
+      toast(Exporter.downloadSummary() ? 'Summary downloaded' : "Couldn't create the file");
+    });
+    $('#exportCsvBtn').addEventListener('click', () => {
+      if (!Store.meals().length) { toast('Nothing logged yet to export'); return; }
+      toast(Exporter.downloadCsv() ? 'Spreadsheet downloaded' : "Couldn't create the file");
+    });
+
     /* Theme. Applied immediately and stored; js/theme.js re-applies it
        before paint on the next load. "system" removes the attribute
        rather than setting it, so the media query stays in charge and
@@ -1243,6 +1252,32 @@ const UI = (() => {
       toast(choice === 'system' ? 'Following your device' : `${choice[0].toUpperCase()}${choice.slice(1)} mode on`);
     }));
     paintThemeButtons(Store.settings().theme || 'system');
+
+    // Text size — same attribute-on-<html> pattern as the theme, so
+    // js/theme.js reapplies it before paint on the next load.
+    function paintSizeButtons(active) {
+      $$('[data-textsize]').forEach(b => {
+        b.setAttribute('aria-checked', String(b.dataset.textsize === active));
+      });
+    }
+    $$('[data-textsize]').forEach(b => b.addEventListener('click', () => {
+      const size = b.dataset.textsize;
+      Store.setSetting('textSize', size);
+      if (size === 'normal') document.documentElement.removeAttribute('data-textsize');
+      else document.documentElement.setAttribute('data-textsize', size);
+      paintSizeButtons(size);
+      toast('Text size updated');
+    }));
+    paintSizeButtons(Store.settings().textSize || 'normal');
+
+    const hc = $('#highContrastToggle');
+    hc.checked = !!Store.settings().highContrast;
+    hc.addEventListener('change', (e) => {
+      Store.setSetting('highContrast', e.target.checked);
+      if (e.target.checked) document.documentElement.setAttribute('data-contrast', 'high');
+      else document.documentElement.removeAttribute('data-contrast');
+      toast(e.target.checked ? 'Higher contrast on' : 'Higher contrast off');
+    });
 
     /* Delete everything. Counts what will actually go before asking, so
        the confirmation names real numbers rather than a vague warning —

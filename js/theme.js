@@ -38,4 +38,25 @@
   } else {
     document.documentElement.setAttribute('data-theme', pref);
   }
+
+  // Text size and contrast ride along here for the same reason: applying
+  // them after first paint would reflow the page under the reader.
+  var settings = {};
+  try {
+    var r2 = localStorage.getItem(STORE_KEY);
+    if (r2) settings = (JSON.parse(r2) || {}).settings || {};
+  } catch (e) { /* defaults are fine */ }
+
+  var size = settings.textSize;
+  if (size === 'large' || size === 'xlarge') {
+    document.documentElement.setAttribute('data-textsize', size);
+  } else {
+    document.documentElement.removeAttribute('data-textsize');
+  }
+
+  if (settings.highContrast) {
+    document.documentElement.setAttribute('data-contrast', 'high');
+  } else {
+    document.documentElement.removeAttribute('data-contrast');
+  }
 })();
