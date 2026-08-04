@@ -38,7 +38,7 @@ const doc = window.document;
 // jsdom won't fetch local files; inject the scripts and CSS by hand,
 // in the same order index.html declares them.
 const scripts = [
-  'js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js', 'js/clinical.js',
+  'js/theme.js', 'js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js', 'js/clinical.js',
   'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/ui.js',
   'js/seed.js', 'js/app.js'
 ];
@@ -382,6 +382,38 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('"Keep my data" closes without deleting', vis('#wipeModal'), false);
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
+
+  console.log('\n═══ 19e. QUICK ADD — repeat a meal, zero AI ═══');
+  window.RenalRoute.Seed.run();      // gives a week of repeatable meals
+  click('[data-nav="home"]'); await wait(30);
+  check('quick-add shelf appears once there is history', vis('#quickAdd'), true);
+  const quickBtns = $$('#quickAdd [data-repeat]');
+  check('  ...offering at most three', quickBtns.length <= 3 && quickBtns.length > 0, true);
+  const mealsBeforeRepeat = window.RenalRoute.Store.meals().length;
+  click(quickBtns[0]); await wait(40);
+  check('one tap logs the meal', window.RenalRoute.Store.meals().length, mealsBeforeRepeat + 1);
+  const repeated = window.RenalRoute.Store.meals()[0];
+  check('  ...onto TODAY', repeated.meal_date, window.RenalRoute.Store.todayISO());
+  check('  ...fully anchor-resolved, so confidence is high', repeated.confidence, 'high');
+  check('  ...with real totals, not zeros', repeated.total_potassium_high_mg > 0, true);
+  check('  ...and it never contains an uncounted item',
+    (repeated.items || []).some(i => i.source === 'uncounted'), false);
+
+  console.log('\n═══ 19d. THEME CONTROL ═══');
+  click('[data-nav="settings"]'); await wait(20);
+  check('three theme choices offered', $$('[data-theme-set]').length, 3);
+  check('defaults to Automatic',
+    $('[data-theme-set="system"]').getAttribute('aria-checked'), 'true');
+  check('  ...with no attribute set, so the media query governs',
+    doc.documentElement.hasAttribute('data-theme'), false);
+  click('[data-theme-set="dark"]'); await wait(20);
+  check('choosing Dark sets the attribute', doc.documentElement.getAttribute('data-theme'), 'dark');
+  check('  ...and is persisted for the next load', window.RenalRoute.Store.settings().theme, 'dark');
+  check('  ...and only one option reads as chosen',
+    Array.from($$('[data-theme-set]')).filter(b => b.getAttribute('aria-checked') === 'true').length, 1);
+  click('[data-theme-set="system"]'); await wait(20);
+  check('back to Automatic removes the attribute again',
+    doc.documentElement.hasAttribute('data-theme'), false);
 
   console.log('\n═══ 20. SEED THE DEMO PERSONA ═══');
   window.RenalRoute.Seed.run();

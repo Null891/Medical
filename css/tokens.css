@@ -57,10 +57,17 @@
   --z-overlay: 30;
   --z-modal: 50;
 
-  /* ── Motion ── */
-  --motion-fast: 150ms;
-  --motion-standard: 220ms;
-  --motion-ring: 500ms;
+  /* ── Motion ──
+     Timings scale with how much of the screen moves. A hover tint is
+     nearly instant; a modal covering the page needs long enough to be
+     read as arriving rather than appearing. Anything past ~450ms starts
+     to feel like waiting rather than moving. */
+  --motion-hover: 120ms;
+  --motion-fast: 180ms;      /* buttons, chips, toggles */
+  --motion-standard: 220ms;  /* cards, banners */
+  --motion-modal: 320ms;
+  --motion-screen: 450ms;
+  --motion-ring: 500ms;      /* the one deliberate exception */
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
   /* ── Layout ── */
@@ -84,39 +91,86 @@
    green/amber/red is doing real work even though it is never the only
    signal.
    ═══════════════════════════════════════════════════════════════ */
+/* The palette lives here once. The two blocks below only MAP it, so a
+   colour is never defined in two places and cannot drift between the
+   "follow the device" path and the "user chose dark" path. */
+:root {
+  --dk-canvas:        #17150F;
+  --dk-surface:       #201D17;
+  --dk-surface-warm:  #262218;
+  --dk-text-primary:  #F2ECE3;   /* ~15:1 on canvas */
+  --dk-text-secondary:#B7AE9F;   /* ~7:1 on surface */
+  --dk-accent:        #6BC7B3;
+  --dk-cta:           #D2593C;
+  --dk-status-ok:     #5CBF8E;
+  --dk-status-warn:   #E0A33F;   /* still amber, still not yellow */
+  --dk-status-danger: #EF7C6B;
+  --dk-track:         #332E25;
+  --dk-hairline:      #3A342A;
+  --dk-tint-ok:       #1B2A22;
+  --dk-tint-warn:     #2C2416;
+  --dk-tint-danger:   #2E1E1B;
+  --dk-tint-accent:   #172824;
+  /* Shadows do almost nothing on a dark canvas — depth comes from
+     surface lightness instead, so these stay subtle rather than
+     turning into black smears. */
+  --dk-shadow-card:  0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(0,0,0,.28);
+  --dk-shadow-modal: 0 12px 48px rgba(0,0,0,.60);
+}
+
+/* Follow the device — unless the user has explicitly asked for light. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas:        #17150F;
-    --color-surface:       #201D17;
-    --color-surface-warm:  #262218;
-    --color-text-primary:  #F2ECE3;   /* ~15:1 on canvas */
-    --color-text-secondary:#B7AE9F;   /* ~7:1 on surface */
-    --color-accent:        #6BC7B3;
-    --color-cta:           #D2593C;
-
-    --color-status-ok:     #5CBF8E;
-    --color-status-warn:   #E0A33F;   /* still amber, still not yellow */
-    --color-status-danger: #EF7C6B;
-
-    --color-track:         #332E25;
-    --color-hairline:      #3A342A;
-    --color-tint-ok:       #1B2A22;
-    --color-tint-warn:     #2C2416;
-    --color-tint-danger:   #2E1E1B;
-    --color-tint-accent:   #172824;
-
-    /* Shadows do almost nothing on a dark canvas — depth comes from
-       surface lightness instead, so these stay subtle rather than
-       turning into black smears. */
-    --shadow-card:  0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(0,0,0,.28);
-    --shadow-modal: 0 12px 48px rgba(0,0,0,.60);
+  :root:not([data-theme="light"]) {
+    --color-canvas: var(--dk-canvas);
+    --color-surface: var(--dk-surface);
+    --color-surface-warm: var(--dk-surface-warm);
+    --color-text-primary: var(--dk-text-primary);
+    --color-text-secondary: var(--dk-text-secondary);
+    --color-accent: var(--dk-accent);
+    --color-cta: var(--dk-cta);
+    --color-status-ok: var(--dk-status-ok);
+    --color-status-warn: var(--dk-status-warn);
+    --color-status-danger: var(--dk-status-danger);
+    --color-track: var(--dk-track);
+    --color-hairline: var(--dk-hairline);
+    --color-tint-ok: var(--dk-tint-ok);
+    --color-tint-warn: var(--dk-tint-warn);
+    --color-tint-danger: var(--dk-tint-danger);
+    --color-tint-accent: var(--dk-tint-accent);
+    --shadow-card: var(--dk-shadow-card);
+    --shadow-modal: var(--dk-shadow-modal);
   }
+}
+
+/* The user chose dark outright, whatever the device says. */
+:root[data-theme="dark"] {
+  --color-canvas: var(--dk-canvas);
+  --color-surface: var(--dk-surface);
+  --color-surface-warm: var(--dk-surface-warm);
+  --color-text-primary: var(--dk-text-primary);
+  --color-text-secondary: var(--dk-text-secondary);
+  --color-accent: var(--dk-accent);
+  --color-cta: var(--dk-cta);
+  --color-status-ok: var(--dk-status-ok);
+  --color-status-warn: var(--dk-status-warn);
+  --color-status-danger: var(--dk-status-danger);
+  --color-track: var(--dk-track);
+  --color-hairline: var(--dk-hairline);
+  --color-tint-ok: var(--dk-tint-ok);
+  --color-tint-warn: var(--dk-tint-warn);
+  --color-tint-danger: var(--dk-tint-danger);
+  --color-tint-accent: var(--dk-tint-accent);
+  --shadow-card: var(--dk-shadow-card);
+  --shadow-modal: var(--dk-shadow-modal);
 }
 
 /* Reduced motion is a first-class mode, not an afterthought.
    Vestibular sensitivity is elevated in chronically ill populations. */
 @media (prefers-reduced-motion: reduce) {
-  :root { --motion-fast: 0ms; --motion-standard: 0ms; --motion-ring: 0ms; }
+  :root {
+    --motion-hover: 0ms; --motion-fast: 0ms; --motion-standard: 0ms;
+    --motion-modal: 0ms; --motion-screen: 0ms; --motion-ring: 0ms;
+  }
   *, *::before, *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;

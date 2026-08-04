@@ -107,7 +107,7 @@ button { font: inherit; color: inherit; }
     calc(var(--space-3) + env(safe-area-inset-left, 0px));
 }
 
-.screen { animation: fade var(--motion-standard) var(--ease-out); }
+.screen { animation: fade var(--motion-screen) var(--ease-out); }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
 /* ───────────── Typography ───────────── */
@@ -167,9 +167,9 @@ button { font: inherit; color: inherit; }
 .btn--block { width: 100%; margin-bottom: var(--space-2); }
 .btn--hero { margin: var(--space-3) 0 var(--space-4); }
 .btn--primary { background: var(--color-cta); color: #fff; }
-.btn--primary:hover:not(:disabled) { background: #A83F28; }
-.btn--secondary { background: var(--color-tint-accent); color: var(--color-accent); border-color: #CFE2DE; }
-.btn--secondary:hover:not(:disabled) { background: #DFEDEA; }
+.btn--primary:hover:not(:disabled) { filter: brightness(0.92); }
+.btn--secondary { background: var(--color-tint-accent); color: var(--color-accent); border-color: var(--color-hairline); }
+.btn--secondary:hover:not(:disabled) { filter: brightness(0.96); }
 .btn--ghost { background: transparent; color: var(--color-text-primary); border-color: var(--color-hairline); }
 .btn--ghost:hover { background: var(--color-surface-warm); }
 .btn--danger { background: var(--color-status-danger); color: #fff; }
@@ -222,6 +222,31 @@ button { font: inherit; color: inherit; }
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--color-status-danger); color: #fff; border-radius: 50%; font-size: 12px; }
 .field.is-invalid input { border-color: var(--color-status-danger); }
+
+/* Segmented control. Radio semantics, not buttons pretending: a screen
+   reader should hear "Dark, radio button, 3 of 3", because that is what
+   it is — one choice out of three, not three separate actions. */
+.segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  gap: 4px; padding: 4px;
+  background: var(--color-surface-warm);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-field);
+}
+.segmented__btn {
+  min-height: 44px; padding: 0 var(--space-2);
+  border: 0; border-radius: calc(var(--radius-field) - 4px);
+  background: transparent; color: var(--color-text-secondary);
+  font-size: var(--type-caption); font-weight: 600; cursor: pointer;
+  transition: background var(--motion-hover) var(--ease-out),
+              color var(--motion-hover) var(--ease-out);
+}
+.segmented__btn:hover { color: var(--color-text-primary); }
+.segmented__btn[aria-checked="true"] {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-card);
+}
 
 .switch { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; cursor: pointer; }
 .switch input { width: 20px; height: 20px; accent-color: var(--color-accent); }
@@ -302,9 +327,9 @@ button { font: inherit; color: inherit; }
   font-size: 13px; font-weight: 600; line-height: 1.4;
   background: var(--color-surface-warm); border: 1px solid var(--color-hairline);
 }
-.chip--ok     { background: var(--color-tint-ok); color: var(--color-status-ok); border-color: #CFE4DA; }
-.chip--warn   { background: var(--color-tint-warn); color: var(--color-status-warn); border-color: #EEDCC0; }
-.chip--danger { background: var(--color-tint-danger); color: var(--color-status-danger); border-color: #EFD1CD; }
+.chip--ok     { background: var(--color-tint-ok); color: var(--color-status-ok); border-color: var(--color-hairline); }
+.chip--warn   { background: var(--color-tint-warn); color: var(--color-status-warn); border-color: var(--color-hairline); }
+.chip--danger { background: var(--color-tint-danger); color: var(--color-status-danger); border-color: var(--color-hairline); }
 .chip--muted  { color: var(--color-text-secondary); }
 .chiprow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
@@ -323,9 +348,9 @@ button { font: inherit; color: inherit; }
   font-size: var(--type-caption); line-height: 1.5;
 }
 .banner__title { display: flex; align-items: center; gap: 8px; font-size: var(--type-body); font-weight: 600; margin-bottom: 6px; }
-.banner--danger { background: var(--color-tint-danger); border-color: #E4B7B1; color: #7C241A; }
-.banner--warn   { background: var(--color-tint-warn); border-color: #E6CDA4; color: #6E3F06; }
-.banner--info   { background: var(--color-tint-accent); border-color: #CFE2DE; color: #14564B; }
+.banner--danger { background: var(--color-tint-danger); border-color: var(--color-status-danger); color: var(--color-status-danger); }
+.banner--warn   { background: var(--color-tint-warn); border-color: var(--color-status-warn); color: var(--color-status-warn); }
+.banner--info   { background: var(--color-tint-accent); border-color: var(--color-accent); color: var(--color-accent); }
 .banner--muted  { background: var(--color-surface-warm); border-color: var(--color-hairline); color: var(--color-text-secondary); }
 .banner__close { background: none; border: 0; float: right; cursor: pointer; min-width: 44px; min-height: 44px; }
 
@@ -344,16 +369,31 @@ button { font: inherit; color: inherit; }
 .flagcard__swap {
   margin-top: var(--space-2); padding: var(--space-2);
   background: var(--color-tint-ok); border-radius: var(--radius-field);
-  font-size: var(--type-caption); font-weight: 600; color: #1D5C43;
+  font-size: var(--type-caption); font-weight: 600; color: var(--color-status-ok);
 }
 .flagcard__disc { margin-top: var(--space-2); font-size: 13px; color: var(--color-text-secondary); font-style: italic; }
+
+/* ───────────── Quick add ───────────── */
+.quickadd { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.quickadd__btn {
+  display: grid; gap: 2px; text-align: left; width: 100%;
+  min-height: 56px; padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-warm);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-field); cursor: pointer;
+  transition: border-color var(--motion-hover) var(--ease-out),
+              background var(--motion-hover) var(--ease-out);
+}
+.quickadd__btn:hover { border-color: var(--color-accent); background: var(--color-tint-accent); }
+.quickadd__name { font-weight: 600; line-height: 1.35; }
+.quickadd__meta { font-size: 13px; color: var(--color-text-secondary); }
 
 /* ───────────── Meal list ───────────── */
 .meal {
   width: 100%; text-align: left; background: var(--color-surface);
   border: 1px solid var(--color-hairline); border-radius: var(--radius-card);
   padding: var(--space-3); margin-bottom: var(--space-2); cursor: pointer;
-  transition: border-color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
+  transition: border-color var(--motion-hover) var(--ease-out), background var(--motion-hover) var(--ease-out);
 }
 .meal:hover { border-color: var(--color-accent); background: var(--color-surface-warm); }
 .meal__top { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; }
@@ -412,7 +452,7 @@ button { font: inherit; color: inherit; }
 
 .inline-error {
   padding: var(--space-3); border-radius: var(--radius-card);
-  background: var(--color-tint-danger); border: 1px solid #E4B7B1; color: #7C241A;
+  background: var(--color-tint-danger); border: 1px solid var(--color-status-danger); color: var(--color-status-danger);
   font-size: var(--type-caption);
 }
 .inline-error .btn { margin-top: var(--space-2); }
@@ -436,7 +476,7 @@ button { font: inherit; color: inherit; }
 .empty__fact {
   margin-top: var(--space-3); padding: var(--space-3);
   background: var(--color-tint-accent); border-radius: var(--radius-field);
-  font-size: var(--type-caption); color: #14564B;
+  font-size: var(--type-caption); color: var(--color-accent);
 }
 
 /* ───────────── Onboarding ───────────── */
@@ -485,7 +525,7 @@ button { font: inherit; color: inherit; }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-raised);
   display: grid; grid-template-columns: repeat(4, 1fr);
-  background: rgba(255,255,255,.94);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
   border-top: 1px solid var(--color-hairline);
@@ -496,7 +536,7 @@ button { font: inherit; color: inherit; }
   gap: 3px; min-height: var(--tabbar-h); padding: 6px 4px;
   background: none; border: 0; cursor: pointer;
   color: var(--color-text-secondary);
-  transition: color var(--motion-fast) var(--ease-out);
+  transition: color var(--motion-hover) var(--ease-out);
 }
 .tab__icon { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.6; fill: none; }
 .tab__icon .fillable { fill: none; }
@@ -508,7 +548,7 @@ button { font: inherit; color: inherit; }
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + var(--space-3));
   transform: translateX(-50%); z-index: var(--z-overlay);
-  background: var(--color-text-primary); color: #fff;
+  background: var(--color-text-primary); color: var(--color-canvas);
   padding: 12px var(--space-3); border-radius: var(--radius-capsule);
   font-size: var(--type-caption); font-weight: 600;
   box-shadow: var(--shadow-modal); max-width: 90vw;

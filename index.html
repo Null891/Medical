@@ -14,6 +14,10 @@
 <title>RenalRoute — what's left today</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
+<!-- Runs before first paint so an explicit dark choice never flashes
+     white. Must stay in <head> and must stay a file, not inline: the
+     CSP sets script-src 'self'. -->
+<script src="js/theme.js"></script>
 </head>
 <body>
 
@@ -123,6 +127,9 @@
       <div id="statBlocks"></div>
 
       <button type="button" class="btn btn--primary btn--block btn--hero" data-nav="log">Log a meal</button>
+
+      <!-- Meals you actually repeat, one tap, zero AI calls. -->
+      <div id="quickAdd" hidden></div>
 
       <div id="homeList"></div>
 
@@ -277,6 +284,17 @@
           <button type="button" class="btn btn--ghost" id="resetBtn">Reset all data</button>
         </div>
         <p class="note" id="callCounter"></p>
+      </div>
+
+      <!-- Appearance. Three states, "system" default. -->
+      <div class="card">
+        <h2 class="h2">Appearance</h2>
+        <div class="segmented" role="radiogroup" aria-label="Theme">
+          <button type="button" class="segmented__btn" role="radio" aria-checked="true"  data-theme-set="system">Automatic</button>
+          <button type="button" class="segmented__btn" role="radio" aria-checked="false" data-theme-set="light">Light</button>
+          <button type="button" class="segmented__btn" role="radio" aria-checked="false" data-theme-set="dark">Dark</button>
+        </div>
+        <p class="note mt-2">Automatic follows your device. Choose Light or Dark to override it — useful if your phone is dark all day but you read numbers more comfortably on white.</p>
       </div>
 
       <!-- Your data, and getting rid of it. Separate from the dev block

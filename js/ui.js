@@ -222,7 +222,109 @@ const UI = (() => {
     renderModeBanners();
     $('#ringCard').innerHTML = Rings.render();
     $('#statBlocks').innerHTML = Rings.renderStats();
+    renderQuickAdd();
     renderMealList();
+  }
+
+  /* ═══════════ quick add — the retention lever ═══════════
+     Sixty percent of people who install a food tracker stop within two
+     weeks, and the measured cause is not motivation, it is friction:
+     past roughly two minutes per meal, logging does not survive the
+     month. People also eat the same breakfast most days.
+
+     So the meals someone actually repeats become one tap. This fires
+     ZERO AI calls — it replays anchor-resolved items straight through
+     the deterministic pipeline — which means it costs nothing, works
+     offline, and is the fastest path in the app by a wide margin.
+
+     Ordering is by how often a meal has been logged, then recency, so
+     the list is genuinely "your usuals" rather than "whatever you did
+     last". Meals containing anything uncounted are excluded: repeating
+     a meal the app admitted it could not price would silently repeat
+     the gap. */
+  function frequentMeals(limit) {
+    const meals = Store.meals();
+    const groups = new Map();
+
+    for (const m of meals) {
+      const items = m.items || [];
+      if (!items.length) continue;
+      if (items.some(i => i.source === 'uncounted')) continue;
+      if (!items.every(i => i.matched_anchor_id)) continue;   // replayable only
+
+      // Same set of anchor rows at the same portions = the same meal.
+      const key = items
+        .map(i => `${i.matched_anchor_id}@${i.quantity_multiplier || 1}`)
+        .sort().join('|');
+
+      const prev = groups.get(key);
+      if (prev) {
+        prev.count++;
+        if (m.logged_at > prev.logged_at) prev.logged_at = m.logged_at;
+      } else {
+        groups.set(key, { count: 1, logged_at: m.logged_at, meal: m });
+      }
+    }
+
+    return Array.from(groups.values())
+      .sort((a, b) => (b.count - a.count) || (a.logged_at < b.logged_at ? 1 : -1))
+      .slice(0, limit || 3);
+  }
+
+  function renderQuickAdd() {
+    const host = $('#quickAdd');
+    if (!host) return;
+    const top = frequentMeals(3);
+
+    // Nothing worth repeating yet, and an empty shelf is worse than none.
+    if (!top.length) { host.innerHTML = ''; host.hidden = true; return; }
+
+    host.hidden = false;
+    host.innerHTML = `<div class="card">
+      <h2 class="h3">Log again</h2>
+      <p class="note">One tap. No AI, no waiting.</p>
+      <div class="quickadd">
+        ${top.map(g => {
+          const label = (g.meal.items || []).map(i => i.name).join(', ');
+          return `<button type="button" class="quickadd__btn" data-repeat="${esc(g.meal.id)}">
+            <span class="quickadd__name">${esc(label)}</span>
+            <span class="quickadd__meta">${g.count > 1 ? `logged ${g.count} times` : 'logged once'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  /* Replay a past meal onto today. Deterministic: the anchor rows are
+     re-resolved now, so a corrected reference value flows into the copy
+     rather than the old numbers being duplicated forward. */
+  function repeatMeal(id) {
+    const src = Store.meals().find(m => m.id === id);
+    if (!src) { toast(COPY.mutationFailed); return; }
+
+    const items = (src.items || [])
+      .map(i => Resolve.fromPicker(i.matched_anchor_id, i.quantity_multiplier || 1))
+      .filter(Boolean);
+
+    if (!items.length) { toast(COPY.mutationFailed); return; }
+
+    // Same shape the normal save path builds, so a repeated meal is
+    // indistinguishable from a typed one once it lands.
+    const record = Object.assign({
+      meal_text: src.meal_text,
+      logged_at: new Date().toISOString(),
+      meal_date: Store.todayISO(),
+      items,
+      confidence: Resolve.confidence(items),
+      needs_clarification: false,
+      clarification_question: null,
+      clarification_status: 'none',
+      explanation_text: ''
+    }, Resolve.totals(items));
+
+    if (!Store.addMeal(record)) { toast(COPY.mutationFailed); return; }
+    toast('Logged again');
+    renderHome();
   }
 
   function renderModeBanners() {
@@ -875,7 +977,8 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-del-lab]');
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],' +
+        '[data-del-lab],[data-repeat]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
@@ -883,6 +986,7 @@ const UI = (() => {
       if (el.dataset.meal) { renderDetail(el.dataset.meal); return; }
       if (el.dataset.editMeal) { editMeal(el.dataset.editMeal); return; }
 
+      if (el.dataset.repeat) { repeatMeal(el.dataset.repeat); return; }
       if (el.dataset.deleteMeal) {
         pendingDelete = el.dataset.deleteMeal;
         openDeleteModal(el);
@@ -1062,6 +1166,25 @@ const UI = (() => {
     $('#resetBtn').addEventListener('click', () => {
       Store.reset(); location.reload();
     });
+
+    /* Theme. Applied immediately and stored; js/theme.js re-applies it
+       before paint on the next load. "system" removes the attribute
+       rather than setting it, so the media query stays in charge and
+       there is no second source of truth to drift. */
+    function paintThemeButtons(active) {
+      $$('[data-theme-set]').forEach(b => {
+        b.setAttribute('aria-checked', String(b.dataset.themeSet === active));
+      });
+    }
+    $$('[data-theme-set]').forEach(b => b.addEventListener('click', () => {
+      const choice = b.dataset.themeSet;
+      Store.setSetting('theme', choice);
+      if (choice === 'system') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', choice);
+      paintThemeButtons(choice);
+      toast(choice === 'system' ? 'Following your device' : `${choice[0].toUpperCase()}${choice.slice(1)} mode on`);
+    }));
+    paintThemeButtons(Store.settings().theme || 'system');
 
     /* Delete everything. Counts what will actually go before asking, so
        the confirmation names real numbers rather than a vague warning —
