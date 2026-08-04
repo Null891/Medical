@@ -1,0 +1,82 @@
+/* ═══════════════════════════════════════════════════════════════
+   RenalRoute — design tokens (Plan §H.1)
+   Semantic names only. Never reference a raw hex outside this file.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color ── */
+  --color-canvas:        #FBF7F2;   /* warm off-white, not clinical  */
+  --color-surface:       #FFFFFF;
+  --color-surface-warm:  #FEFBF7;
+  --color-text-primary:  #2B2B2B;   /* ~13:1 on canvas               */
+  --color-text-secondary:#5C5750;   /* ~6.5:1 — never below 14px     */
+  --color-accent:        #1F7A6B;   /* teal-green                    */
+  --color-cta:           #C0492E;   /* coral — primary buttons only  */
+
+  --color-status-ok:     #2E7D5B;
+  --color-status-warn:   #B4690E;   /* amber, deliberately NOT yellow */
+  --color-status-danger: #C0392B;
+
+  --color-track:         #EFE7DC;   /* unfilled ring arc = remaining  */
+  --color-hairline:      #E7DED2;
+  --color-tint-ok:       #ECF5F0;
+  --color-tint-warn:     #FBF1E3;
+  --color-tint-danger:   #FAECEA;
+  --color-tint-accent:   #EAF2F0;
+
+  /* ── Spacing — 8pt grid, 4pt fine step ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* ── Type — hierarchy by weight, not size jumps ── */
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
+  --type-body: 16px;          /* hard floor for body text            */
+  --type-caption: 14px;       /* nothing anywhere below 12px         */
+  --type-title: 20px;
+  --type-numeral: 26px;
+  --leading-body: 1.55;
+  --leading-tight: 1.25;
+
+  /* ── Radii ── */
+  --radius-card: 16px;
+  --radius-field: 12px;
+  --radius-capsule: 999px;
+
+  /* ── Elevation ── */
+  --shadow-card: 0 1px 2px rgba(43,43,43,.04), 0 6px 18px rgba(43,43,43,.06);
+  --shadow-modal: 0 12px 48px rgba(43,43,43,.22);
+
+  /* ── z-index scale (fixed; H.1) ── */
+  --z-raised: 10;
+  --z-banner: 20;
+  --z-overlay: 30;
+  --z-modal: 50;
+
+  /* ── Motion ── */
+  --motion-fast: 150ms;
+  --motion-standard: 220ms;
+  --motion-ring: 500ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ── Layout ── */
+  --content-max: 720px;
+  --content-max-wide: 960px;
+  --tabbar-h: 64px;
+}
+
+/* Reduced motion is a first-class mode, not an afterthought.
+   Vestibular sensitivity is elevated in chronically ill populations. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-standard: 0ms; --motion-ring: 0ms; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RenalRoute</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ═══════════ DEV BANNER — reference build only ═══════════ -->
+<div id="devBanner" class="dev-banner" role="note">
+  <span><strong>Reference build.</strong> Anchor nutrient values are unverified test data. Not for clinical use.</span>
+  <button type="button" class="dev-banner__x" id="devBannerClose" aria-label="Hide reference-build notice">&times;</button>
+</div>
+
+<!-- ═══════════ CONSENT MODAL (M2 · G.7 Placement 1) ═══════════ -->
+<div id="consentModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="consentTitle" hidden>
+  <div class="modal">
+    <h1 class="modal__title" id="consentTitle">Before you start</h1>
+    <div class="modal__body" id="consentBody"></div>
+    <button type="button" class="btn btn--primary btn--block" id="consentAccept">I understand — continue</button>
+    <p class="modal__err" id="consentErr" hidden>Couldn't save just now — tap again.</p>
+  </div>
+</div>
+
+<!-- ═══════════ DELETE CONFIRM MODAL (M4) ═══════════ -->
+<div id="deleteModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" hidden>
+  <div class="modal modal--sm">
+    <h2 class="modal__title" id="deleteTitle">Delete this entry? This can't be undone.</h2>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--danger" id="deleteConfirm">Delete</button>
+      <button type="button" class="btn btn--ghost" id="deleteCancel">Keep it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP SHELL ═══════════ -->
+<div class="app" id="app" hidden>
+
+  <!-- Paused-mode banner (z.banner) — G.2 -->
+  <div id="pausedBanner" class="banner banner--danger" role="alert" hidden></div>
+
+  <main class="main" id="main">
+
+    <!-- ───────── ONBOARDING ───────── -->
+    <section class="screen" id="scr-onboarding" hidden>
+      <div class="onb">
+        <ol class="onb__dots" aria-label="Onboarding progress">
+          <li data-step="1" class="is-active"></li><li data-step="2"></li><li data-step="3"></li>
+        </ol>
+
+        <!-- Step 1: display name -->
+        <div class="onb__step" data-step="1">
+          <h1 class="h1">What should we call you?</h1>
+          <p class="helper">A first name or nickname is plenty — this only personalizes your greeting.</p>
+          <label class="field">
+            <span class="field__label">Your name</span>
+            <input type="text" id="onbName" maxlength="40" autocomplete="given-name">
+            <span class="field__err" id="onbNameErr" hidden></span>
+          </label>
+          <button type="button" class="btn btn--primary btn--block" data-onb-next="1">Continue</button>
+        </div>
+
+        <!-- Step 2: targets (provenance) -->
+        <div class="onb__step" data-step="2" hidden>
+          <h1 class="h1">Your daily targets</h1>
+          <p class="helper">KDOQI guidelines don't set one-size-fits-all numbers for potassium or phosphorus — targets are personal, set with your care team.</p>
+          <div id="onbTargetFields"></div>
+          <p class="note" id="onbTargetCaption" hidden></p>
+          <button type="button" class="btn btn--primary btn--block" id="onbSaveCareTeam" disabled>Save my care team's targets</button>
+          <button type="button" class="btn btn--secondary btn--block" id="onbUseEducation">I don't have targets — use general education ranges</button>
+          <button type="button" class="linkbtn linkbtn--block" id="onbSkipTargets">Skip — track without targets</button>
+          <label class="field field--mt">
+            <span class="field__label">CKD stage (optional)</span>
+            <select id="onbStage">
+              <option value="not_sure">Prefer not to say</option>
+              <option value="G3a">G3a</option><option value="G3b">G3b</option>
+              <option value="G4">G4</option><option value="G5">G5</option>
+            </select>
+            <span class="field__note">Used for education only — it never changes your targets.</span>
+          </label>
+          <button type="button" class="linkbtn" data-learn="protein">Why only these three nutrients?</button>
+        </div>
+
+        <!-- Step 3: labs (skippable) -->
+        <div class="onb__step" data-step="3" hidden>
+          <h1 class="h1">Recent labs?</h1>
+          <p class="helper">Have a recent lab report? Adding your potassium or phosphorus result tailors RenalRoute's tone. Totally optional — everything works without it.</p>
+          <div id="onbLabFields"></div>
+          <button type="button" class="btn btn--primary btn--block" id="onbLabAction">Skip for now</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── HOME ───────── -->
+    <section class="screen" id="scr-home" hidden>
+      <header class="hdr">
+        <p class="hdr__eyebrow">Today</p>
+        <h1 class="hdr__title" id="homeGreeting">Good morning</h1>
+        <p class="hdr__date" id="homeDate"></p>
+      </header>
+
+      <div id="labModeBanners"></div>
+      <div id="ringCard"></div>
+      <div id="statBlocks"></div>
+
+      <button type="button" class="btn btn--primary btn--block btn--hero" data-nav="log">Log a meal</button>
+
+      <div id="homeList"></div>
+
+      <footer class="disclaimer">
+        <p id="footerDisclaimer"></p>
+        <button type="button" class="linkbtn" id="fullDisclaimerBtn">Full disclaimer</button>
+      </footer>
+    </section>
+
+    <!-- ───────── LOG FLOW ───────── -->
+    <section class="screen" id="scr-log" hidden>
+      <!-- Step A: input -->
+      <div class="logstep" id="log-input">
+        <h1 class="h1">Log a meal</h1>
+        <label class="field">
+          <span class="field__label">What did you eat?</span>
+          <textarea id="mealText" rows="4" maxlength="500"
+            placeholder=""></textarea>
+          <span class="field__note">Plain words are fine — 'grilled chicken, baked potato with skin, and a glass of milk'.</span>
+          <span class="field__count"><span id="mealCount">0</span>/500</span>
+        </label>
+        <button type="button" class="btn btn--primary btn--block" id="analyzeBtn" disabled>Analyze meal</button>
+        <div id="logPending" hidden>
+          <div class="skeleton-row"><span class="spinner" aria-hidden="true"></span> Breaking your meal down…</div>
+        </div>
+        <div class="inline-error" id="logError" hidden>
+          <p id="logErrorText"></p>
+          <button type="button" class="btn btn--secondary" id="toPickerBtn">Pick from food list</button>
+        </div>
+      </div>
+
+      <!-- Step B: clarify once -->
+      <div class="logstep" id="log-clarify" hidden>
+        <h1 class="h1">One quick question</h1>
+        <p class="quoted" id="clarifyOriginal"></p>
+        <p class="clarify-q" id="clarifyQuestion"></p>
+        <label class="field">
+          <span class="field__label">Your answer (optional)</span>
+          <input type="text" id="clarifyAnswer" maxlength="280">
+        </label>
+        <button type="button" class="btn btn--primary btn--block" id="clarifyUse">Use this answer</button>
+        <button type="button" class="linkbtn linkbtn--block" id="clarifySkip">Skip — log it without counting</button>
+      </div>
+
+      <!-- Step C: review -->
+      <div class="logstep" id="log-review" hidden>
+        <h1 class="h1">Check before saving</h1>
+        <div id="reviewItems"></div>
+        <div id="reviewCards"></div>
+        <button type="button" class="btn btn--primary btn--block" id="saveMealBtn">Save to today</button>
+        <button type="button" class="linkbtn linkbtn--block" id="backToTextBtn">Back to edit text</button>
+        <p class="inline-error" id="saveError" hidden>Couldn't save. Your meal is still here — tap Save to today to try again.</p>
+      </div>
+
+      <!-- Step D: manual picker -->
+      <div class="logstep" id="log-picker" hidden>
+        <h1 class="h1">Pick from food list</h1>
+        <label class="field">
+          <span class="field__label">Search foods</span>
+          <input type="search" id="pickerSearch" autocomplete="off">
+          <span class="field__note">Search the food list — try 'potato' or 'milk'.</span>
+        </label>
+        <div id="pickerResults"></div>
+        <div id="pickerBasket"></div>
+        <button type="button" class="btn btn--primary btn--block" id="pickerReview" disabled>Review these items</button>
+      </div>
+    </section>
+
+    <!-- ───────── MEAL DETAIL ───────── -->
+    <section class="screen" id="scr-detail" hidden>
+      <button type="button" class="linkbtn linkbtn--back" data-nav="home">&larr; Today</button>
+      <div id="detailBody"></div>
+    </section>
+
+    <!-- ───────── LABS ───────── -->
+    <section class="screen" id="scr-labs" hidden>
+      <header class="hdr"><h1 class="hdr__title">Labs</h1></header>
+      <div id="labModeCards"></div>
+      <div class="card">
+        <h2 class="h2">Add a result</h2>
+        <div id="labFields"></div>
+        <button type="button" class="btn btn--primary btn--block" id="saveLabBtn">Save lab values</button>
+      </div>
+      <div id="labHistory"></div>
+    </section>
+
+    <!-- ───────── SETTINGS ───────── -->
+    <section class="screen" id="scr-settings" hidden>
+      <header class="hdr"><h1 class="hdr__title">Settings</h1></header>
+      <div class="card">
+        <h2 class="h2">Daily targets</h2>
+        <p class="note" id="setTargetCaption"></p>
+        <div id="setTargetFields"></div>
+        <p class="note note--src" id="setKPNote"></p>
+        <p class="note note--src" id="setNaNote"></p>
+        <button type="button" class="btn btn--primary btn--block" id="saveTargetsBtn">Save changes</button>
+        <button type="button" class="btn btn--secondary btn--block" id="claimCareTeamBtn" hidden>These are the numbers my care team gave me</button>
+        <button type="button" class="btn btn--secondary btn--block" id="useEduBtn" hidden>Use general education ranges</button>
+      </div>
+      <div class="card">
+        <h2 class="h2">Profile</h2>
+        <div id="setProfileFields"></div>
+        <button type="button" class="btn btn--secondary btn--block" id="saveProfileBtn">Save profile</button>
+      </div>
+      <div class="card">
+        <h2 class="h2">Learn</h2>
+        <ul class="rowlist">
+          <li><button type="button" class="rowbtn" data-learn="protein">Why no protein or fluid tracking?<span aria-hidden="true">&rsaquo;</span></button></li>
+          <li><button type="button" class="rowbtn" data-learn="medicines">Medicines and potassium<span aria-hidden="true">&rsaquo;</span></button></li>
+          <li><button type="button" class="rowbtn" data-learn="leaching">Cooking tip: lowering potassium<span aria-hidden="true">&rsaquo;</span></button></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2 class="h2">About &amp; disclaimers</h2>
+        <ul class="rowlist">
+          <li><button type="button" class="rowbtn" id="readDisclaimerBtn">Read the full disclaimer<span aria-hidden="true">&rsaquo;</span></button></li>
+          <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
+        </ul>
+      </div>
+      <div class="card card--dev">
+        <h2 class="h2">Reference-build controls</h2>
+        <p class="note">Not part of the shipped product. Present so this build can be tested against the Base44 version.</p>
+        <label class="switch">
+          <input type="checkbox" id="demoModeToggle">
+          <span>Demo mode — canned meal parsing, zero API calls</span>
+        </label>
+        <p class="note" id="llmStatus"></p>
+        <p class="note">Live parsing runs through the <code>/api/invoke-llm</code> serverless function, which holds the API key server-side. No key is ever stored in the browser. Opened as a local file with no server, the app stays in demo mode.</p>
+        <div class="dev-actions">
+          <button type="button" class="btn btn--ghost" id="seedBtn">Seed demo persona (Frank)</button>
+          <button type="button" class="btn btn--ghost" id="resetBtn">Reset all data</button>
+        </div>
+        <p class="note" id="callCounter"></p>
+      </div>
+    </section>
+
+    <!-- ───────── LEARN CARD (depth 2) ───────── -->
+    <section class="screen" id="scr-learn" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="learnBack">&larr; Back</button>
+      <article class="card prose" id="learnBody"></article>
+      <button type="button" class="btn btn--primary btn--block" id="learnDismiss">Got it</button>
+    </section>
+
+  </main>
+
+  <!-- ───────── BOTTOM TAB BAR ───────── -->
+  <nav class="tabbar" aria-label="Main">
+    <button type="button" class="tab" data-nav="home" aria-current="page">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M12 3.2 3.6 10v10.2h5.6v-6h5.6v6h5.6V10z"/></svg>
+      <span class="tab__label">Home</span>
+    </button>
+    <button type="button" class="tab" data-nav="log">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+      <span class="tab__label">Log</span>
+    </button>
+    <button type="button" class="tab" data-nav="labs">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M12 3c3.4 4.2 5.4 7.1 5.4 9.5A5.4 5.4 0 0 1 12 18a5.4 5.4 0 0 1-5.4-5.5C6.6 10.1 8.6 7.2 12 3z"/></svg>
+      <span class="tab__label">Labs</span>
+    </button>
+    <button type="button" class="tab" data-nav="settings">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="3.4"/><path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.3 6.3l1.6 1.6M16.1 16.1l1.6 1.6M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6" stroke-linecap="round"/></svg>
+      <span class="tab__label">Settings</span>
+    </button>
+  </nav>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- Load order matters: data → logic → view → bootstrap -->
+<script src="js/data/copy.js"></script>
+<script src="js/data/anchor-foods.js"></script>
+<script src="js/store.js"></script>
+<script src="js/clinical.js"></script>
+<script src="js/resolve.js"></script>
+<script src="js/llm.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/rings.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

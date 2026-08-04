@@ -1,0 +1,176 @@
+# RenalRoute — Antigravity reference build
+
+A working implementation of the RenalRoute spec, built to run alongside the Base44 version so the two can be compared, tested, and argued with.
+
+**This is not the submission.** Only Base44-generated code ships. This exists to answer "does the spec actually work when built?" before and while the Base44 app is assembled.
+
+---
+
+## Run it
+
+**Locally — no install, no build.** Double-click `index.html`. The app runs entirely in the browser with data in `localStorage` and stays in demo mode (canned meal parsing, zero API calls).
+
+**Deploy to Vercel.**
+
+```powershell
+npm i -g vercel        # once
+cd "renalroute"
+vercel                 # preview
+vercel --prod          # production
+```
+
+Or push to GitHub and import the repo in the Vercel dashboard. There is no build step and no framework — Vercel serves the static files and picks up `api/invoke-llm.js` automatically.
+
+**To enable live meal parsing**, add one environment variable in Vercel → Project → Settings → Environment Variables:
+
+```
+ANTHROPIC_API_KEY = sk-ant-…
+```
+
+Then redeploy and turn off **Demo mode** in Settings.
+
+Without the key the app is fully usable — it just parses meals from a canned table instead of a model. Nothing else changes.
+
+---
+
+## Why the key lives on the server
+
+The first draft of this build put the API key in a browser field. That is acceptable on `file://` and unacceptable the moment the app has a public URL — anyone visiting could read it out of `localStorage`.
+
+`api/invoke-llm.js` holds the key in a Vercel environment variable and proxies the two calls the app makes. This also makes the architecture mirror Base44's server-side `InvokeLLM` rather than diverging from it, which is the point of having both builds.
+
+The endpoint refuses any request whose response schema isn't one of the two shapes this app actually uses, so it can't be repurposed as a general-purpose LLM relay by someone who finds the URL. `vercel.json` sets CSP, `frame-ancestors: none`, and `nosniff`.
+
+---
+
+## What the AI does and does not do
+
+| | |
+|---|---|
+| **AI does** | Split typed text into food items and portions. Produce deliberately wide ranges for foods missing from the reference table. That's the entire list. |
+| **AI does not** | Price any matched food, choose any swap, set any threshold, decide any guidance mode, or write a single word the user reads as clinical guidance. |
+
+Nutrient numbers come from `js/data/anchor-foods.js`. Swap suggestions come from that table by rule. Every explanation is assembled from fixed templates in `js/data/copy.js`, so the same meal always produces byte-identical text.
+
+The reason is measured, not stylistic: LLMs are about 60% accurate classifying **low**-potassium foods, and sodium is their worst-estimated nutrient at 34–64% median error. Letting a model nominate "safe" foods for a renal patient would put its weakest capability in the most consequential position.
+
+---
+
+## ⚠ Data status
+
+**Every nutrient value in this build is unverified test data.** Values were transcribed from the plan's ground-truth pack for testing and have not been re-derived from USDA FoodData Central.
+
+Each row carries a `verify` array naming the fields that still need checking. Two known problems are handled explicitly rather than papered over:
+
+- **Whole-milk phosphorus.** The source lists 134 mg per cup, which is almost certainly a half-cup figure mislabeled — whole and 2% milk cannot differ ~2× in phosphorus. Stored as a re-derivation placeholder, flagged, and **not** shipped as a range spanning the error. A range that spans a transcription error launders the error into false "honest uncertainty," which is worse than false precision.
+- **Deli-ham phosphorus.** The source lists 447 mg "per slice," implausible by 3–5× for a 28 g slice. Restated per ounce with a wide flagged range.
+
+Sodium is `null` on most rows because the source pack never had it. That is deliberate: it drives the app's "Partial data" chip and confidence downgrade rather than inventing numbers. `ANCHOR_STATS` reports the gaps; the Settings panel and the browser console print them at startup.
+
+---
+
+## Architecture
+
+```
+index.html              shell, all screens, tab bar
+css/tokens.css          design tokens — the only file with raw hex
+css/app.css             components, responsive, reduced-motion
+api/invoke-llm.js       Vercel function — server-side model calls
+js/data/copy.js         every user-facing string, one canonical version each
+js/data/anchor-foods.js the reference table + data-quality stats
+js/store.js             four entities, localStorage, ownership mirror
+js/clinical.js          bands, bounds, staleness, ring thresholds
+js/resolve.js           normalize → match → portion scaling
+js/llm.js               both prompts, demo stub, retry/timeout
+js/cards.js             flag-card templates + rules-only swap engine
+js/rings.js             SVG concentric rings
+js/ui.js                screens, router, interactions
+js/seed.js              demo persona
+js/app.js               bootstrap
+```
+
+**The ownership model is a mirror, not a control.** Base44 enforces `created_by == {{user.email}}` server-side. A browser app cannot enforce anything server-side. `store.js` stamps and filters faithfully so behavior matches and the cross-account case is testable — but here the boundary is a convention where Base44's is a rule. **Never put real patient data in this build.**
+
+---
+
+## Test checklist — run against both builds
+
+Behavior should be identical. Where it isn't, one of the two is wrong.
+
+**Provenance**
+- [ ] Fresh account shows **empty** target fields. Nothing is pre-filled.
+- [ ] Tapping "use general education ranges" fills 2500/900/2000 and the provenance chip appears on the dashboard.
+- [ ] Typing care-team numbers instead → no chip anywhere.
+- [ ] Edit a target while on education ranges → provenance **stays** education. Only the explicit "these are my care team's numbers" button promotes it.
+- [ ] Potassium target 50 → blocked. 7000 → blocked. 2000 → accepted.
+
+**Pipeline**
+- [ ] `grilled chicken, baked potato with skin, and a glass of milk` → three items, potato exactly **926 mg** potassium.
+- [ ] `a 12 oz cola` → phosphorus shows a **range** (33.5–41), never one number.
+- [ ] `leftover casserole` → exactly one question; Skip → "?" chip, totals unchanged.
+- [ ] `12 bananas` → clamped at 4× (1,688 mg), with the portion note.
+- [ ] `a glass of milk` → scaled to 1 cup = 368 mg potassium.
+- [ ] `just water` → no crash; empty-extraction message.
+- [ ] Portion stepper 1× → 2× fires **zero** model calls.
+- [ ] With the endpoint unavailable, a meal can still be logged end to end via the food picker.
+
+**Rings**
+- [ ] Day at 1,150–1,400 mg K against 2,500 → fill ≈ 51%, **green**, "On track".
+- [ ] Add the 926 mg potato → high end crosses 70% → **amber**, "Getting close", while fill stays near two-thirds. The divergence is intended.
+- [ ] Grayscale screenshot still communicates all three statuses.
+- [ ] OS reduced-motion → no ring sweep.
+
+**Clinical modes** — enter each and screenshot
+- [ ] 3.4 → low · 3.5 → normal · 5.0 → normal · 5.1 → caution · 5.5 → caution · 5.6 → restricted · 5.9 → restricted · 6.0 → paused
+- [ ] P: 2.4 → below range · 2.5 and 4.5 → normal · 4.6 → caution
+- [ ] **K 5.3 → all three target values are byte-identical before and after.** Labs change tone, never numbers.
+- [ ] **K 3.2 → the potassium ring becomes a plain intake readout** with no colour and no fill; the other two rings are untouched; nothing suggests eating more potassium.
+- [ ] **K 6.2 → coaching suppressed app-wide**, but a salt-substitute meal still fires its warning and a 926 mg item still shows the single factual reference line.
+- [ ] A 4-month-old **K 4.6** → decays to no-lab framing. A 4-month-old **K 5.7** → **restricted persists**. This asymmetry is the test most likely to be built wrong.
+- [ ] K 45 → rejected inline, nothing saved.
+- [ ] eGFR 34 → the pinned sentence; the phrase "you are stage" appears nowhere.
+
+**Cards**
+- [ ] `scrambled eggs with salt substitute` → warning fires. `grilled chicken, no salt added` → no warning.
+- [ ] An ingredient list with only `potassium sorbate` → low-key note, **no** warning chip. With `potassium phosphates` → Tier 1 warning **and** the PHOS card.
+- [ ] Normal mode, `black beans and a banana` → **zero** warning-toned cards.
+- [ ] Same meal logged twice → byte-identical card text.
+- [ ] Restricted mode → no swap line renders anywhere.
+
+**Security posture**
+- [ ] `<script>alert(1)</script> and a banana` renders as literal characters everywhere and executes nothing; the banana still resolves.
+- [ ] A 501-character meal is rejected inline.
+- [ ] Every tap target ≥44px at 320px width; no horizontal scroll on any screen.
+- [ ] Keyboard-only pass of consent → log → rings → lab edit → target edit, with visible focus throughout.
+
+---
+
+## Automated checks
+
+```powershell
+node test\verify.js
+```
+
+57 assertions covering the arithmetic that has to be right: anchor matching and portion scaling, ring fill and colour thresholds, the remaining-budget copy strings, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity. It runs headless in a few hundred milliseconds and needs no dependencies.
+
+It has already earned its keep. It caught a real matching bug: a bare query of `spinach` was resolving to 420 mg — the cooked row — because the longest-alias rule was ranking `cooked spinach` (14 characters) above `spinach salad` (13) and silently picking a preparation the user never specified. The rule is now two-tiered: aliases *contained in* the query rank by length, because that is a genuine specificity signal; aliases that *contain* the query do not rank at all, because that is a broad query and every variant deserves to survive into the union range. Bare `spinach` now correctly reports **84–420 mg**.
+
+Run this after any change to `resolve.js`, `clinical.js`, or the anchor table.
+
+### Known gap it reports
+
+`legume, dairy, meat_fish_egg, snack_sweet, mixed_dish` each have fewer than two `swap_pool` candidates. The swap engine matches on category, so a flagged bean dish or a flagged cheese currently returns "no swap fits" every time. The scripted potato → cauliflower path works because `vegetable` is well populated; nothing else is. Fixing this is data-prep work in `anchor-foods.js`, not a code change — add lower-potassium members to the thin categories, or accept that those categories show flag cards without swap lines.
+
+---
+
+## Console helpers
+
+```js
+RenalRoute.Seed.run()          // seed Frank + a prior week + today's breakfast
+RenalRoute.Seed.resetToday()   // reset today only, after a rehearsal
+RenalRoute.stats               // anchor-table gaps and thin swap categories
+RenalRoute.Store.reset()       // wipe everything
+RenalRoute.Clinical.potassiumMode()
+```
+
+`Seed.run()` sets Frank's targets explicitly to **2,500 / 900 / 2,000 as care-team values**, because every worked number in the spec assumes 2,500 mg potassium. It seeds six prior days plus **today's breakfast only** — enough that the opening screen looks lived-in, and not so much that the remaining budget drops below the point where the swap engine can still return a suggestion.
