@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport'];
 
   function go(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
@@ -42,8 +42,9 @@ const UI = (() => {
     // stays on after you navigate away is alarming in a health app.
     if (name !== 'label') stopScan();
     if (name === 'label') renderLabel();
+    if (name === 'passport') renderPassport();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
-    if (name !== 'learn' && name !== 'detail' && name !== 'label') {
+    if (name !== 'learn' && name !== 'detail' && name !== 'label' && name !== 'passport') {
       lastScreen = name;
       // Remember where someone was. Reopening an app mid-task and being
       // dumped back at the start is a small tax paid every single time;
@@ -349,6 +350,7 @@ const UI = (() => {
     renderRail();
     $('#trendsCard').innerHTML = Trends.render();
     if (typeof Motion !== 'undefined') Motion.livingChart($('#trendsCard'));
+    renderInsights();
     maybeBloom();
   }
 
@@ -932,8 +934,23 @@ const UI = (() => {
         ? `<div class="stepper" role="group" aria-label="Portion for ${esc(it.name)}">` +
           [0.5, 1, 1.5, 2].map(m =>
             `<button type="button" data-step-item="${idx}" data-mult="${m}"
-              aria-pressed="${Math.abs((it.quantity_multiplier || 1) - m) < 0.01}">${m}×</button>`
+              aria-pressed="${it.photo_portion ? 'false' : Math.abs((it.quantity_multiplier || 1) - m) < 0.01}">${m}×</button>`
           ).join('') + `</div>`
+        : '';
+
+      /* Where a photo-derived range came from, and how to make it
+         narrower. This sentence is the whole reason estimating from a
+         picture is defensible: the width is visible, its cause is
+         named, and the fix is one tap away.
+
+         Nothing here is pressed in the stepper while the band is live —
+         no single multiplier is being claimed, so showing one as
+         selected would assert a precision the photo does not have. */
+      const photoNote = it.photo_portion
+        ? `<p class="itemrow__meta itemrow__meta--photo">
+             ${esc(COPY.photoPortion[it.photo_portion] || COPY.photoPortion.average)}
+             ${esc(COPY.photoPortionFix)}
+           </p>`
         : '';
 
       /* Cooking method, offered only where boiling genuinely changes the
@@ -979,6 +996,7 @@ const UI = (() => {
           ${nums}
           ${it._note ? `<p class="itemrow__meta">${esc(it._note)}</p>` : ''}
           ${it._leached ? `<p class="itemrow__meta itemrow__meta--good">${esc(COPY.leachApplied)}</p>` : ''}
+          ${photoNote}
           ${stepper}
           ${cooking}
           ${provenance}
@@ -1143,6 +1161,95 @@ const UI = (() => {
         ${esc(s.thinCategories.join(', ').replace(/_/g, ' '))}.
         ${esc(COPY.coverage.thin)}</p>` : ''}
       <p class="note mt-2">${esc(COPY.coverage.verify)}</p>
+    </div>`;
+  }
+
+  /* ═══════════ health passport ═══════════
+     Renders from local storage only — no network, no model, no lookup.
+     If the app opens at all, this screen is complete.
+
+     Textareas rather than a wizard: this is a card somebody fills in
+     once and edits rarely, and the fastest possible version of that is
+     six labelled boxes that save as you type. */
+  function renderPassport() {
+    const host = $('#passportFields');
+    if (!host) return;
+    const d = Passport.data();
+
+    host.innerHTML = Passport.FIELDS.map(f => `
+      <div class="card">
+        <label class="field">
+          <span class="field__label">${esc(f.label)}</span>
+          <textarea data-pp="${esc(f.key)}" rows="2" maxlength="${Passport.MAXLEN}"
+            placeholder="${esc(f.placeholder)}">${esc(d[f.key] || '')}</textarea>
+          <span class="field__note">${esc(f.hint)}</span>
+        </label>
+      </div>`).join('');
+
+    /* The lab block reproduces what was entered, verbatim, with its
+       date and the word "self-entered". A lab value on an emergency
+       card that turns out to be paraphrased or three months old
+       unlabelled is worse than no lab value at all. */
+    const lab = Passport.labLine();
+    $('#passportLab').innerHTML = lab
+      ? `<div class="card m-stone">
+           <h2 class="h3">Most recent lab values</h2>
+           <p class="itemrow__meta">${esc(lab.text)}</p>
+           <p class="note">Entered by you, dated ${esc(lab.date)}${
+             lab.stale ? ' — <strong>over three months old</strong>' : ''}.</p>
+         </div>`
+      : `<div class="card m-paper">
+           <p class="note">No lab values saved. If you have a recent potassium or phosphorus
+           result, adding it on the Labs tab puts it on this card too.</p>
+         </div>`;
+  }
+
+  /* ═══════════ patterns ═══════════
+     Only arithmetic over what has been logged, phrased as an
+     observation about the record rather than advice or a prediction.
+     Renders nothing at all when there is not enough data or no pattern
+     clears its evidence floor — an app that always has something to
+     say about your week is an app that is making things up. */
+  function renderInsights() {
+    const host = $('#insightsCard');
+    if (!host) return;
+    const r = Insights.read(2);
+
+    if (!r.ready) {
+      // Say what is missing and how far off it is. "Come back later"
+      // with no number is a dead end dressed as a promise.
+      host.innerHTML = r.days
+        ? `<div class="card m-paper">
+             <h2 class="h3">Patterns</h2>
+             <p class="note">${r.days} of ${r.need} days logged. Once there are
+             ${r.need}, RenalRoute will point out anything that stands out in
+             your own record.</p>
+           </div>`
+        : '';
+      host.hidden = !r.days;
+      return;
+    }
+    if (!r.patterns.length) {
+      host.innerHTML = `<div class="card m-paper">
+        <h2 class="h3">Patterns</h2>
+        <p class="note">Nothing stands out across your last ${r.days} logged days —
+        no day of the week or single food is running noticeably higher than the rest.</p>
+      </div>`;
+      host.hidden = false;
+      return;
+    }
+
+    host.hidden = false;
+    host.innerHTML = `<div class="card m-paper">
+      <h2 class="h3">From your own record</h2>
+      ${r.patterns.map(p => `
+        <div class="insight">
+          <p class="insight__text">${esc(p.text)}</p>
+          <p class="note">${esc(p.basis)}</p>
+        </div>`).join('')}
+      <p class="note mt-2">These are observations about what you logged, not advice
+      and not predictions. What food does to your blood work is a question for your
+      care team.</p>
     </div>`;
   }
 
@@ -1616,6 +1723,11 @@ const UI = (() => {
         const mult = Number(el.dataset.mult);
         const wasLeached = draft.items[i]._leached;
         draft.items[i] = Resolve.rescale(draft.items[i], mult);
+        /* Confirming a portion retires the photo's guess. The band
+           existed only because nobody had told us the size; the person
+           who ate the meal just did, and their answer is better
+           evidence than a picture. The extra width goes with it. */
+        draft.items[i].photo_portion = null;
         // Rescaling rebuilds the item from the anchor row, which drops
         // the cooking choice. Re-apply it rather than silently reverting
         // a decision the user already made.
@@ -1932,6 +2044,32 @@ const UI = (() => {
     $('#scanStop').addEventListener('click', () => { stopScan(); barcodeStatus(''); });
     // Leaving the screen must release the camera, not just hide it.
     $('#labelBack').addEventListener('click', () => { stopScan(); go(lastScreen); });
+
+    /* ── Health passport ──
+       Saves as you type. This is a card somebody fills in once and
+       edits rarely; making them find a Save button afterwards is how
+       half-filled emergency cards happen. */
+    $('#passportBack').addEventListener('click', () => go(lastScreen));
+    $('#passportFields').addEventListener('input', (e) => {
+      const key = e.target && e.target.dataset && e.target.dataset.pp;
+      if (key) Passport.set(key, e.target.value);
+    });
+    $('#passportCopy').addEventListener('click', async () => {
+      const text = Passport.asText();
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('Passport copied');
+      } catch (err) {
+        // No clipboard permission is not a dead end: hand them the file.
+        Exporter.download('renalroute-passport.txt', text, 'text/plain');
+        toast('Passport downloaded');
+      }
+    });
+    $('#passportPrint').addEventListener('click', () => {
+      // The print stylesheet already strips chrome; the screen prints
+      // as the card it is. Paper in a wallet outlives every app.
+      try { window.print(); } catch (err) { toast('Printing unavailable here'); }
+    });
     $('#learnBack').addEventListener('click', () => go(lastScreen));
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }

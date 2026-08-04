@@ -92,6 +92,37 @@ const Clinical = (() => {
   const isLowPotassiumServing = (kHigh) =>
     kHigh !== null && kHigh !== undefined && kHigh <= AKF_LOW_K_MG;
 
+  /* ═══════════ photo portions — a range, never a weight ═══════════
+     Estimating milligrams from a photograph was refused for a long
+     time, and the refusal was half right. The unsafe part is asking a
+     model for a WEIGHT: measured portion-weight error from food photos
+     runs 36–37% and skews toward UNDER-estimation, which is the one
+     error direction that quietly flatters a budget — it tells someone
+     they have room they do not have.
+
+     But refusing outright meant a photo produced names and no numbers,
+     which is not a food diary. The honest build separates the two
+     jobs. The model answers only "does this look small, average, or
+     large for this food" — a question a picture genuinely supports.
+     Every milligram still comes from the anchor table. The photo picks
+     a BAND of multipliers, not a point, and the band is wide enough to
+     contain that 36–37% error and skewed upward to cover the direction
+     the error runs.
+
+     So a photo does produce a per-portion estimate. It just produces
+     one whose width is honest about where it came from, and the moment
+     the person who ate the meal confirms the portion, the band
+     collapses to their number and the widening disappears.
+
+     [NEEDS VERIFICATION — the band edges are a product choice derived
+     from the published error magnitude, not a figure from a guideline.] */
+  const PHOTO_BANDS = {
+    small:   { low: 0.50, high: 1.00 },
+    average: { low: 0.75, high: 1.60 },
+    large:   { low: 1.25, high: 2.50 }
+  };
+  const photoBand = (size) => PHOTO_BANDS[String(size || '').toLowerCase()] || null;
+
   /* Ring colour thresholds — display-engineering choices, not clinical. */
   const RING_AMBER_AT = 0.70;   // high end ≥70% of target
   const BIG_ITEM_AT   = 0.33;   // single item ≥33% of target
@@ -278,6 +309,7 @@ const Clinical = (() => {
     TARGET_BOUNDS, EDUCATION_DEFAULTS, LAB_BOUNDS, STALE_DAYS,
     RING_AMBER_AT, BIG_ITEM_AT,
     leach, LEACH_RETAIN_LOW, LEACH_RETAIN_HIGH,
+    PHOTO_BANDS, photoBand,
     AKF_LOW_K_MG, isLowPotassiumServing,
     validateTarget, validateLab,
     potassiumMode, phosphorusMode,

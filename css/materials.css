@@ -615,3 +615,55 @@
   .emptyart .ea-fill { animation: none; stroke-dashoffset: 58; }
   .emptyart circle.ea-fill { animation: none; stroke-dashoffset: 30; }
 }
+
+/* Photo-derived portion note. Amber-toned rather than neutral: this
+   line is telling somebody a number is less certain than it looks, and
+   that should register at a glance rather than only on reading. */
+.itemrow__meta--photo {
+  color: var(--color-status-warn);
+  background: var(--color-tint-warn);
+  padding: var(--space-2);
+  border-radius: var(--radius-field);
+  margin-top: var(--space-1);
+}
+
+/* ═══════════ patterns ═══════════
+   Each observation gets its own block with the claim first and the
+   sample size directly beneath it. The sample line is never smaller
+   than caption size: "based on 3 Fridays" is the part that makes the
+   sentence above it honest, and shrinking it would be hiding it. */
+.insight { padding: var(--space-2) 0; border-top: 1px solid var(--color-hairline); }
+.insight:first-of-type { border-top: 0; padding-top: 0; }
+.insight__text { line-height: var(--leading-body); margin-bottom: 2px; }
+
+/* ═══════════ health passport ═══════════
+   Roomier than the rest of the app on purpose: every field here is
+   free text somebody may be reading aloud under pressure. */
+#passportFields textarea {
+  width: 100%;
+  min-height: 3.2em;
+  font: inherit;
+  color: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-field);
+  background: var(--color-surface);
+  resize: vertical;
+}
+#passportFields textarea:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 1px; }
+
+/* Printing is a first-class output here, not an afterthought: paper in
+   a wallet is the most reliable emergency data transfer there is. So
+   the passport prints as a dense card with every field visible and
+   none of the app's furniture. */
+@media print {
+  #scr-passport .card { break-inside: avoid; page-break-inside: avoid; }
+  #scr-passport textarea {
+    border: 0 !important;
+    padding: 0 !important;
+    resize: none;
+    height: auto;
+    overflow: visible;
+  }
+  #passportCopy, #passportPrint, #passportBack { display: none !important; }
+}

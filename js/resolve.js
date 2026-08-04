@@ -186,10 +186,26 @@ const Resolve = (() => {
       na: pick('na_low', 'na_high')
     };
 
-    let factorLow = 1, factorHigh = 1, note = null;
+    let factorLow = 1, factorHigh = 1, note = null, fromPhoto = false;
     const qty = toAnchorUnits(item.portion_quantity, item.portion_unit, row);
+    const band = (qty === null) ? Clinical.photoBand(item.portion_size) : null;
 
-    if (qty === null) {
+    if (band) {
+      /* A photograph judged this portion small, average or large. That
+         judgement becomes a BAND of multipliers rather than a number —
+         wide enough to contain the documented 36–37% photo portion
+         error and skewed upward because that error runs toward
+         under-estimating, the direction that flatters a budget.
+
+         An explicit quantity always wins over the photo's guess: if
+         the user typed or confirmed a portion, qty is not null and we
+         never get here. That is the whole design — the camera gets you
+         a starting range, the person who ate it gets the last word. */
+      factorLow = band.low;
+      factorHigh = band.high;
+      fromPhoto = true;
+      note = null;
+    } else if (qty === null) {
       // Portion unstated or unconvertible: widen UPWARD only. Measured
       // models systematically underestimate large portions, and that is
       // the error direction that flatters the user's budget.
@@ -221,6 +237,10 @@ const Resolve = (() => {
       sodium_high_mg:    mul(base.na.high,factorHigh),
       additive_phosphate_flag: !!row.additive_risk,
       salt_substitute_flag: false,
+      /* Persisted, not a display flag: the review screen has to say
+         where this width came from, and a meal reopened next week has
+         to still say it. */
+      photo_portion: fromPhoto ? String(item.portion_size).toLowerCase() : null,
       _row: row,
       _note: note,
       _union: rows.length > 1

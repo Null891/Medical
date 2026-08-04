@@ -61,6 +61,21 @@ const COPY = {
   emptyExtraction:
     "We didn't spot any foods in that. Try naming them one at a time — for example: chicken, rice, green beans.",
   uncountedItem: "Not counted — we didn't have enough detail to estimate this item.",
+  /* ── Photo portions ──
+     A photograph does produce a milligram estimate now, and these
+     sentences are why that is defensible. Each names the judgement the
+     picture made, says the range is wider ON PURPOSE, and points at the
+     one tap that narrows it. A wide range nobody explains reads as the
+     app being vague; a wide range with its cause on screen reads as the
+     app being straight. */
+  photoPortion: {
+    small:   'Read from the photo as a small serving. The range is wider than usual because portion size judged from a picture is rough.',
+    average: 'Read from the photo as an average serving. The range is wider than usual because portion size judged from a picture is rough.',
+    large:   'Read from the photo as a large serving. The range is wider than usual because portion size judged from a picture is rough.'
+  },
+  photoPortionFix:
+    'It also leans high rather than low, since photos tend to under-read portions. Tap a portion below and it narrows to your number.',
+
   leachApplied:
     'Counted lower because boiling and draining removes potassium. The estimate stays deliberately ' +
     'cautious — published reductions are larger than the one applied here.',

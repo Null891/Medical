@@ -148,6 +148,10 @@
 
         <!-- Seven days as bands, not a line. See js/trends.js. -->
         <div class="bento__wide" id="trendsCard"></div>
+
+        <!-- Arithmetic over the record, phrased as observation. Renders
+             nothing when nothing clears its evidence floor. -->
+        <div class="bento__half" id="insightsCard" hidden></div>
       </div>
 
       <div class="wave" aria-hidden="true">
@@ -365,6 +369,10 @@
         <h2 class="h2">Your data</h2>
         <p class="note">Everything you log stays on this device, in this browser. Nothing is uploaded, and there is no account. Clearing your browser data removes it too.</p>
 
+        <h3 class="h3 mt-2">Health passport</h3>
+        <p class="note">A card for an ambulance, a new doctor, or a pharmacy in another city — conditions, medicines, allergies, and who to call. It works offline and it prints.</p>
+        <button type="button" class="btn btn--secondary btn--block" data-nav="passport" id="toPassportBtn">Open my health passport</button>
+
         <h3 class="h3 mt-2">Take it with you</h3>
         <p class="note">A one-page summary is the thing to print or email before an appointment. The spreadsheet is every item you've logged, in case you want the raw numbers.</p>
         <div class="dev-actions">
@@ -400,6 +408,31 @@
          constantly and almost nobody can act on: the additives that
          matter most for kidneys are the ones that never appear on the
          nutrition panel. -->
+    <!-- ───────── HEALTH PASSPORT ─────────
+         The one screen built for somebody who is NOT reading carefully:
+         an ambulance bay, a locum, a pharmacy counter in another city.
+         Local storage only, no estimates, no derived figures, and it
+         prints — because paper in a wallet is still the most reliable
+         emergency data transfer there is. -->
+    <section class="screen" id="scr-passport" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="passportBack">← Back</button>
+      <h1 class="h1">Health passport</h1>
+      <p class="helper">A card you can show, print, or read out if you cannot explain things yourself. It works with no signal and no account.</p>
+
+      <div class="card m-paper">
+        <p class="note"><strong>Everything on this card is typed by you.</strong> RenalRoute does not measure, calculate, or check any of it. It is a place to write things down and hand them over — not a medical record.</p>
+      </div>
+
+      <div id="passportFields"></div>
+      <div id="passportLab"></div>
+
+      <div class="card">
+        <button type="button" class="btn btn--secondary btn--block" id="passportCopy">Copy as text</button>
+        <button type="button" class="btn btn--secondary btn--block" id="passportPrint">Print this card</button>
+        <p class="note mt-2">Printing gives you something for a wallet or a fridge door. It does not need the app to be working.</p>
+      </div>
+    </section>
+
     <section class="screen" id="scr-label" hidden>
       <button type="button" class="linkbtn linkbtn--back" id="labelBack">← Back</button>
       <h1 class="h1">Check a food label</h1>
@@ -525,6 +558,8 @@
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
 <script src="js/motion.js"></script>
+<script src="js/insights.js"></script>
+<script src="js/passport.js"></script>
 <script src="js/exporter.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/seed.js"></script>

@@ -896,6 +896,112 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     S.meals(iso).forEach(m => S.deleteMeal(m.id));
   }
 
+  console.log('\n═══ 25. HEALTH PASSPORT ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const P = window.RenalRoute.Passport;
+
+    window.RenalRoute.UI.go('passport');
+    check('passport screen opens', vis('#scr-passport'), true);
+    check('every field rendered', $$('#passportFields textarea').length, P.FIELDS.length);
+
+    /* The claim that makes this screen defensible has to be ON the
+       screen, not in a comment. A clinician reading it must never
+       wonder which numbers RenalRoute produced. */
+    check('states that the patient typed all of it',
+      $('#scr-passport').textContent.includes('typed by you'), true);
+    check('denies being a medical record',
+      $('#scr-passport').textContent.toLowerCase().includes('not a medical record'), true);
+
+    // Saves as you type — no Save button to forget.
+    const box = $('#passportFields textarea[data-pp="medications"]');
+    box.value = 'Sevelamer 800mg with meals';
+    box.dispatchEvent(new window.Event('input', { bubbles: true }));
+    check('typing persists immediately', P.data().medications, 'Sevelamer 800mg with meals');
+
+    window.RenalRoute.UI.go('home');
+    window.RenalRoute.UI.go('passport');
+    check('survives leaving and returning',
+      $('#passportFields textarea[data-pp="medications"]').value, 'Sevelamer 800mg with meals');
+
+    const txt = P.asText();
+    check('text export carries the field', txt.includes('Sevelamer 800mg with meals'), true);
+    check('text export repeats the patient-entered disclaimer',
+      txt.includes('entered by the patient'), true);
+    check('text export denies being a medical record',
+      txt.includes('Not a medical record'), true);
+
+    /* A lab value on an emergency card must carry its date and the
+       word self-entered, or a stranger cannot weigh it. */
+    S.addLab({ lab_date: S.todayISO(), k: 4.6 });
+    window.RenalRoute.UI.go('passport');
+    check('lab value appears verbatim', $('#passportLab').textContent.includes('4.6'), true);
+    check('lab value marked as entered by the user',
+      $('#passportLab').textContent.includes('Entered by you'), true);
+
+    // Free text on a card is still free text: it must render inert.
+    const inj = $('#passportFields textarea[data-pp="notes"]');
+    inj.value = '<script>alert(1)<\/script> fistula left arm';
+    inj.dispatchEvent(new window.Event('input', { bubbles: true }));
+    window.RenalRoute.UI.go('home');
+    window.RenalRoute.UI.go('passport');
+    check('passport free text renders inert', $('#scr-passport').querySelectorAll('script').length, 0);
+    check('  ...and is still readable',
+      $('#passportFields textarea[data-pp="notes"]').value.includes('fistula left arm'), true);
+  }
+
+  console.log('\n═══ 26. PATTERNS ONLY SPEAK WITH EVIDENCE ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const I = window.RenalRoute.Insights;
+
+    // Wipe the window so the floor is genuinely tested.
+    S.meals().forEach(m => S.deleteMeal(m.id));
+    let r = I.read(2);
+    check('says nothing on an empty record', r.ready, false);
+    check('  ...and reports how far off it is', r.need, I.MIN_DAYS_LOGGED);
+    window.RenalRoute.UI.go('home');
+    check('  ...and renders no pattern card at all', vis('#insightsCard'), false);
+
+    // Three days is still under the floor.
+    for (let d = 1; d <= 3; d++) {
+      S.addMeal({
+        meal_text: 'test', logged_at: new Date().toISOString(), meal_date: S.daysAgoISO(d),
+        items: [], confidence: 'high',
+        total_potassium_low_mg: 400, total_potassium_high_mg: 400,
+        total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+        total_sodium_low_mg: 0, total_sodium_high_mg: 0
+      });
+    }
+    check('three logged days is still below the floor', I.read(2).ready, false);
+
+    /* Above the floor but with nothing to say. This is the case that
+       matters most: an app that always finds a pattern is an app that
+       is inventing them. */
+    for (let d = 4; d <= 9; d++) {
+      S.addMeal({
+        meal_text: 'test', logged_at: new Date().toISOString(), meal_date: S.daysAgoISO(d),
+        items: [], confidence: 'high',
+        total_potassium_low_mg: 400, total_potassium_high_mg: 400,
+        total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+        total_sodium_low_mg: 0, total_sodium_high_mg: 0
+      });
+    }
+    r = I.read(2);
+    check('enough days now', r.ready, true);
+    check('identical days produce NO pattern', r.patterns.length, 0);
+    window.RenalRoute.UI.go('home');
+    check('  ...and the card says so rather than inventing one',
+      $('#insightsCard').textContent.includes('Nothing stands out'), true);
+
+    // Nothing it does say may be advice or a prediction.
+    const banned = /\byou should\b|\bwill\b|\bavoid\b|\brisk\b|\bdangerous\b|\bpredict/i;
+    check('pattern copy contains no advice or prediction language',
+      banned.test($('#insightsCard').textContent), false);
+
+    S.meals().forEach(m => S.deleteMeal(m.id));
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

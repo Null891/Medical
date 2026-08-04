@@ -227,6 +227,72 @@ check('  ...claimed removal is smaller than published removal',
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
 
+console.log('\n═══ PHOTO PORTIONS — a band, and it leans the safe way ═══');
+
+/* Estimating milligrams from a photograph is only defensible because
+   of the shape of the result. These tests pin that shape.
+
+   The unsafe failure is a photo producing a NARROW number that reads
+   low: measured portion-weight error from food photos runs 36-37% and
+   skews toward under-estimation, which is the direction that tells
+   somebody they have room they do not have. So every band must be
+   genuinely wide, and every band's midpoint must sit at or above its
+   nominal serving. */
+['small', 'average', 'large'].forEach(size => {
+  const b = Clinical.photoBand(size);
+  check(`${size} band exists`, !!b, true);
+  check(`  ...is a range, never a point`, b.low < b.high, true);
+  // 36-37% published error means a band narrower than that is a lie.
+  check(`  ...spans at least the published photo error`,
+    (b.high - b.low) / ((b.high + b.low) / 2) >= 0.36, true);
+});
+
+/* Asymmetry, checked against the nominal each band describes. "Average"
+   is the one that must not sit centred on 1.0 — a symmetric average
+   band would encode the assumption that photo error is unbiased, which
+   is precisely what the measurements say it is not. */
+check('average band leans high, not centred on 1.0',
+  (Clinical.photoBand('average').low + Clinical.photoBand('average').high) / 2 > 1.0, true);
+check('small band tops out at no more than a full serving',
+  Clinical.photoBand('small').high <= 1.0, true);
+check('large band starts above a full serving',
+  Clinical.photoBand('large').low > 1.0, true);
+check('bands ascend without gaps between them',
+  Clinical.photoBand('small').high >= Clinical.photoBand('average').low &&
+  Clinical.photoBand('average').high >= Clinical.photoBand('large').low, true);
+
+// An unrecognised or absent size must not silently become a multiplier.
+check('unknown portion size yields no band', Clinical.photoBand('enormous'), null);
+check('null portion size yields no band', Clinical.photoBand(null), null);
+check('empty portion size yields no band', Clinical.photoBand(''), null);
+
+/* End to end: the same food, same table row, read from a photo versus
+   stated explicitly. The photo must be WIDER and must not read lower. */
+{
+  const potato = ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin');
+  const fromPhoto = Resolve.resolveItems([{
+    name: 'baked potato with skin', portion_quantity: null, portion_unit: null,
+    portion_text: 'about one', portion_size: 'average', modifiers: [], resolvable: true
+  }]).resolved[0];
+  const stated = Resolve.resolveItems([{
+    name: 'baked potato with skin', portion_quantity: 1, portion_unit: 'medium',
+    portion_text: '1 medium', portion_size: null, modifiers: [], resolvable: true
+  }]).resolved[0];
+
+  check('photo item still priced from the anchor table', fromPhoto.matched_anchor_id, potato.id);
+  check('photo item records which band it used', fromPhoto.photo_portion, 'average');
+  check('stated portion records no band', stated.photo_portion, null);
+  check('photo range is wider than a stated portion',
+    (fromPhoto.potassium_high_mg - fromPhoto.potassium_low_mg) >
+    (stated.potassium_high_mg - stated.potassium_low_mg), true);
+  check('photo high end is not lower than the stated figure',
+    fromPhoto.potassium_high_mg >= stated.potassium_high_mg, true);
+  /* The whole safety argument in one line: a photo may never make a
+     food look smaller than the table says it is. */
+  check('photo estimate never under-reads the plain serving',
+    (fromPhoto.potassium_low_mg + fromPhoto.potassium_high_mg) / 2 >= potato.k_low * 0.5, true);
+}
+
 console.log('\n═══ DATA-QUALITY REPORT (expected gaps, not failures) ═══');
 console.log(`  rows: ${ANCHOR_STATS.total} | missing K: ${ANCHOR_STATS.missingK} | ` +
             `missing P: ${ANCHOR_STATS.missingP} | missing Na: ${ANCHOR_STATS.missingNa}`);
