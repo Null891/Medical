@@ -70,8 +70,16 @@ const Cards = (() => {
     const t = normalizeText(text);
     if (!t) return null;
     if (t.includes('baking powder')) return { match: 'baking powder', bakingPowder: true };
-    const name = PHOS_NAMES.find(n => t.includes(n));
-    if (name) return { match: name };
+    /* Longest match wins, not first. The list contains both
+       "pyrophosphate" and "sodium acid pyrophosphate"; returning
+       whichever happens to sit earlier in the array quotes a generic
+       fragment back at someone who is holding the package and looking
+       for the exact words printed on it. Same specificity principle the
+       alias matcher uses. */
+    const names = PHOS_NAMES.filter(n => t.includes(n));
+    if (names.length) {
+      return { match: names.reduce((a, b) => (b.length > a.length ? b : a)) };
+    }
     const enumber = PHOS_ENUMBERS.find(e => new RegExp('\\b' + e + '\\b').test(t.replace(/\s/g, '')));
     if (enumber) return { match: enumber.toUpperCase() };
     if (/\bphos\w*/.test(t) && !/phosphorus\b/.test(t)) {

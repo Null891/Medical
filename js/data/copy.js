@@ -74,6 +74,27 @@ const COPY = {
   pickerEmpty: "Search the food list — try 'potato' or 'milk'.",
   pickerNoResults: 'Nothing matched. Try a simpler word, or log it later.',
 
+  /* ── Label checker ── */
+  label: {
+    idle: 'Paste an ingredient list above and RenalRoute will name what it finds.',
+    noneTitle: 'Nothing flagged in what you pasted.',
+    /* Deliberately not "this food is safe". The detector knows a fixed
+       list of names and E-numbers; manufacturers rename things, and
+       "natural flavouring" can cover a lot. Saying what was checked is
+       honest; declaring the food clear is not. */
+    noneBody:
+      'That means none of the phosphate additives, added-potassium ingredients, or salt substitutes ' +
+      'RenalRoute knows by name appeared in this list. It does not mean the food has none — additive ' +
+      'names change, and some ingredients are grouped under general terms. When in doubt, ask your ' +
+      'care team.',
+    ruleTitle: 'The trick worth remembering',
+    ruleBody:
+      'Any ingredient containing "PHOS" is added phosphate, and added phosphate is absorbed almost ' +
+      'completely — over 90%, against under 40% from plant foods. It rarely appears on the nutrition ' +
+      'panel, so the ingredient list is the only place it shows. The same goes for potassium: two ' +
+      'words where one of them is potassium is worth a second look.'
+  },
+
   /* ── Dashboard ── */
   /* A judge may open a brand-new account and give this screen five
      seconds. It has to say what the app IS before it says what to do,

@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label'];
 
   function go(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
@@ -37,7 +37,9 @@ const UI = (() => {
       const active = t.dataset.nav === name;
       if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
-    if (name !== 'learn' && name !== 'detail') {
+    if (name === 'label') renderLabel();
+    // Depth-2 screens are somewhere you visit, not somewhere you live.
+    if (name !== 'learn' && name !== 'detail' && name !== 'label') {
       lastScreen = name;
       // Remember where someone was. Reopening an app mid-task and being
       // dumped back at the start is a small tax paid every single time;
@@ -881,6 +883,76 @@ const UI = (() => {
     go('home');
   }
 
+  /* ═══════════ label checker ═══════════
+     Runs the same additive detectors the log flow uses, against text the
+     user copies off a package. Nothing is logged and nothing is sent —
+     it answers "what is actually in this?" and stops there.
+
+     The honest part is the empty result. Finding nothing is NOT the same
+     as there being nothing: the detector holds a finite list of names
+     and E-numbers, manufacturers rename things, and "natural flavouring"
+     can hide a multitude. So a clean scan says what was checked rather
+     than declaring the food safe. */
+  function renderLabel() {
+    const text = $('#labelText').value;
+    const host = $('#labelResults');
+
+    if (!text.trim()) {
+      host.innerHTML = `<p class="note">${esc(COPY.label.idle)}</p>`;
+      return;
+    }
+
+    const phos = Cards.detectPhos(text);
+    const potassium = Cards.detectPotassiumAdditive(text);
+    const saltSub = Cards.detectSaltSubstitute(text);
+    const found = [];
+
+    if (saltSub) {
+      found.push({
+        tone: 'danger', chip: 'Salt substitute',
+        title: COPY.cards.saltSubTitle,
+        body: COPY.cards.saltSub
+      });
+    }
+    if (potassium && potassium.tier === 1) {
+      found.push({
+        tone: 'warn', chip: 'Potassium additive',
+        title: COPY.cards.kAdditiveTier1Title,
+        body: COPY.cards.kAdditiveTier1(potassium.name, potassium.e)
+      });
+    }
+    if (potassium && potassium.tier === 2) {
+      // Tier 2 is preservative-level and stays visually quiet on purpose:
+      // flagging a diet soda as a hyperkalaemia risk over sorbate is a
+      // quantitative error a dietitian spots instantly.
+      found.push({
+        tone: 'muted', chip: 'Potassium additive',
+        title: 'Potassium-based preservative.',
+        body: COPY.cards.kAdditiveTier2(potassium.name)
+      });
+    }
+    if (phos) {
+      found.push({
+        tone: 'warn', chip: 'Additive phosphate',
+        title: COPY.cards.phosTitle,
+        body: COPY.cards.phos(phos.match) +
+              (phos.bakingPowder ? ' ' + COPY.cards.bakingPowder : '')
+      });
+    }
+
+    const cards = found.length
+      ? found.map(flagCardHtml).join('')
+      : `<div class="card card--warm">
+           <h2 class="h3">${esc(COPY.label.noneTitle)}</h2>
+           <p class="note">${esc(COPY.label.noneBody)}</p>
+         </div>`;
+
+    host.innerHTML = cards + `<div class="card card--warm">
+      <h2 class="h3">${esc(COPY.label.ruleTitle)}</h2>
+      <p class="note">${esc(COPY.label.ruleBody)}</p>
+    </div>`;
+  }
+
   /* ═══════════ manual picker ═══════════ */
 
   /* Token search, not substring search.
@@ -1471,6 +1543,8 @@ const UI = (() => {
       };
     });
     $('#readDisclaimerBtn').addEventListener('click', () => $('#fullDisclaimerBtn').click());
+    $('#labelText').addEventListener('input', renderLabel);
+    $('#labelBack').addEventListener('click', () => go(lastScreen));
     $('#learnBack').addEventListener('click', () => go(lastScreen));
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }

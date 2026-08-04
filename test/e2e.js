@@ -383,6 +383,42 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19l. LABEL CHECKER ═══');
+  click('[data-nav="label"]'); await wait(30);
+  check('label screen reachable', vis('#scr-label'), true);
+  check('starts with a prompt, not a verdict',
+    $('#labelResults').textContent.includes('Paste an ingredient list'), true);
+
+  type('#labelText', 'wheat flour, water, salt, sodium acid pyrophosphate'); await wait(30);
+  check('phosphate additive named', $('#labelResults').textContent.includes('sodium acid pyrophosphate'), true);
+  check('  ...with the absorption contrast', $('#labelResults').textContent.includes('over 90%'), true);
+
+  type('#labelText', 'water, sugar, potassium sorbate'); await wait(30);
+  check('tier 2 preservative gets the quiet note',
+    $('#labelResults').textContent.includes('amount is usually small'), true);
+  check('  ...and NOT the added-potassium warning',
+    $('#labelResults').textContent.includes('Added potassium inside'), false);
+
+  type('#labelText', 'salt, potassium chloride, anti-caking agent'); await wait(30);
+  check('potassium chloride raises the real warning',
+    $('#labelResults').textContent.includes('Added potassium inside'), true);
+  check('  ...and the salt-substitute hazard too',
+    $('#labelResults').textContent.includes('NICE'), true);
+
+  type('#labelText', 'oats, water'); await wait(30);
+  check('clean list says nothing was FOUND', $('#labelResults').textContent.includes('Nothing flagged'), true);
+  // The honest bit: absence of a match is not absence of additives.
+  check('  ...and refuses to call the food safe',
+    $('#labelResults').textContent.includes('does not mean the food has none'), true);
+  check('the PHOS rule is taught either way',
+    $('#labelResults').textContent.includes('containing "PHOS" is added phosphate'), true);
+
+  type('#labelText', '<script>alert(1)</script>, flour'); await wait(30);
+  check('hostile label text renders inert', doc.querySelectorAll('#labelResults script').length, 0);
+
+  click('#labelBack'); await wait(20);
+  check('back returns to a real screen', vis('#scr-label'), false);
+
   console.log('\n═══ 19k. COOKING METHOD CHANGES THE NUMBER ═══');
   click('[data-nav="log"]'); await wait(20);
   type('#mealText', 'grilled chicken, baked potato with skin, and a glass of milk');

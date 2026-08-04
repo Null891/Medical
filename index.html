@@ -167,6 +167,7 @@
           <span id="micLabel">Say it instead</span>
         </button>
         <p class="note" id="micNote" hidden>Speech is handled by your browser or phone, not by us.</p>
+        <button type="button" class="linkbtn linkbtn--block" data-nav="label">Or check a food label instead</button>
 
         <button type="button" class="btn btn--primary btn--block" id="analyzeBtn" disabled>Analyze meal</button>
 
@@ -361,6 +362,28 @@
         </div>
       </div>
     </div>
+
+    <!-- ───────── LABEL CHECKER (depth 2) ─────────
+         Reads an ingredient list and names what is in it. No AI, no
+         network, no logging — this is a lookup tool, not a diary entry.
+         It exists because "read the label" is advice patients are given
+         constantly and almost nobody can act on: the additives that
+         matter most for kidneys are the ones that never appear on the
+         nutrition panel. -->
+    <section class="screen" id="scr-label" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="labelBack">← Back</button>
+      <h1 class="h1">Check a food label</h1>
+      <p class="helper">Type or paste the ingredient list from a package. RenalRoute looks for the additives that matter for kidneys — the ones that never show up on the nutrition panel.</p>
+
+      <label class="field">
+        <span class="field__label">Ingredients</span>
+        <textarea id="labelText" rows="5" maxlength="1200"
+          placeholder="wheat flour, water, salt, sodium acid pyrophosphate, potassium chloride"></textarea>
+        <span class="field__note">Nothing is sent anywhere. This runs on your device, and works offline.</span>
+      </label>
+
+      <div id="labelResults"></div>
+    </section>
 
     <!-- ───────── LEARN CARD (depth 2) ───────── -->
     <section class="screen" id="scr-learn" hidden>

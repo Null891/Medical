@@ -195,6 +195,21 @@ check('  ...no raw salad vegetable is offered for a baked potato',
 check('  ...cauliflower reads 88 mg per ½ cup, as the demo script says',
   rOk.swaps[0].k_high + '/' + rOk.swaps[0].serving_text, '88/½ cup');
 
+console.log('\n═══ ADDITIVE DETECTION — name what is printed ═══');
+check('quotes the SPECIFIC name, not a generic fragment',
+  Cards.detectPhos('flour, sodium acid pyrophosphate').match, 'sodium acid pyrophosphate');
+check('  ...still catches the generic when that is all there is',
+  Cards.detectPhos('flour, pyrophosphate').match, 'pyrophosphate');
+check('bare E-number caught', Cards.detectPhos('flour, E450').match, 'E450');
+check('baking powder flagged as its own case', Cards.detectPhos('flour, baking powder').bakingPowder, true);
+check('the word "phosphorus" alone is NOT an additive', Cards.detectPhos('phosphorus 40mg'), null);
+check('clean list returns nothing', Cards.detectPhos('oats, water'), null);
+check('potassium chloride is tier 1', Cards.detectPotassiumAdditive('salt, potassium chloride').tier, 1);
+check('potassium sorbate is tier 2 (preservative-level)',
+  Cards.detectPotassiumAdditive('water, potassium sorbate').tier, 2);
+check('"no salt added" never trips the salt-substitute alarm',
+  Cards.detectSaltSubstitute('chicken, no salt added'), null);
+
 console.log('\n═══ LEACHING — cooking as a lever ═══');
 const spudL = ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin');
 check('potatoes are marked leachable', spudL.leachable, true);
