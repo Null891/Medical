@@ -38,7 +38,9 @@ const UI = (() => {
       if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
     if (name !== 'learn' && name !== 'detail') lastScreen = name;
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    // Guarded: not every environment implements scrollTo, and a missing
+    // scroll must never take the navigation down with it.
+    try { window.scrollTo(0, 0); } catch (e) { /* non-fatal */ }
 
     if (name === 'home') renderHome();
     if (name === 'log') resetLog(opts && opts.keepDraft);

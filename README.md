@@ -157,10 +157,23 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 ## Automated checks
 
 ```powershell
-node test\verify.js
+cd test
+npm install     # once — pulls jsdom
+node verify.js  # 57 unit assertions
+node e2e.js     # 107 end-to-end assertions in a real DOM
 ```
 
-57 assertions covering the arithmetic that has to be right: anchor matching and portion scaling, ring fill and colour thresholds, the remaining-budget copy strings, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity. It runs headless in a few hundred milliseconds and needs no dependencies.
+`package.json` lives in `test/` on purpose. A `package.json` at the repo root would make Vercel treat this static site as a Node project and try to build it.
+
+### `e2e.js` — the full run-through
+
+Boots `index.html` with every script and both stylesheets in jsdom, then drives the app by dispatching real clicks on real buttons: consent → onboarding → log a meal → save → XSS probe → clarify-once → delete → labs → every guidance mode → settings → learn cards → manual picker → seed. It asserts on computed styles, so it catches "the element is in the DOM but the CSS is showing it anyway" — which is exactly the class of bug that shipped the first time.
+
+It caught the click-blocking bug on its very first run and would have caught it before deploy.
+
+### `verify.js` — the arithmetic
+
+57 assertions covering anchor matching and portion scaling, ring fill and colour thresholds, remaining-budget copy, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity: anchor matching and portion scaling, ring fill and colour thresholds, the remaining-budget copy strings, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity. It runs headless in a few hundred milliseconds and needs no dependencies.
 
 It has already earned its keep. It caught a real matching bug: a bare query of `spinach` was resolving to 420 mg — the cooked row — because the longest-alias rule was ranking `cooked spinach` (14 characters) above `spinach salad` (13) and silently picking a preparation the user never specified. The rule is now two-tiered: aliases *contained in* the query rank by length, because that is a genuine specificity signal; aliases that *contain* the query do not rank at all, because that is a broad query and every variant deserves to survive into the union range. Bare `spinach` now correctly reports **84–420 mg**.
 
