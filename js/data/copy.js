@@ -53,6 +53,11 @@ const COPY = {
   analyzeError:
     "We couldn't analyze that right now. Your text is saved — try again, or pick your foods from the list instead.",
   capReached: "You've hit today's analysis limit — the food list still works.",
+  photoUnreadable:
+    "We couldn't make out the food in that photo. Try again in better light, or type what you ate instead.",
+  /* Photos are stored as a label, never as the image. The picture leaves
+     the device only to be identified and is never written to a record. */
+  photoMealLabel: 'Meal from a photo',
   emptyExtraction:
     "We didn't spot any foods in that. Try naming them one at a time — for example: chicken, rice, green beans.",
   uncountedItem: "Not counted — we didn't have enough detail to estimate this item.",

@@ -25,6 +25,12 @@ const MODEL = 'claude-sonnet-4-5';
 const MAX_PROMPT_CHARS = 12000;
 const MAX_TOKENS = 1500;
 
+/* Photos are capped well under Anthropic's 5 MB limit because the client
+   downscales to 1024px before sending. A request arriving near this
+   ceiling means the client-side resize was skipped or bypassed. */
+const MAX_IMAGE_CHARS = 4_500_000;          // base64 characters
+const ALLOWED_MEDIA = ['image/jpeg', 'image/png', 'image/webp'];
+
 // Only these top-level shapes are accepted. Anything else is rejected,
 // which keeps the endpoint from becoming an open relay.
 const ALLOWED_ROOT_KEYS = [
@@ -109,6 +115,24 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unsupported response schema' });
   }
 
+  /* Optional photo. The schema allowlist above still governs what can
+     come back, so adding vision does not widen what this endpoint can be
+     used for — it can identify foods in a picture and nothing else. */
+  const image = body && body.image;
+  let imageBlock = null;
+  if (image) {
+    if (typeof image.data !== 'string' || !ALLOWED_MEDIA.includes(image.media_type)) {
+      return res.status(400).json({ error: 'Unsupported image' });
+    }
+    if (image.data.length > MAX_IMAGE_CHARS) {
+      return res.status(413).json({ error: 'Image too large' });
+    }
+    imageBlock = {
+      type: 'image',
+      source: { type: 'base64', media_type: image.media_type, data: image.data }
+    };
+  }
+
   // Structured output via a single forced tool call — the closest
   // equivalent to Base44's response_json_schema parameter.
   const payload = {
@@ -120,7 +144,14 @@ export default async function handler(req, res) {
       input_schema: schema
     }],
     tool_choice: { type: 'tool', name: 'emit_result' },
-    messages: [{ role: 'user', content: prompt }]
+    messages: [{
+      // Image first, then the instruction — the documented ordering for
+      // vision prompts, and it measurably improves adherence.
+      role: 'user',
+      content: imageBlock
+        ? [imageBlock, { type: 'text', text: prompt }]
+        : prompt
+    }]
   };
 
   try {

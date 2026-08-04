@@ -145,8 +145,29 @@
           <span class="field__count"><span id="mealCount">0</span>/500</span>
         </label>
         <button type="button" class="btn btn--primary btn--block" id="analyzeBtn" disabled>Analyze meal</button>
+
+        <!-- Photo path. The camera NAMES the food; the reference table
+             prices it. capture="environment" opens the rear camera
+             directly on a phone, and still offers the library elsewhere. -->
+        <p class="or-divider"><span>or</span></p>
+        <button type="button" class="btn btn--secondary btn--block" id="photoBtn">
+          <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+               stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2a1 1 0 0 0 .83-.45l.94-1.4A1 1 0 0 1 9.3 4.7h5.4a1 1 0 0 1 .83.45l.94 1.4A1 1 0 0 0 17.3 7h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+          </svg>
+          Take a photo of your meal
+        </button>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+        <p class="note" id="photoNote">The camera identifies the foods. The nutrient numbers still come from the reference table, and you confirm the portion — a photo can't be trusted to judge how much is on a plate.</p>
+
+        <div id="photoPreviewWrap" hidden>
+          <img id="photoPreview" class="photo-preview" alt="The meal photo you just took">
+          <button type="button" class="linkbtn" id="photoClear">Remove photo</button>
+        </div>
+
         <div id="logPending" hidden>
-          <div class="skeleton-row"><span class="spinner" aria-hidden="true"></span> Breaking your meal down…</div>
+          <div class="skeleton-row"><span class="spinner" aria-hidden="true"></span> <span id="logPendingText">Breaking your meal down…</span></div>
         </div>
         <div class="inline-error" id="logError" role="alert" hidden>
           <p id="logErrorText"></p>

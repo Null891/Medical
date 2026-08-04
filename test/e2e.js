@@ -348,6 +348,29 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   await wait(20);
   check('picker leads to review', vis('#log-review'), true);
 
+  console.log('\n═══ 19b. PHOTO PATH + FORGIVING SEARCH ═══');
+  click('[data-nav="log"]'); await wait(20);
+  check('camera button offered alongside typing', vis('#photoBtn'), true);
+  check('photo disclosure explains the table still prices it',
+    $('#photoNote').textContent.includes("reference table"), true);
+  check('  ...and that a photo cannot judge portion',
+    $('#photoNote').textContent.includes("judge how much"), true);
+  check('file input opens the rear camera', $('#photoInput').getAttribute('capture'), 'environment');
+  check('no stale preview on a fresh log', vis('#photoPreviewWrap'), false);
+  // Token search: word order must not matter.
+  // Word order must not change WHICH FOOD is found. Which baked-potato
+  // variant ranks first is a genuine toss-up, so the test does not
+  // pretend otherwise — both are offered and the user picks.
+  check('"baked potato" finds a potato',
+    window.RenalRoute.UI.searchFoods('baked potato')[0].base_food, 'potato');
+  check('"potato baked" finds it too (the old substring rule found nothing)',
+    window.RenalRoute.UI.searchFoods('potato baked')[0].base_food, 'potato');
+  check('  ...and both skin variants are offered, not just one',
+    window.RenalRoute.UI.searchFoods('baked potato').filter(f => f.base_food === 'potato').length >= 2, true);
+  check('bare "potato" prefers the plain name over chips',
+    window.RenalRoute.UI.searchFoods('potato')[0].base_food, 'potato');
+  check('nonsense still returns nothing', window.RenalRoute.UI.searchFoods('zzzz qqqq').length, 0);
+
   console.log('\n═══ 20. SEED THE DEMO PERSONA ═══');
   window.RenalRoute.Seed.run();
   const sp = window.RenalRoute.Store.profile();

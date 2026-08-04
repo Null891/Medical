@@ -340,7 +340,10 @@ const UI = (() => {
       $('#analyzeBtn').disabled = true;
     }
     $('#logPending').hidden = true;
+    $('#logPendingText').textContent = 'Breaking your meal down…';
     $('#logError').hidden = true;
+    $('#photoBtn').disabled = false;
+    clearPhoto();          // a stale preview must not survive into a new meal
     showLogStep('log-input');
   }
 
@@ -387,6 +390,93 @@ const UI = (() => {
     $('#logErrorText').textContent = msg;
     $('#toPickerBtn').hidden = !!hidePicker;
     $('#logError').hidden = false;
+  }
+
+  /* ═══════════ photo capture ═══════════
+     Downscale on the device before anything leaves it. A modern phone
+     camera produces 4000px JPEGs; the model gains nothing from more than
+     ~1024px for identifying a plate of food, and sending the full frame
+     costs the user upload time on a connection we cannot assume is good.
+     It also keeps the request far under the endpoint's size ceiling. */
+  const PHOTO_MAX_EDGE = 1024;
+  const PHOTO_QUALITY = 0.82;
+
+  function downscale(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, PHOTO_MAX_EDGE / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        // JPEG throughout: photographs of food have no flat colour for
+        // PNG to exploit, and the size difference is large.
+        const dataUrl = canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+        resolve({ dataUrl, base64: dataUrl.split(',')[1] });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode_failed')); };
+      img.src = url;
+    });
+  }
+
+  async function analyzePhoto(file) {
+    $('#logError').hidden = true;
+    $('#photoBtn').disabled = true;
+
+    if (!Store.canAnalyze()) { $('#photoBtn').disabled = false; showError(COPY.capReached); return; }
+
+    let shot;
+    try {
+      shot = await downscale(file);
+    } catch (e) {
+      $('#photoBtn').disabled = false;
+      showError(COPY.photoUnreadable, true);
+      return;
+    }
+
+    $('#photoPreview').src = shot.dataUrl;
+    $('#photoPreviewWrap').hidden = false;
+    $('#logPendingText').textContent = 'Looking at your photo…';
+    $('#logPending').hidden = false;
+
+    try {
+      const { data } = await LLM.extractFromPhoto({
+        media_type: 'image/jpeg', data: shot.base64
+      });
+      Store.countAnalysis();
+      $('#logPending').hidden = true;
+      $('#photoBtn').disabled = false;
+
+      if (!data.items.length) {
+        // The model could see the picture but not the food. Typing is the
+        // recovery, so say that rather than offering the camera again.
+        showError(data.clarification_question || COPY.photoUnreadable, true);
+        return;
+      }
+      if (data.needs_clarification && data.clarification_question) {
+        draft = { text: COPY.photoMealLabel, extraction: data, clarification: data.clarification_question };
+        $('#clarifyOriginal').textContent = COPY.photoMealLabel;
+        $('#clarifyQuestion').textContent = data.clarification_question;
+        $('#clarifyAnswer').value = '';
+        showLogStep('log-clarify');
+        return;
+      }
+      buildReview(COPY.photoMealLabel, data.items);
+    } catch (e) {
+      $('#logPending').hidden = true;
+      $('#photoBtn').disabled = false;
+      showError(COPY.analyzeError);
+    }
+  }
+
+  function clearPhoto() {
+    $('#photoPreviewWrap').hidden = true;
+    $('#photoPreview').removeAttribute('src');
+    $('#photoInput').value = '';
   }
 
   async function buildReview(text, extractedItems, forcedUncounted) {
@@ -526,16 +616,52 @@ const UI = (() => {
 
   /* ═══════════ manual picker ═══════════ */
 
+  /* Token search, not substring search.
+     The old rule needed one contiguous run of characters, so "potato
+     baked" and "milk glass" found nothing while "baked potato" worked —
+     the food is there, and the app says it isn't. People do not recall
+     food names in our word order, and this list is the guaranteed path
+     when the AI is unavailable, so it has to be forgiving.
+
+     Every token must appear somewhere in the name or an alias, in any
+     order. Ranking then puts the closest thing first: an exact name,
+     then a name that starts with the query, then an alias hit, then
+     everything else, shorter names ahead of longer ones so "potato"
+     ranks above "potato chips, low-fat". */
+  function searchFoods(normalizedQuery) {
+    const tokens = normalizedQuery.split(/\s+/).filter(t => t.length >= 2);
+    if (!tokens.length) return [];
+
+    const scored = [];
+    for (const f of ANCHOR_FOODS) {
+      const name = Resolve.normalize(f.food_name);
+      const aliases = (f.aliases || []).map(a => Resolve.normalize(a));
+      const haystack = [name, ...aliases].join(' | ');
+
+      if (!tokens.every(t => haystack.includes(t))) continue;
+
+      let score = 0;
+      if (name === normalizedQuery) score += 1000;
+      else if (aliases.includes(normalizedQuery)) score += 800;
+      else if (name.startsWith(normalizedQuery)) score += 600;
+      else if (aliases.some(a => a.startsWith(normalizedQuery))) score += 400;
+      if (name.includes(normalizedQuery)) score += 120;
+      score += tokens.filter(t => name.includes(t)).length * 40;
+      score -= name.length;                       // prefer the plainer name
+
+      scored.push({ f, score });
+    }
+
+    return scored.sort((a, b) => b.score - a.score).slice(0, 12).map(x => x.f);
+  }
+
   function renderPicker(query) {
     const q = Resolve.normalize(query || '');
     const host = $('#pickerResults');
 
     if (!q) { host.innerHTML = `<p class="note">${esc(COPY.pickerEmpty)}</p>`; }
     else {
-      const hits = ANCHOR_FOODS.filter(f =>
-        Resolve.normalize(f.food_name).includes(q) ||
-        (f.aliases || []).some(a => Resolve.normalize(a).includes(q))
-      ).slice(0, 12);
+      const hits = searchFoods(q);
 
       host.innerHTML = hits.length
         ? hits.map(f => `<button type="button" class="result" data-pick="${esc(f.id)}">
@@ -836,6 +962,15 @@ const UI = (() => {
     $('#analyzeBtn').addEventListener('click', () => analyze(mt.value.trim(), false));
     $('#toPickerBtn').addEventListener('click', () => { renderPicker(''); showLogStep('log-picker'); });
 
+    // Photo path. The button proxies the file input so the control can be
+    // styled and sized like every other 44px target in the app.
+    $('#photoBtn').addEventListener('click', () => $('#photoInput').click());
+    $('#photoInput').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) analyzePhoto(file);
+    });
+    $('#photoClear').addEventListener('click', clearPhoto);
+
     $('#clarifyUse').addEventListener('click', async () => {
       const answer = $('#clarifyAnswer').value.trim();
       draft.clarificationStatus = 'answered';
@@ -952,5 +1087,5 @@ const UI = (() => {
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
 
-  return { wire, go, renderConsent, renderOnboarding, renderHome, toast, esc };
+  return { wire, go, renderConsent, renderOnboarding, renderHome, toast, esc, searchFoods };
 })();
