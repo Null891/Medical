@@ -74,6 +74,33 @@ const COPY = {
   pickerEmpty: "Search the food list — try 'potato' or 'milk'.",
   pickerNoResults: 'Nothing matched. Try a simpler word, or log it later.',
 
+  /* Limitations the app previously computed and told only its console.
+     A gap the developers can see and the user cannot is bookkeeping, not
+     honesty — and honesty is the whole argument this app makes. */
+  coverage: {
+    intro:
+      'RenalRoute works from a curated table of published food values. It is deliberately small, and ' +
+      'it has holes. Those holes are listed here rather than hidden, because a number you cannot see ' +
+      'the limits of is worth less than one you can.',
+    missing:
+      'Where a value is missing, the food is still logged and still counted for the nutrients we do ' +
+      'have — that nutrient is simply left out of the total, and the day is marked as partial rather ' +
+      'than quietly summing as though nothing were absent.',
+    thin:
+      'These food groups have too few lower-potassium members in the table for a swap to be worth ' +
+      'suggesting, so no swap line appears for them at all. That is a gap in our data, not a verdict ' +
+      'that no better option exists.',
+    verify:
+      'Every value here is transcribed test data awaiting a re-check against USDA FoodData Central. ' +
+      'Open any food in a meal to see its source and which of its numbers are still unverified.'
+  },
+
+  picker: {
+    lowKTitle:
+      "150 mg of potassium or less per serving — the American Kidney Fund's own cut-off for calling " +
+      'a serving low potassium. It describes this serving, not the whole day.'
+  },
+
   /* ── Per-food provenance ──
      The app tracked a citation and a per-nutrient verification list for
      every row and showed the user none of it. Claiming "these are

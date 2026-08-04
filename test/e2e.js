@@ -396,6 +396,31 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19o. AKF LOW-K BADGE + COVERAGE HONESTY ═══');
+  click('[data-nav="log"]'); await wait(20);
+  click('#toPickerBtn'); await wait(20);
+  type('#pickerSearch', 'rice'); await wait(30);
+  check('picker shows a Lower potassium badge', $('#pickerResults').textContent.includes('Lower potassium'), true);
+  // The badge must use AKF's published cut-off, not one of our invention.
+  check('AKF threshold is 150 mg', window.RenalRoute.Clinical.AKF_LOW_K_MG, 150);
+  check('  ...150 qualifies', window.RenalRoute.Clinical.isLowPotassiumServing(150), true);
+  check('  ...151 does not', window.RenalRoute.Clinical.isLowPotassiumServing(151), false);
+  // Absence of data must never render as reassurance.
+  check('  ...a missing value is NOT badged low',
+    window.RenalRoute.Clinical.isLowPotassiumServing(null), false);
+  type('#pickerSearch', 'potato'); await wait(30);
+  check('the 926 mg potato carries no low-potassium badge',
+    /Baked potato with skin<\/strong>\s*<span class="chip chip--ok/.test($('#pickerResults').innerHTML), false);
+
+  click('[data-nav="settings"]'); await wait(30);
+  const cov = $('#coverageCard').textContent;
+  check('settings admits what the table lacks', cov.includes("What this build doesn't know"), true);
+  check('  ...naming the sodium gap by count', /sodium on \d+ of \d+ foods/.test(cov), true);
+  check('  ...and the categories that get no swaps', cov.includes('No swap suggestions for'), true);
+  check('  ...framed as our gap, not a verdict on the food',
+    cov.includes('not a verdict'), true);
+  check('  ...and points at the per-food provenance', cov.includes('still unverified'), true);
+
   console.log('\n═══ 19n. PER-FOOD PROVENANCE ═══');
   click('[data-nav="log"]'); await wait(20);
   type('#mealText', 'grilled chicken, baked potato with skin, and a glass of milk');

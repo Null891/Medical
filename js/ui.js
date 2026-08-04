@@ -906,6 +906,36 @@ const UI = (() => {
 
   const NUTRIENT_WORD = { k: 'potassium', p: 'phosphorus', na: 'sodium' };
 
+  /* ═══════════ what this build does not know ═══════════
+     Every limitation here was already computed and shown only to the
+     console. A gap the developers can see and the user cannot is not
+     honesty, it is bookkeeping — and this app's entire argument is that
+     it tells you when it does not know something.
+
+     Rendered from ANCHOR_STATS rather than written by hand, so it cannot
+     quietly become untrue as the table changes. */
+  function renderCoverage() {
+    const host = $('#coverageCard');
+    if (!host) return;
+    const s = ANCHOR_STATS;
+
+    const gaps = [];
+    if (s.missingNa) gaps.push(`sodium on ${s.missingNa} of ${s.total} foods`);
+    if (s.missingP)  gaps.push(`phosphorus on ${s.missingP}`);
+    if (s.missingK)  gaps.push(`potassium on ${s.missingK}`);
+
+    host.innerHTML = `<div class="card">
+      <h2 class="h2">What this build doesn't know</h2>
+      <p class="note">${esc(COPY.coverage.intro)}</p>
+      ${gaps.length ? `<p class="note mt-2"><strong>Missing values:</strong> ${esc(gaps.join(', '))}.
+        ${esc(COPY.coverage.missing)}</p>` : ''}
+      ${s.thinCategories.length ? `<p class="note mt-2"><strong>No swap suggestions for:</strong>
+        ${esc(s.thinCategories.join(', ').replace(/_/g, ' '))}.
+        ${esc(COPY.coverage.thin)}</p>` : ''}
+      <p class="note mt-2">${esc(COPY.coverage.verify)}</p>
+    </div>`;
+  }
+
   /* ═══════════ label checker ═══════════
      Runs the same additive detectors the log flow uses, against text the
      user copies off a package. Nothing is logged and nothing is sent —
@@ -1118,15 +1148,26 @@ const UI = (() => {
     else {
       const hits = searchFoods(q);
 
+      /* The "Lower potassium" badge uses the American Kidney Fund's own
+         published cut-off for the phrase — 150 mg or less per serving —
+         rather than a threshold of our invention. It only labels what
+         the table already says, so at worst it costs a second look.
+         Foods with no potassium value get no badge: absence of data must
+         never render as reassurance. */
       host.innerHTML = hits.length
-        ? hits.map(f => `<button type="button" class="result" data-pick="${esc(f.id)}">
+        ? hits.map(f => {
+            const lowK = Clinical.isLowPotassiumServing(f.k_high);
+            return `<button type="button" class="result" data-pick="${esc(f.id)}">
             <span>
-              <strong>${esc(f.food_name)}</strong><br>
+              <strong>${esc(f.food_name)}</strong>
+              ${lowK ? `<span class="chip chip--ok chip--tiny" title="${esc(COPY.picker.lowKTitle)}">Lower potassium</span>` : ''}
+              <br>
               <span class="note">${esc(f.serving_text)} ·
                 K ${Clinical.fmt(f.k_low)}–${Clinical.fmt(f.k_high)} ·
                 P ${Clinical.fmt(f.p_low)}–${Clinical.fmt(f.p_high)}</span>
             </span><span aria-hidden="true">+</span>
-          </button>`).join('')
+          </button>`;
+          }).join('')
         : `<p class="note">${esc(COPY.pickerNoResults)}</p>`;
     }
 
@@ -1291,6 +1332,7 @@ const UI = (() => {
       </label>`;
 
     $('#demoModeToggle').checked = !!Store.settings().demoMode;
+    renderCoverage();
 
     const b = Store.parseBudget();
     const stats = ANCHOR_STATS;

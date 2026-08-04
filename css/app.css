@@ -353,6 +353,7 @@ button { font: inherit; color: inherit; }
 .chip--warn   { background: var(--color-tint-warn); color: var(--color-status-warn); border-color: var(--color-hairline); }
 .chip--danger { background: var(--color-tint-danger); color: var(--color-status-danger); border-color: var(--color-hairline); }
 .chip--muted  { color: var(--color-text-secondary); }
+.chip--tiny { padding: 2px 8px; font-size: 12px; margin-left: 6px; vertical-align: middle; }
 .chiprow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
 .provenance {

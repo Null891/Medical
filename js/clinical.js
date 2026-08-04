@@ -80,6 +80,18 @@ const Clinical = (() => {
     };
   }
 
+  /* The American Kidney Fund's own cut-off for calling a serving "low
+     potassium" in its patient Potassium Food Guide: 150 mg or less.
+
+     Unlike most numbers in this file, this one is not a product choice —
+     it is a published threshold from a patient-education source, used
+     exactly as published. It labels a serving; it never adds, subtracts,
+     or reweights a milligram, so a wrong label costs a reader a second
+     look rather than a wrong total. */
+  const AKF_LOW_K_MG = 150;
+  const isLowPotassiumServing = (kHigh) =>
+    kHigh !== null && kHigh !== undefined && kHigh <= AKF_LOW_K_MG;
+
   /* Ring colour thresholds — display-engineering choices, not clinical. */
   const RING_AMBER_AT = 0.70;   // high end ≥70% of target
   const BIG_ITEM_AT   = 0.33;   // single item ≥33% of target
@@ -266,6 +278,7 @@ const Clinical = (() => {
     TARGET_BOUNDS, EDUCATION_DEFAULTS, LAB_BOUNDS, STALE_DAYS,
     RING_AMBER_AT, BIG_ITEM_AT,
     leach, LEACH_RETAIN_LOW, LEACH_RETAIN_HIGH,
+    AKF_LOW_K_MG, isLowPotassiumServing,
     validateTarget, validateLab,
     potassiumMode, phosphorusMode,
     isPaused, swapsAllowed, restrictionToneAllowed, ringSuppressed,
