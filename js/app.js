@@ -13,6 +13,15 @@
 
   UI.wire();
 
+  /* Connectivity. Only meal parsing needs the network, so losing it
+     degrades one path rather than breaking the app — the banner says so
+     instead of leaving someone to discover it by failing to log. */
+  const offlineBanner = document.getElementById('offlineBanner');
+  const syncOnline = () => { offlineBanner.hidden = navigator.onLine !== false; };
+  window.addEventListener('online', syncOnline);
+  window.addEventListener('offline', syncOnline);
+  syncOnline();
+
   if (!Store.hasConsented()) {
     // Nothing behind the modal is reachable until it is acknowledged.
     UI.renderConsent();

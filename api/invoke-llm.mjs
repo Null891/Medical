@@ -41,9 +41,46 @@ function shapeIsAllowed(schema) {
   });
 }
 
+/* Cross-site callers get nothing. A same-origin fetch with a JSON
+   content-type always sends Origin, so a mismatch means the request came
+   from someone else's page — reject it rather than spend the key on it.
+   A MISSING Origin is allowed through: browsers cannot omit it on this
+   kind of request, so its absence means a non-browser client (curl, a
+   scanner), which cannot mount a CSRF attack against a user. Those
+   callers are still boxed in by the schema allowlist below — they can
+   only ever get a meal parse back, never general-purpose model access. */
+function originIsForeign(req) {
+  const origin = req.headers.origin;
+  if (!origin) return false;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (!host) return true;
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true;
+  }
+}
+
 export default async function handler(req, res) {
+  // Defence in depth: these also come from vercel.json, but a function
+  // response should not depend on the platform layer getting it right.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (originIsForeign(req)) {
+    return res.status(403).json({ error: 'forbidden_origin' });
+  }
+
+  // Requiring JSON blocks the "simple request" forms that skip preflight.
+  const ctype = String(req.headers['content-type'] || '');
+  if (!ctype.includes('application/json')) {
+    return res.status(415).json({ error: 'Expected application/json' });
   }
 
   const key = process.env.ANTHROPIC_API_KEY;

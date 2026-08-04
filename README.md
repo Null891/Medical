@@ -159,7 +159,7 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 ```powershell
 cd test
 npm install     # once — pulls jsdom
-node verify.js  # 57 unit assertions
+node verify.js  # 64 unit assertions
 node e2e.js     # 107 end-to-end assertions in a real DOM
 ```
 
@@ -173,7 +173,7 @@ It caught the click-blocking bug on its very first run and would have caught it 
 
 ### `verify.js` — the arithmetic
 
-57 assertions covering anchor matching and portion scaling, ring fill and colour thresholds, remaining-budget copy, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity: anchor matching and portion scaling, ring fill and colour thresholds, the remaining-budget copy strings, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity. It runs headless in a few hundred milliseconds and needs no dependencies.
+64 assertions covering anchor matching and portion scaling, ring fill and colour thresholds, remaining-budget copy, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity: anchor matching and portion scaling, ring fill and colour thresholds, the remaining-budget copy strings, every mode boundary, both sets of validation bounds, confidence tiers, and swap-pool integrity. It runs headless in a few hundred milliseconds and needs no dependencies.
 
 It has already earned its keep. It caught a real matching bug: a bare query of `spinach` was resolving to 420 mg — the cooked row — because the longest-alias rule was ranking `cooked spinach` (14 characters) above `spinach salad` (13) and silently picking a preparation the user never specified. The rule is now two-tiered: aliases *contained in* the query rank by length, because that is a genuine specificity signal; aliases that *contain* the query do not rank at all, because that is a broad query and every variant deserves to survive into the union range. Bare `spinach` now correctly reports **84–420 mg**.
 
@@ -181,7 +181,15 @@ Run this after any change to `resolve.js`, `clinical.js`, or the anchor table.
 
 ### Known gap it reports
 
-`legume, dairy, meat_fish_egg, snack_sweet, mixed_dish` each have fewer than two `swap_pool` candidates. The swap engine matches on category, so a flagged bean dish or a flagged cheese currently returns "no swap fits" every time. The scripted potato → cauliflower path works because `vegetable` is well populated; nothing else is. Fixing this is data-prep work in `anchor-foods.js`, not a code change — add lower-potassium members to the thin categories, or accept that those categories show flag cards without swap lines.
+`legume, dairy, meat_fish_egg, snack_sweet, mixed_dish` each have fewer than two `swap_pool` candidates. A flagged bean dish or cheese has nothing to offer. That case is now handled honestly rather than misleadingly: **a category with zero candidates renders no swap line at all**, because "no swap fits today's remaining budget" blames the user's budget for a gap in our table — and is flatly false on a fresh day with a full budget. The no-fit sentence is reserved for the case it actually describes: candidates exist, none fits today. Filling the thin categories is data-prep work in `anchor-foods.js`, not a code change.
+
+### Why swaps carry a `swap_affinity`
+
+Sorting a category by milligrams is not enough to make a suggestion a dietitian would stand behind. `vegetable` sorted by potassium answers a 926 mg baked potato with **raw cabbage at 60 mg** — true on the numbers, absurd on a plate — and it pushed cooked cauliflower (88 mg, 4th) out of the three the engine offers, so the scripted swap beat could never fire at all.
+
+`swap_affinity` carries what the nutrient columns cannot: whether one food can actually stand in for another. `cooked_side` holds potatoes, cauliflower, and green beans; `raw_salad` holds cabbage, cucumber, and raw spinach; `sauce` holds the tomato products. When a flagged row declares an affinity, candidates must match it — and where an affinity group is empty, the engine offers nothing rather than something silly.
+
+The unit suite guards both halves: cauliflower is offered, and no raw salad vegetable is.
 
 ---
 

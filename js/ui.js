@@ -56,6 +56,30 @@ const UI = (() => {
     el._t = setTimeout(() => { el.hidden = true; }, 2600);
   }
 
+  /* ═══════════ delete modal — focus is a loan ═══════════
+     Whatever opened the dialog gets focus back when it closes. Without
+     this, dismissing the modal drops a keyboard user at the top of the
+     document and they have to tab all the way back to where they were.
+     The confirm path deliberately does not restore, because the row
+     that opened it has just been deleted. */
+  let deleteOpener = null;
+
+  function openDeleteModal(opener) {
+    deleteOpener = opener || null;
+    $('#deleteModal').hidden = false;
+    const first = $('#deleteCancel');
+    if (first) first.focus();
+  }
+
+  function closeDeleteModal(restoreFocus) {
+    $('#deleteModal').hidden = true;
+    pendingDelete = null;
+    if (restoreFocus && deleteOpener && document.contains(deleteOpener)) {
+      deleteOpener.focus();
+    }
+    deleteOpener = null;
+  }
+
   /* ═══════════ consent ═══════════ */
 
   function renderConsent() {
@@ -92,7 +116,7 @@ const UI = (() => {
       <span class="field__label">${b.label} (${b.unit})</span>
       <input type="number" inputmode="numeric" step="1"
              data-tf="${which}" value="${value === null || value === undefined ? '' : value}">
-      <span class="field__err" data-err="${which}" hidden></span>
+      <span class="field__err" role="alert" data-err="${which}" hidden></span>
     </label>`;
   }
 
@@ -130,17 +154,17 @@ const UI = (() => {
       <label class="field">
         <span class="field__label">Serum potassium (mEq/L)</span>
         <input type="number" step="0.1" inputmode="decimal" data-lab="k">
-        <span class="field__err" data-laberr="k" hidden></span>
+        <span class="field__err" role="alert" data-laberr="k" hidden></span>
       </label>
       <label class="field">
         <span class="field__label">Serum phosphorus (mg/dL — check the unit on your report)</span>
         <input type="number" step="0.1" inputmode="decimal" data-lab="p">
-        <span class="field__err" data-laberr="p" hidden></span>
+        <span class="field__err" role="alert" data-laberr="p" hidden></span>
       </label>
       <label class="field">
         <span class="field__label">eGFR (mL/min/1.73m²) — optional</span>
         <input type="number" step="1" inputmode="numeric" data-lab="egfr">
-        <span class="field__err" data-laberr="egfr" hidden></span>
+        <span class="field__err" role="alert" data-laberr="egfr" hidden></span>
       </label>
       <label class="field">
         <span class="field__label">Date of lab report</span>
@@ -729,7 +753,7 @@ const UI = (() => {
 
       if (el.dataset.deleteMeal) {
         pendingDelete = el.dataset.deleteMeal;
-        $('#deleteModal').hidden = false;
+        openDeleteModal(el);
         return;
       }
       if (el.dataset.removeItem !== undefined) {
@@ -853,15 +877,21 @@ const UI = (() => {
 
     // Delete modal
     $('#deleteCancel').addEventListener('click', () => {
-      $('#deleteModal').hidden = true; pendingDelete = null;
+      closeDeleteModal(true);
     });
     $('#deleteConfirm').addEventListener('click', () => {
       if (pendingDelete && Store.deleteMeal(pendingDelete)) {
-        $('#deleteModal').hidden = true; pendingDelete = null;
+        // Focus is NOT restored here: the row that opened the modal no
+        // longer exists, and go('home') moves the user anyway.
+        closeDeleteModal(false);
         toast('Entry deleted'); go('home');
       } else {
         toast(COPY.mutationFailed);
       }
+    });
+    // Escape closes the modal, like every other dialog on the platform.
+    $('#deleteModal').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDeleteModal(true);
     });
 
     // Labs

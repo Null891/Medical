@@ -124,13 +124,35 @@ const Cards = (() => {
 
     const highField = nutrient === 'k' ? 'k_high' : nutrient === 'p' ? 'p_high' : 'na_high';
 
-    const cands = ANCHOR_FOODS.filter(f =>
+    /* Two different empty results, and telling them apart matters.
+       A category with NO swap_pool members at all (legume, dairy,
+       meat_fish_egg, snack_sweet, mixed_dish are all thin) can never
+       produce a suggestion — saying "no swap fits today's budget" would
+       blame the user's remaining budget for what is actually a gap in
+       our reference table. That sentence is false on a fresh day with a
+       full budget, and a dietitian would catch it immediately.
+       So: no coverage → say nothing. Coverage but nothing fits → say so. */
+    /* Category alone is too coarse to make a sensible suggestion.
+       Sorting "vegetable" by milligrams answers a baked potato with raw
+       cabbage — true on the numbers, absurd on a plate, and the kind of
+       thing a dietitian spots instantly. swap_affinity carries what the
+       nutrient columns cannot: whether one food can actually stand in
+       for another. When the flagged row declares an affinity we hold to
+       it and would rather say nothing than say something silly. Rows
+       without one fall back to category, as before. */
+    const pool = ANCHOR_FOODS.filter(f =>
       f.swap_pool === true &&
       f.category === row.category &&
       f.base_food !== row.base_food &&
-      f[highField] !== null && f[highField] !== undefined &&
-      f[highField] <= remaining
-    ).sort((a, b) => a[highField] - b[highField]).slice(0, 3);
+      (!row.swap_affinity || f.swap_affinity === row.swap_affinity) &&
+      f[highField] !== null && f[highField] !== undefined
+    );
+    if (!pool.length) return { swaps: [], reason: 'no_coverage', remaining, row };
+
+    const cands = pool
+      .filter(f => f[highField] <= remaining)
+      .sort((a, b) => a[highField] - b[highField])
+      .slice(0, 3);
 
     return { swaps: cands, reason: cands.length ? 'ok' : 'no_fit', remaining, row };
   }
@@ -149,6 +171,7 @@ const Cards = (() => {
     const { swaps, reason, row } = findSwaps(flaggedItem, nutrient, target, dayHigh);
     const label = nutrient === 'k' ? 'potassium' : nutrient === 'p' ? 'phosphorus' : 'sodium';
 
+    if (reason === 'no_coverage') return null;   // say nothing, not something false
     if (reason === 'no_fit') return COPY.cards.swapNoFit(label);
     if (!swaps.length || !row) return null;
 

@@ -2,12 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RenalRoute</title>
+<!-- No maximum-scale and no user-scalable=no: zoom is how a lot of this
+     app's users read it, and disabling it is an accessibility failure. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="RenalRoute — an educational potassium, phosphorus, and sodium tracker for people living with chronic kidney disease. Shows what you have left today, as honest ranges.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#FBF7F2">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex">
+<title>RenalRoute — what's left today</title>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+
+<a class="skiplink" href="#mainContent">Skip to content</a>
+
+<!-- Connectivity. Nothing here needs the network except meal parsing,
+     so this says what still works rather than just "you are offline". -->
+<div id="offlineBanner" class="dev-banner dev-banner--offline" role="status" hidden>
+  <span><strong>You're offline.</strong> Logging still works — use the food list instead of typing a meal.</span>
+</div>
 
 <!-- ═══════════ DEV BANNER — reference build only ═══════════ -->
 <div id="devBanner" class="dev-banner" role="note">
@@ -21,7 +36,7 @@
     <h1 class="modal__title" id="consentTitle">Before you start</h1>
     <div class="modal__body" id="consentBody"></div>
     <button type="button" class="btn btn--primary btn--block" id="consentAccept">I understand — continue</button>
-    <p class="modal__err" id="consentErr" hidden>Couldn't save just now — tap again.</p>
+    <p class="modal__err" id="consentErr" role="alert" hidden>Couldn't save just now — tap again.</p>
   </div>
 </div>
 
@@ -42,7 +57,7 @@
   <!-- Paused-mode banner (z.banner) — G.2 -->
   <div id="pausedBanner" class="banner banner--danger" role="alert" hidden></div>
 
-  <main class="main" id="main">
+  <main class="main" id="main" tabindex="-1"><span id="mainContent"></span>
 
     <!-- ───────── ONBOARDING ───────── -->
     <section class="screen" id="scr-onboarding" hidden>
@@ -58,7 +73,7 @@
           <label class="field">
             <span class="field__label">Your name</span>
             <input type="text" id="onbName" maxlength="40" autocomplete="given-name">
-            <span class="field__err" id="onbNameErr" hidden></span>
+            <span class="field__err" id="onbNameErr" role="alert" hidden></span>
           </label>
           <button type="button" class="btn btn--primary btn--block" data-onb-next="1">Continue</button>
         </div>
@@ -132,7 +147,7 @@
         <div id="logPending" hidden>
           <div class="skeleton-row"><span class="spinner" aria-hidden="true"></span> Breaking your meal down…</div>
         </div>
-        <div class="inline-error" id="logError" hidden>
+        <div class="inline-error" id="logError" role="alert" hidden>
           <p id="logErrorText"></p>
           <button type="button" class="btn btn--secondary" id="toPickerBtn">Pick from food list</button>
         </div>
@@ -158,7 +173,7 @@
         <div id="reviewCards"></div>
         <button type="button" class="btn btn--primary btn--block" id="saveMealBtn">Save to today</button>
         <button type="button" class="linkbtn linkbtn--block" id="backToTextBtn">Back to edit text</button>
-        <p class="inline-error" id="saveError" hidden>Couldn't save. Your meal is still here — tap Save to today to try again.</p>
+        <p class="inline-error" id="saveError" role="alert" hidden>Couldn't save. Your meal is still here — tap Save to today to try again.</p>
       </div>
 
       <!-- Step D: manual picker -->

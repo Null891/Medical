@@ -22,14 +22,14 @@ const sandbox = {
 vm.createContext(sandbox);
 
 ['js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js',
- 'js/clinical.js', 'js/resolve.js'].forEach(f => {
+ 'js/clinical.js', 'js/resolve.js', 'js/cards.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+const { Store, Clinical, Resolve, Cards, ANCHOR_FOODS, ANCHOR_STATS } =
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -155,6 +155,45 @@ check('cauliflower in pool, category vegetable', cauli.swap_pool + '/' + cauli.c
 check('  ...same category as potato', ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin').category, 'vegetable');
 check('  ...different base_food (swap is legal)',
   cauli.base_food !== ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin').base_food, 'true');
+
+console.log('\n═══ SWAP COVERAGE vs BUDGET — two different empties ═══');
+/* A category with no swap_pool members can never produce a suggestion.
+   Saying "no swap fits today's budget" there blames the user's remaining
+   budget for a gap in our own table — false on a fresh day, and exactly
+   the kind of thing the dietitian judge would catch. */
+const chili = ANCHOR_FOODS.find(f => f.category === 'mixed_dish' && f.k_high);
+const chiliPool = ANCHOR_FOODS.filter(f =>
+  f.swap_pool === true && f.category === 'mixed_dish' &&
+  chili && f.base_food !== chili.base_food && f.k_high != null);
+check('mixed_dish genuinely has zero swap candidates', chiliPool.length, 0);
+if (chili) {
+  const r = Cards.findSwaps({ matched_anchor_id: chili.id }, 'k', 2500, 200);
+  check('  ...so findSwaps reports no_coverage, not no_fit', r.reason, 'no_coverage');
+}
+const spud = ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin');
+const rFit = Cards.findSwaps({ matched_anchor_id: spud.id }, 'k', 2500, 2499);
+check('vegetable HAS candidates but none fit a 1 mg budget', rFit.reason, 'no_fit');
+const rOk = Cards.findSwaps({ matched_anchor_id: spud.id }, 'k', 2500, 200);
+check('  ...and fits comfortably on a fresh day', rOk.reason, 'ok');
+/* The engine sorts purely by milligrams, so the lowest vegetable wins —
+   raw cabbage at 60 mg, not the cauliflower the demo script names.
+   That is the rule working exactly as written, and it is also the rule's
+   blind spot: "instead of a baked potato, try raw cabbage" is not a
+   swap any dietitian would offer, because mg-per-serving says nothing
+   about whether one food can stand in for another on a plate.
+   The engine cannot know that. Showing several options lets the person
+   apply the judgement the table doesn't encode. */
+/* Before swap_affinity existed this returned raw cabbage — lowest on
+   milligrams, nonsense on a plate, and it pushed cauliflower out of the
+   top three entirely, so the scripted demo beat could never fire.
+   Affinity restricts the pool to foods that can actually stand in for a
+   baked potato. Guard both halves: the right answer, and the absence of
+   the salad vegetables that used to crowd it out. */
+check('  ...offers cooked cauliflower, the real potato substitute', rOk.swaps[0].id, 'cauliflower_cooked');
+check('  ...no raw salad vegetable is offered for a baked potato',
+  rOk.swaps.some(s => ['cabbage_raw', 'cucumber', 'spinach_raw', 'bell_pepper_green'].includes(s.id)), 'false');
+check('  ...cauliflower reads 88 mg per ½ cup, as the demo script says',
+  rOk.swaps[0].k_high + '/' + rOk.swaps[0].serving_text, '88/½ cup');
 
 console.log('\n═══ DATA-QUALITY REPORT (expected gaps, not failures) ═══');
 console.log(`  rows: ${ANCHOR_STATS.total} | missing K: ${ANCHOR_STATS.missingK} | ` +

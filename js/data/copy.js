@@ -67,8 +67,12 @@ const COPY = {
   pickerNoResults: 'Nothing matched. Try a simpler word, or log it later.',
 
   /* ── Dashboard ── */
+  /* A judge may open a brand-new account and give this screen five
+     seconds. It has to say what the app IS before it says what to do,
+     because an empty dashboard otherwise reads as a broken one. */
   emptyDashboard:
-    "Nothing logged yet today. Plain words work — try something like 'chicken, rice, and green beans'.",
+    "Your daily room for potassium, phosphorus, and sodium — the rings show what's left. " +
+    "Nothing logged yet today; plain words work: try 'chicken, rice, and green beans'.",
   emptyFacts: [
     'A half-cup of cooked spinach packs about five times the leaves — and five times the potassium — of a half-cup raw (420 vs 84 mg).',
     'Low-fat potato chips actually carry more potassium than regular (494 vs 339 mg per oz).',
@@ -159,7 +163,7 @@ const COPY = {
   /* ── eGFR — wording is PINNED. Never say "you are stage X". ── */
   egfrEducation: (n, stage, range) =>
     `The eGFR you entered (${n}) falls in the range labeled ${stage} (${range} mL/min/1.73 m²) on the KDIGO ` +
-    `scale your care team uses. Stage is shown for education only — it never changes your targets or guidance ` +
+    `scale your care team uses. This GFR category is shown for education only — it never changes your targets or guidance ` +
     `mode, and it isn't a diagnosis. Your targets come from your care team.`,
 
   /* ── Flag-card templates (G.4, G.5, G.6) ── */

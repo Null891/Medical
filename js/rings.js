@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   RINGS — three concentric remaining-budget arcs.
+   RINGS — three side-by-side remaining-budget arcs.
    ───────────────────────────────────────────────────────────────
    The product thesis made visual: the UNFILLED arc is what is LEFT.
    That is why the track renders in a visible tone rather than as
@@ -13,69 +13,77 @@
    amber because its high end crossed 70%. That divergence is the
    honest-uncertainty design working, not a bug.
 
-   Deliberately NOT Apple Activity rings: arcs never wrap past 360° or
-   overlap, there is no glow or gradient, the palette is warm rather than
-   red/green/cyan, and there is a visible gap at 12 o'clock where each
-   ring's label anchors. Apple prohibits replicating Activity rings for
-   non-Activity data.
+   WHY SIDE BY SIDE, NOT CONCENTRIC. Concentric was the first design and
+   it lost on three counts: the innermost arc (sodium) is illegible at
+   phone width; sodium is also the least trustworthy number in the app,
+   so it should not occupy the most cramped slot; and three separate
+   rings put real visual distance between this and Apple's Activity
+   rings, which may not be replicated for non-Activity data.
+
+   READING THE RING WITHOUT A VOICEOVER. A first-time viewer gets one
+   silent pass. So every ring states its own meaning in text: the label
+   says "left today", and the remaining range — not the consumed
+   figure — is the largest type in the column. Nobody should have to
+   infer that the empty part of the arc is the point.
    ═══════════════════════════════════════════════════════════════ */
 
 const Rings = (() => {
 
-  const SIZE = 240;
-  const CX = SIZE / 2;
-  const CY = SIZE / 2;
-  const STROKE = 15;
+  /* One ring's own coordinate space. Every ring is identical, so they
+     read as three instances of one thing rather than a hierarchy. */
+  const BOX = 100;
+  const C = BOX / 2;
+  const R = 41;
+  const STROKE = 9;
   const GAP_DEG = 26;          // the visible break at 12 o'clock
 
-  // Outermost = potassium (largest budget), then phosphorus, then sodium.
-  const GEOM = [
-    { key: 'k',  r: 98, label: 'K'  },
-    { key: 'p',  r: 76, label: 'P'  },
-    { key: 'na', r: 54, label: 'Na' }
-  ];
-
+  const ORDER = ['k', 'p', 'na'];
   const NUTRIENT_NAME = { k: 'Potassium', p: 'Phosphorus', na: 'Sodium' };
 
-  function arcLength(r) {
-    const full = 2 * Math.PI * r;
-    return full * (1 - GAP_DEG / 360);
+  const CIRC = 2 * Math.PI * R;
+  const ARC = CIRC * (1 - GAP_DEG / 360);
+  const ROT = `rotate(${-90 + GAP_DEG / 2} ${C} ${C})`;
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  /* Rotate so the gap sits at the top and the arc sweeps clockwise. */
-  const rotation = (r) => `rotate(${-90 + GAP_DEG / 2} ${CX} ${CY})`;
-
-  function ringSvg(rows) {
-    const parts = rows.map(row => {
-      const g = GEOM.find(x => x.key === row.key);
-      const len = arcLength(g.r);
-      const fill = row.suppressed ? 0 : row.fill;
-      const offset = len * (1 - fill);
-      const statusClass = row.status ? 'ring-fill--' + row.status.key : 'ring-fill--ok';
-
-      const track = `<circle cx="${CX}" cy="${CY}" r="${g.r}" fill="none"
-        class="ring-track" stroke-width="${STROKE}" stroke-linecap="round"
-        stroke-dasharray="${len} ${2 * Math.PI * g.r}" transform="${rotation(g.r)}"/>`;
-
-      const value = row.suppressed ? '' :
-        `<circle cx="${CX}" cy="${CY}" r="${g.r}" fill="none"
-          class="ring-fill ${statusClass}" stroke-width="${STROKE}"
-          stroke-dasharray="${len} ${2 * Math.PI * g.r}"
-          stroke-dashoffset="${offset}" transform="${rotation(g.r)}"/>`;
-
-      const labelY = CY - g.r + 3.5;
-      const label = `<text x="${CX}" y="${labelY}" text-anchor="middle"
-        class="ring-anchor">${g.label}</text>`;
-
-      return track + value + label;
-    }).join('');
-
-    return `<svg class="rings__svg" viewBox="0 0 ${SIZE} ${SIZE}" role="img"
-      aria-label="${escapeAttr(rows.map(r => r.aria).join('. '))}">${parts}</svg>`;
+  /* ── Compact remaining figure for the ring column ──
+     Still a RANGE — never collapsed to a single number, because a point
+     value here would undo the honesty the whole app is built on. The
+     full sentence ("About 600–1,100 mg left") stays in the stat block
+     below; this is its short form for a ~110px column. */
+  function compactLeft(low, high, target) {
+    const f = Clinical.fmt;
+    if (high <= target) return `${f(target - high)}–${f(target - low)}`;
+    if (low <= target)  return `0–${f(target - low)}`;
+    return `−${f(low - target)}–${f(high - target)}`;
+  }
+  function compactUnit(low, high, target) {
+    return (low > target) ? 'mg over' : 'mg left';
   }
 
-  function escapeAttr(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  function ringSvg(row) {
+    const fill = row.suppressed ? 0 : row.fill;
+    const offset = ARC * (1 - fill);
+    const statusClass = row.status ? 'ring-fill--' + row.status.key : 'ring-fill--ok';
+
+    const track = `<circle cx="${C}" cy="${C}" r="${R}" fill="none"
+      class="ring-track" stroke-width="${STROKE}" stroke-linecap="round"
+      stroke-dasharray="${ARC} ${CIRC}" transform="${ROT}"/>`;
+
+    /* A suppressed ring draws its track only. There is no limit being
+       tracked, so there is nothing honest to fill. */
+    const value = row.suppressed ? '' :
+      `<circle cx="${C}" cy="${C}" r="${R}" fill="none"
+        class="ring-fill ${statusClass}" stroke-width="${STROKE}"
+        stroke-dasharray="${ARC} ${CIRC}"
+        stroke-dashoffset="${offset}" transform="${ROT}"/>`;
+
+    return `<svg class="ring__svg" viewBox="0 0 ${BOX} ${BOX}" role="img"
+      aria-label="${esc(row.aria)}">${track}${value}</svg>`;
   }
 
   /* ── Build the per-nutrient view model ── */
@@ -84,11 +92,12 @@ const Rings = (() => {
     const totals = Store.dayTotals();
     const map = { k: totals.k, p: totals.p, na: totals.na };
 
-    return ['k', 'p', 'na'].map(key => {
+    return ORDER.map(key => {
       const target = t[key];
       const sums = map[key];
       const suppressed = Clinical.ringSuppressed(key);   // audit F5: low-K mode
-      const status = (target && !suppressed) ? Clinical.ringStatus(sums.high, target) : null;
+      const live = target && !suppressed;
+      const status = live ? Clinical.ringStatus(sums.high, target) : null;
 
       return {
         key,
@@ -98,9 +107,11 @@ const Rings = (() => {
         target,
         suppressed,
         status,
-        fill: (target && !suppressed) ? Clinical.ringFill(sums.low, sums.high, target) : 0,
+        fill: live ? Clinical.ringFill(sums.low, sums.high, target) : 0,
         readout: Clinical.readoutText(sums.low, sums.high, target),
-        remaining: (target && !suppressed) ? Clinical.remainingText(sums.low, sums.high, target) : null,
+        remaining: live ? Clinical.remainingText(sums.low, sums.high, target) : null,
+        compact: live ? compactLeft(sums.low, sums.high, target) : null,
+        unit: live ? compactUnit(sums.low, sums.high, target) : null,
         aria: buildAria(NUTRIENT_NAME[key], sums, target, status, suppressed)
       };
     });
@@ -110,6 +121,34 @@ const Rings = (() => {
     if (suppressed) return `${name}: not tracked against a limit right now`;
     if (!target) return `${name}: about ${Math.round(sums.low)} to ${Math.round(sums.high)} milligrams today, no target set`;
     return `${name}: ${Math.round(sums.low)} to ${Math.round(sums.high)} of ${target} milligrams used, ${status ? status.label.toLowerCase() : ''}`;
+  }
+
+  /* ── One ring column ── */
+  function ringCell(r) {
+    /* Suppressed (low-potassium mode): no fill, no colour, no
+       over-budget line. The ring is the loudest restriction signal in
+       the app, and in hypokalaemia it must stop signalling restriction. */
+    if (r.suppressed) {
+      return `<div class="ring">
+        ${ringSvg(r)}
+        <div class="ring__name">${r.name}</div>
+        <div class="ring__sub">not tracked</div>
+        <div class="ring__left ring__left--muted">${Clinical.fmt(r.low)}–${Clinical.fmt(r.high)}</div>
+        <div class="ring__unit">mg today</div>
+      </div>`;
+    }
+
+    const s = r.status;
+    return `<div class="ring">
+      ${ringSvg(r)}
+      <div class="ring__name">${r.name}</div>
+      <div class="ring__sub">left today</div>
+      <div class="ring__left">${r.compact}</div>
+      <div class="ring__unit">${r.unit}</div>
+      <div class="ring__status is-${s.key}">
+        <span aria-hidden="true">${s.icon}</span> ${s.label}
+      </div>
+    </div>`;
   }
 
   /* ── Full hero card markup ── */
@@ -149,13 +188,15 @@ const Rings = (() => {
          </div>` : '';
 
     return `<div class="card">
-      <div class="rings">${ringSvg(rows)}</div>
+      <div class="rings">${rows.map(ringCell).join('')}</div>
       ${uncounted}
       ${provenance}
     </div>`;
   }
 
-  /* ── The three status blocks beneath the rings ── */
+  /* ── The three detail blocks beneath the rings ──
+     The ring column answers "how much is left?". This answers
+     "left out of what?" — the consumed range against the target. */
   function renderStats() {
     if (!Store.hasTargets()) return '';
     const rows = model();
@@ -163,9 +204,8 @@ const Rings = (() => {
 
     return `<div class="card">` + rows.map(r => {
 
-      /* Audit F5: in low-potassium mode the ring is the loudest
-         restriction signal in the app, so the whole block becomes a
-         plain intake readout with no colour and no over-budget line. */
+      /* Audit F5: in low-potassium mode the whole block becomes a plain
+         intake readout with no colour and no over-budget line. */
       if (r.suppressed) {
         return `<div class="statblock">
           <div></div>
