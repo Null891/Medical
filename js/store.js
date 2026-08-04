@@ -246,6 +246,18 @@ const Store = (() => {
     return save();
   }
 
+  /* Put back a deleted record exactly as it was — same id, same
+     timestamps — so an undo restores history rather than creating a new
+     entry that merely resembles the old one. Ownership is re-stamped
+     from the current identity, never trusted from the snapshot, so this
+     cannot be used to inject a record belonging to someone else. */
+  function restoreMeal(record) {
+    if (!record || !record.id) return false;
+    if (db.meals.some(m => m.id === record.id)) return false;   // already back
+    db.meals.push(Object.assign({}, record, { created_by: me() }));
+    return save();
+  }
+
   /* ── Day totals: DERIVED, never persisted ── */
   function dayTotals(dateISO) {
     const rows = meals(dateISO || todayISO());
@@ -287,7 +299,7 @@ const Store = (() => {
     setTargets, useEducationRanges, claimCareTeam, skipTargets, targets, hasTargets,
     parseBudget, canAnalyze, countAnalysis, PARSE_CAP,
     labs, addLab, deleteLab, latestLab,
-    meals, meal, addMeal, updateMeal, deleteMeal, dayTotals,
+    meals, meal, addMeal, updateMeal, deleteMeal, restoreMeal, dayTotals,
     settings, setSetting, bumpCalls,
     _raw: () => db
   };

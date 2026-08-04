@@ -51,10 +51,38 @@ const UI = (() => {
   function toast(msg) {
     const el = $('#toast');
     el.textContent = msg;
+    el.classList.remove('toast--action');
     el.hidden = false;
     clearTimeout(el._t);
     el._t = setTimeout(() => { el.hidden = true; }, 2600);
   }
+
+  /* A toast that can be acted on. Undo belongs here rather than behind a
+     confirmation, because the honest sequence is: let people act, then
+     let them take it back. A dialog before every delete trains people to
+     dismiss dialogs; an undo after costs one tap only when it is wrong. */
+  function toastWithUndo(msg, onUndo) {
+    const el = $('#toast');
+    el.innerHTML = '';
+    el.append(doc().createTextNode(msg + ' '));
+    const btn = doc().createElement('button');
+    btn.type = 'button';
+    btn.className = 'toast__undo';
+    btn.textContent = 'Undo';
+    btn.addEventListener('click', () => {
+      clearTimeout(el._t);
+      el.hidden = true;
+      onUndo();
+    });
+    el.append(btn);
+    el.classList.add('toast--action');
+    el.hidden = false;
+    clearTimeout(el._t);
+    // Longer than a plain toast: an undo nobody has time to read is décor.
+    el._t = setTimeout(() => { el.hidden = true; }, 7000);
+  }
+
+  const doc = () => document;
 
   /* ═══════════ delete modal — focus is a loan ═══════════
      Whatever opened the dialog gets focus back when it closes. Without
@@ -224,6 +252,7 @@ const UI = (() => {
     $('#statBlocks').innerHTML = Rings.renderStats();
     renderQuickAdd();
     renderMealList();
+    $('#trendsCard').innerHTML = Trends.render();
   }
 
   /* ═══════════ quick add — the retention lever ═══════════
@@ -446,6 +475,7 @@ const UI = (() => {
       draft = null; picker = [];
       $('#mealText').value = ''; $('#mealCount').textContent = '0';
       $('#analyzeBtn').disabled = true;
+      Store.setSetting('mealDraft', '');   // the draft is spent
     }
     $('#logPending').hidden = true;
     $('#logPendingText').textContent = 'Breaking your meal down…';
@@ -1051,10 +1081,23 @@ const UI = (() => {
 
     // Log flow
     const mt = $('#mealText');
+    /* Draft saving. Typing out a meal is the most effortful thing this
+       app asks for, and losing it to a stray tab close or a phone
+       killing the page in the background is the kind of small betrayal
+       people do not give an app a second chance after. Saved on input,
+       cleared the moment the meal is analysed or abandoned. */
     mt.addEventListener('input', () => {
       $('#mealCount').textContent = mt.value.length;
       $('#analyzeBtn').disabled = mt.value.trim().length === 0;
+      Store.setSetting('mealDraft', mt.value);
     });
+
+    const draftText = Store.settings().mealDraft;
+    if (draftText) {
+      mt.value = draftText;
+      $('#mealCount').textContent = draftText.length;
+      $('#analyzeBtn').disabled = draftText.trim().length === 0;
+    }
     $('#analyzeBtn').addEventListener('click', () => analyze(mt.value.trim(), false));
     $('#toPickerBtn').addEventListener('click', () => { renderPicker(''); showLogStep('log-picker'); });
 
@@ -1111,11 +1154,20 @@ const UI = (() => {
       closeDeleteModal(true);
     });
     $('#deleteConfirm').addEventListener('click', () => {
+      // Snapshot before deleting so Undo can put back the exact record,
+      // id and timestamps included, rather than a lookalike.
+      const snapshot = pendingDelete ? Store.meal(pendingDelete) : null;
+      const copy = snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+
       if (pendingDelete && Store.deleteMeal(pendingDelete)) {
         // Focus is NOT restored here: the row that opened the modal no
         // longer exists, and go('home') moves the user anyway.
         closeDeleteModal(false);
-        toast('Entry deleted'); go('home');
+        go('home');
+        toastWithUndo('Entry deleted', () => {
+          if (Store.restoreMeal(copy)) { toast('Entry restored'); renderHome(); }
+          else toast(COPY.mutationFailed);
+        });
       } else {
         toast(COPY.mutationFailed);
       }

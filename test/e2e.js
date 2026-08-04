@@ -39,7 +39,7 @@ const doc = window.document;
 // in the same order index.html declares them.
 const scripts = [
   'js/theme.js', 'js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js', 'js/clinical.js',
-  'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/ui.js',
+  'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/ui.js',
   'js/seed.js', 'js/app.js'
 ];
 
@@ -382,6 +382,46 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('"Keep my data" closes without deleting', vis('#wipeModal'), false);
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
+
+  console.log('\n═══ 19g. UNDO + DRAFT SAVING ═══');
+  // Undo restores the exact record, not a lookalike.
+  click('[data-nav="home"]'); await wait(30);
+  const anyMeal = window.RenalRoute.Store.meals()[0];
+  const idBefore = anyMeal.id, nBefore = window.RenalRoute.Store.meals().length;
+  click('[data-meal="' + anyMeal.id + '"]'); await wait(20);
+  click('[data-delete-meal="' + anyMeal.id + '"]'); await wait(20);
+  click('#deleteConfirm'); await wait(30);
+  check('meal deleted', window.RenalRoute.Store.meals().length, nBefore - 1);
+  check('toast offers Undo', !!$('#toast .toast__undo'), true);
+  click('#toast .toast__undo'); await wait(30);
+  check('undo restores it', window.RenalRoute.Store.meals().length, nBefore);
+  check('  ...with the SAME id, not a copy',
+    window.RenalRoute.Store.meals().some(m => m.id === idBefore), true);
+  check('  ...and cannot double-restore', window.RenalRoute.Store.restoreMeal(anyMeal), false);
+
+  // Draft survives leaving the screen.
+  click('[data-nav="log"]'); await wait(20);
+  type('#mealText', 'half a chicken sandwich');
+  check('draft written as you type', window.RenalRoute.Store.settings().mealDraft, 'half a chicken sandwich');
+  click('[data-nav="home"]'); await wait(20);
+  click('[data-nav="log"]'); await wait(20);
+  check('draft cleared once the screen resets', window.RenalRoute.Store.settings().mealDraft, '');
+
+  console.log('\n═══ 19f. TRENDS — bands, never a line ═══');
+  window.RenalRoute.Seed.run();
+  click('[data-nav="home"]'); await wait(40);
+  check('trends card renders with a week of history', $('#trendsCard').innerHTML.length > 100, true);
+  check('  ...as bands, not a polyline', $$('#trendsCard polyline, #trendsCard path').length, 0);
+  check('  ...one band rect per logged day, per nutrient',
+    $$('#trendsCard .trend-band').length > 0, true);
+  check('  ...with the target drawn as a reference line',
+    $$('#trendsCard .trend-target').length > 0, true);
+  check('  ...and a text alternative for screen readers',
+    $('#trendsCard svg').getAttribute('aria-label').includes('milligrams'), true);
+  check('copy states the bar is a range, not a number',
+    $('#trendsCard').textContent.includes("that day's range"), true);
+  check('unlogged days are blank, never counted as zero',
+    $('#trendsCard').textContent.includes('rather than counted as zero'), true);
 
   console.log('\n═══ 19e. QUICK ADD — repeat a meal, zero AI ═══');
   window.RenalRoute.Seed.run();      // gives a week of repeatable meals
