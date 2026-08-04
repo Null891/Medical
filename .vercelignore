@@ -1,0 +1,5 @@
+# Tooling and local test harness — never part of the deployed site.
+.claude/
+test/
+*.md
+!README.md

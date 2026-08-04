@@ -14,12 +14,21 @@ A working implementation of the RenalRoute spec, built to run alongside the Base
 
 ```powershell
 npm i -g vercel        # once
-cd "renalroute"
-vercel                 # preview
+vercel                 # preview   (run from the repo root)
 vercel --prod          # production
 ```
 
-Or push to GitHub and import the repo in the Vercel dashboard. There is no build step and no framework — Vercel serves the static files and picks up `api/invoke-llm.js` automatically.
+Or push to GitHub and import the repo. **`index.html` must sit at the repository root** — that is the whole configuration. There is no build step, no framework preset to choose, no output directory to set. Vercel serves the static files and picks up `api/invoke-llm.mjs` as a function automatically.
+
+### If you get a 404
+
+The cause is almost always that Vercel is looking at a folder with no `index.html` in it. Check **Settings → General → Root Directory** and make sure it points at the folder containing `index.html` — leave it blank if that's the repo root.
+
+Deliberate non-fixes, so nobody "helpfully" adds them later:
+
+- **Do not set an Output Directory.** There's no build, so there's no `dist` or `build` folder. Pointing at one guarantees a 404.
+- **Do not add a catch-all rewrite to `/index.html`.** This app is a single page but it does *not* use client-side URL routing — every screen lives at `/` and is shown or hidden in place. A blanket `"/(.*)" → "/index.html"` rewrite buys nothing and puts the `/api/invoke-llm` route at risk for no reason.
+- **Do not pick a Framework Preset.** "Other" is correct. Selecting Vite or CRA makes Vercel run a build that doesn't exist.
 
 **To enable live meal parsing**, add one environment variable in Vercel → Project → Settings → Environment Variables:
 

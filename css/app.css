@@ -63,6 +63,15 @@ button { font: inherit; color: inherit; }
 .helper { color: var(--color-text-secondary); margin-bottom: var(--space-3); }
 .note { font-size: var(--type-caption); color: var(--color-text-secondary); line-height: 1.5; }
 .note--src { margin-top: var(--space-2); }
+
+/* Spacing utilities.
+   These exist because the Content-Security-Policy sets style-src 'self',
+   which blocks inline style="…" attributes (they fall under style-src-attr).
+   A local file:// page ignores the header and looks fine; the deployed site
+   would silently lose the spacing. Classes keep the policy tight AND the
+   layout correct in both places. Do not reintroduce inline styles. */
+.mt-xs { margin-top: 6px; }
+.mt-2  { margin-top: var(--space-2); }
 .quoted {
   padding: var(--space-2) var(--space-3); border-left: 3px solid var(--color-hairline);
   color: var(--color-text-secondary); margin-bottom: var(--space-3);

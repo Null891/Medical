@@ -600,24 +600,24 @@ const UI = (() => {
 
     if (kM.mode !== 'no_lab') {
       const body = COPY.kMode[kM.mode];
-      html += `<p style="margin-top:var(--space-2)">${esc(
+      html += `<p class="mt-2">${esc(
         typeof body === 'function' ? body(kM.value, kM.date) : ''
       )}</p>`;
       if (kM.mode === 'restricted') {
-        html += `<button type="button" class="btn btn--secondary btn--block"
-          data-nav="settings" style="margin-top:var(--space-2)">Set my care-team targets</button>`;
+        html += `<button type="button" class="btn btn--secondary btn--block mt-2"
+          data-nav="settings">Set my care-team targets</button>`;
       }
     }
     if (pM.mode !== 'no_lab') {
       const body = COPY.pMode[pM.mode];
-      html += `<p style="margin-top:var(--space-2)">${esc(
+      html += `<p class="mt-2">${esc(
         typeof body === 'function' ? body(pM.value, pM.date) : ''
       )}</p>`;
     }
     if (kM.mode === 'no_lab' && pM.mode === 'no_lab') {
-      html += `<p style="margin-top:var(--space-2)">${esc(COPY.noLabsCard)}</p>`;
+      html += `<p class="mt-2">${esc(COPY.noLabsCard)}</p>`;
     }
-    if (kM.stale) html += `<p class="note" style="margin-top:var(--space-2)">${esc(COPY.staleNudge('potassium'))}</p>`;
+    if (kM.stale) html += `<p class="note mt-2">${esc(COPY.staleNudge('potassium'))}</p>`;
     html += `</div>`;
 
     const egfrRec = Store.latestLab('egfr_ml_min_1_73m2');

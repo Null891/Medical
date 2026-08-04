@@ -1,0 +1,11 @@
+# Python bytecode from the local skills tooling
+__pycache__/
+*.py[cod]
+
+# Vercel
+.vercel/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp

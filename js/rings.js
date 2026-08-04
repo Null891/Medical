@@ -138,7 +138,7 @@ const Rings = (() => {
     }
 
     const uncounted = totals.uncountedMeals > 0
-      ? `<p class="note" style="margin-top:var(--space-2)">
+      ? `<p class="note mt-2">
            ${totals.uncountedMeals} meal${totals.uncountedMeals === 1 ? '' : 's'} not counted today
          </p>` : '';
 
@@ -172,7 +172,7 @@ const Rings = (() => {
           <div>
             <div class="statblock__name">${r.name}</div>
             <div class="statblock__left">≈ ${Clinical.fmt(r.low)}–${Clinical.fmt(r.high)} mg today</div>
-            <p class="note" style="margin-top:6px">${COPY.lowModeRing}</p>
+            <p class="note mt-xs">${COPY.lowModeRing}</p>
           </div>
         </div>`;
       }
