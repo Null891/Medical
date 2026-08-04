@@ -74,6 +74,19 @@ const COPY = {
   pickerEmpty: "Search the food list — try 'potato' or 'milk'.",
   pickerNoResults: 'Nothing matched. Try a simpler word, or log it later.',
 
+  /* ── Per-food provenance ──
+     The app tracked a citation and a per-nutrient verification list for
+     every row and showed the user none of it. Claiming "these are
+     estimates" while withholding which ones and why is asking for trust
+     the interface could simply have earned. */
+  source: {
+    cited: (food, serving, src) =>
+      `${food}, per ${serving}. Values from ${src}.`,
+    unverified: (list) =>
+      `Not yet re-checked against USDA FoodData Central: ${list}. Those figures are the ones ` +
+      `most likely to move, and they are shown as ranges for that reason.`
+  },
+
   /* ── Barcode lookup ── */
   barcode: {
     invalid: "That doesn't look like a barcode — it should be 8 to 14 digits.",

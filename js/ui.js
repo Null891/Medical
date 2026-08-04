@@ -795,6 +795,22 @@ const UI = (() => {
          next to the portion, not in an education card they read once. */
       const row = it.matched_anchor_id
         ? ANCHOR_FOODS.find(f => f.id === it.matched_anchor_id) : null;
+
+      /* Where the number came from, per food, on request.
+         The app already tracked a citation and a per-nutrient verify
+         list for every row and showed the user none of it — so "these
+         are estimates" was a claim the interface asked people to take on
+         faith while sitting on the specifics. Collapsed by default,
+         because provenance should be available without being in the way. */
+      const provenance = row ? (() => {
+        const gaps = (row.verify || []).map(v => NUTRIENT_WORD[v] || v);
+        return `<details class="srcnote">
+          <summary>Where this number comes from</summary>
+          <p class="note">${esc(COPY.source.cited(row.food_name, row.serving_text, row.source))}</p>
+          ${gaps.length ? `<p class="note">${esc(COPY.source.unverified(gaps.join(', ')))}</p>` : ''}
+          ${row.note ? `<p class="note">${esc(row.note)}</p>` : ''}
+        </details>`;
+      })() : '';
       const cooking = (row && row.leachable)
         ? `<div class="cookrow">
              <span class="cookrow__q">How was it cooked?</span>
@@ -817,6 +833,7 @@ const UI = (() => {
           ${it._leached ? `<p class="itemrow__meta itemrow__meta--good">${esc(COPY.leachApplied)}</p>` : ''}
           ${stepper}
           ${cooking}
+          ${provenance}
         </div>
         <div><button type="button" class="iconbtn" data-remove-item="${idx}"
           aria-label="Remove ${esc(it.name)}">✕</button></div>
@@ -886,6 +903,8 @@ const UI = (() => {
     toast(record.meal_date === Store.todayISO() ? 'Saved to today' : 'Saved');
     go('home');
   }
+
+  const NUTRIENT_WORD = { k: 'potassium', p: 'phosphorus', na: 'sodium' };
 
   /* ═══════════ label checker ═══════════
      Runs the same additive detectors the log flow uses, against text the

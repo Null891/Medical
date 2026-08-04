@@ -396,6 +396,25 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19n. PER-FOOD PROVENANCE ═══');
+  click('[data-nav="log"]'); await wait(20);
+  type('#mealText', 'grilled chicken, baked potato with skin, and a glass of milk');
+  click('#analyzeBtn'); await wait(600);
+  const src = $$('#reviewItems .srcnote');
+  check('every anchor-matched item can show its source', src.length, 3);
+  check('collapsed by default, not in the way', src[0].hasAttribute('open'), false);
+  check('  ...but reachable by keyboard as a real disclosure',
+    src[0].querySelector('summary').tagName, 'SUMMARY');
+  const srcText = $('#reviewItems').textContent;
+  check('names the citation', srcText.includes('AKF/USDA'), true);
+  check('names the serving the figure is per', srcText.includes('per 1 medium'), true);
+  check('says WHICH nutrients are unverified, not just that some are',
+    srcText.includes('Not yet re-checked against USDA'), true);
+  check('  ...spelled out in words, not field codes',
+    srcText.includes('phosphorus') && !srcText.includes('verify=['), true);
+  check('the milk re-derivation note surfaces where it matters',
+    srcText.includes('re-derived') || srcText.includes('half-cup'), true);
+
   console.log('\n═══ 19m. BARCODE LOOKUP ═══');
   click('[data-nav="label"]'); await wait(30);
   check('manual barcode entry always available', vis('#barcodeInput'), true);

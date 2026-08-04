@@ -448,6 +448,44 @@ button { font: inherit; color: inherit; }
 .itemrow:last-child { border-bottom: 0; }
 .itemrow__name { font-weight: 600; word-break: break-word; }
 .itemrow__meta { font-size: var(--type-caption); color: var(--color-text-secondary); }
+/* Provenance, collapsed. <details> rather than a scripted toggle: it is
+   keyboard-operable, screen-reader-announced, and findable by in-page
+   search even while closed — all for free. */
+.srcnote { margin-top: var(--space-2); }
+.srcnote > summary {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--color-accent);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.srcnote > summary::marker { content: ''; }
+.srcnote > summary::-webkit-details-marker { display: none; }
+.srcnote > summary::before {
+  content: "i"; flex: 0 0 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid currentColor; border-radius: 50%;
+  font-size: 11px; font-style: italic; text-decoration: none;
+}
+.srcnote > p { margin-top: 4px; }
+
+/* Printing. The clinic summary downloads as text, but somebody will
+   print the dashboard, and a print of dark mode on an inkjet is a waste
+   of a cartridge. Force light, drop the furniture, keep the numbers. */
+@media print {
+  :root, :root[data-theme="dark"] {
+    --color-canvas: #fff; --color-surface: #fff; --color-surface-warm: #fff;
+    --color-text-primary: #000; --color-text-secondary: #333;
+    --shadow-card: none; --shadow-modal: none;
+  }
+  .tabbar, .skiplink, .dev-banner, .btn, .linkbtn, .toast,
+  .stepper, .cookrow, .iconbtn, #quickAdd { display: none !important; }
+  .card { border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
+  .srcnote[open] > summary { display: none; }
+  .srcnote { display: block; }          /* provenance prints, always */
+  .main { padding: 0; max-width: none; }
+  a[href]::after { content: ""; }
+}
+
 .barcode-row { display: flex; gap: var(--space-2); align-items: stretch; }
 .barcode-row input { flex: 1 1 auto; min-width: 0; }
 .barcode-row .btn { flex: 0 0 auto; }
