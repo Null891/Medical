@@ -95,21 +95,19 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('consent timestamp stored', !!window.RenalRoute.Store.profile().consent_accepted_at, true);
   check('landed on onboarding', vis('#scr-onboarding'), true);
 
-  console.log('\n═══ 3. ONBOARDING — no target is ever pre-filled ═══');
-  check('step 1 shown', $('[data-step="1"]').hidden, false);
-  type('#onbName', 'Frank');
-  click('[data-onb-next="1"]');
-  await wait(20);
-  check('advanced to targets step', $('[data-step="2"]').hidden, false);
+  console.log('\n═══ 3. ONBOARDING — one screen, nothing pre-filled ═══');
+  check('name and targets are on the SAME screen', vis('#onbName') && vis('#onbTargetFields'), true);
+  check('no labs step exists anywhere in onboarding', $('#onbLabFields'), null);
   check('potassium field is EMPTY on arrival', $('#onbTargetFields [data-tf="k"]').value, '');
   check('phosphorus field is EMPTY', $('#onbTargetFields [data-tf="p"]').value, '');
   check('profile budget_source still none', window.RenalRoute.Store.profile().budget_source, 'none');
+  type('#onbName', 'Frank');
 
   console.log('\n═══ 4. TARGET BOUNDS REJECT BAD INPUT ═══');
   type('#onbTargetFields [data-tf="k"]', '50');
   click('#onbSaveCareTeam');
   await wait(20);
-  check('K=50 blocked, still on step 2', $('[data-step="2"]').hidden, false);
+  check('K=50 blocked, still on onboarding', vis('#scr-onboarding'), true);
   check('inline error is VISIBLE (display:flex vs hidden bug)', vis('#onbTargetFields [data-err="k"]'), true);
   check('error text is the sanity-bound copy',
     $('#onbTargetFields [data-err="k"]').textContent.includes("app's limits are technical"), true);
@@ -123,14 +121,14 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('P target = 900', p1.phosphorus_budget_mg, 900);
   check('Na target = 2000', p1.sodium_budget_mg, 2000);
   check('provenance = education_default', p1.budget_source, 'education_default');
-  check('advanced to labs step', $('[data-step="3"]').hidden, false);
 
-  console.log('\n═══ 6. LABS ARE SKIPPABLE — never a gate ═══');
-  check('button reads "Skip for now"', $('#onbLabAction').textContent.trim(), 'Skip for now');
-  click('#onbLabAction');
-  await wait(20);
-  check('landed on Home', vis('#scr-home'), true);
+  console.log('\n═══ 6. ONE SCREEN LANDS STRAIGHT ON HOME ═══');
+  check('landed on Home — no labs gate in between', vis('#scr-home'), true);
   check('no lab records created', window.RenalRoute.Store.labs().length, 0);
+  // The optional name typed at the top must survive pressing a button
+  // further down the same screen.
+  check('name typed above the fold was still saved',
+    window.RenalRoute.Store.profile().display_name, 'Frank');
 
   console.log('\n═══ 7. HOME RENDERS ═══');
   check('rings card rendered', $('#ringCard').innerHTML.length > 100, true);
@@ -370,6 +368,20 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('bare "potato" prefers the plain name over chips',
     window.RenalRoute.UI.searchFoods('potato')[0].base_food, 'potato');
   check('nonsense still returns nothing', window.RenalRoute.UI.searchFoods('zzzz qqqq').length, 0);
+
+  console.log('\n═══ 19c. DELETE ALL MY DATA ═══');
+  click('[data-nav="settings"]'); await wait(20);
+  check('delete-everything control offered to the user', vis('#deleteAllBtn'), true);
+  check('wipe modal starts hidden', vis('#wipeModal'), false);
+  click('#deleteAllBtn'); await wait(20);
+  check('confirmation opens', vis('#wipeModal'), true);
+  check('  ...and names what will actually go',
+    /\d+ meal/.test($('#wipeSummary').textContent), true);
+  const mealsBeforeWipe = window.RenalRoute.Store.meals().length;
+  click('#wipeCancel'); await wait(20);
+  check('"Keep my data" closes without deleting', vis('#wipeModal'), false);
+  check('  ...and nothing was removed',
+    window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
   console.log('\n═══ 20. SEED THE DEMO PERSONA ═══');
   window.RenalRoute.Seed.run();

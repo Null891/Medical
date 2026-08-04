@@ -62,51 +62,51 @@
 
     <!-- ───────── ONBOARDING ───────── -->
     <section class="screen" id="scr-onboarding" hidden>
+      <!-- ONE screen, not three.
+           A three-step wizard for two optional fields and one real
+           decision is three chances to abandon. The labs step is gone
+           entirely: labs never gated anything, so asking for a blood
+           result before someone has logged a single meal only ever cost
+           us people. It lives on the Labs tab, where it belongs. -->
       <div class="onb">
-        <ol class="onb__dots" aria-label="Onboarding progress">
-          <li data-step="1" class="is-active"></li><li data-step="2"></li><li data-step="3"></li>
-        </ol>
+        <h1 class="h1">Set up RenalRoute</h1>
+        <p class="helper">Two questions, both optional except one choice about your targets. You can change any of it later.</p>
 
-        <!-- Step 1: display name -->
-        <div class="onb__step" data-step="1">
-          <h1 class="h1">What should we call you?</h1>
-          <p class="helper">A first name or nickname is plenty — this only personalizes your greeting.</p>
-          <label class="field">
-            <span class="field__label">Your name</span>
-            <input type="text" id="onbName" maxlength="40" autocomplete="given-name">
-            <span class="field__err" id="onbNameErr" role="alert" hidden></span>
-          </label>
-          <button type="button" class="btn btn--primary btn--block" data-onb-next="1">Continue</button>
-        </div>
+        <label class="field">
+          <span class="field__label">What should we call you? (optional)</span>
+          <input type="text" id="onbName" maxlength="40" autocomplete="given-name" placeholder="">
+          <span class="field__note">A first name or nickname is plenty — this only personalizes your greeting.</span>
+          <span class="field__err" id="onbNameErr" role="alert" hidden></span>
+        </label>
 
-        <!-- Step 2: targets (provenance) -->
-        <div class="onb__step" data-step="2" hidden>
-          <h1 class="h1">Your daily targets</h1>
-          <p class="helper">KDOQI guidelines don't set one-size-fits-all numbers for potassium or phosphorus — targets are personal, set with your care team.</p>
-          <div id="onbTargetFields"></div>
-          <p class="note" id="onbTargetCaption" hidden></p>
-          <button type="button" class="btn btn--primary btn--block" id="onbSaveCareTeam" disabled>Save my care team's targets</button>
-          <button type="button" class="btn btn--secondary btn--block" id="onbUseEducation">I don't have targets — use general education ranges</button>
-          <button type="button" class="linkbtn linkbtn--block" id="onbSkipTargets">Skip — track without targets</button>
-          <label class="field field--mt">
-            <span class="field__label">CKD stage (optional)</span>
+        <label class="field">
+          <span class="field__label">CKD stage (optional)</span>
+          <div class="select-wrap">
             <select id="onbStage">
               <option value="not_sure">Prefer not to say</option>
               <option value="G3a">G3a</option><option value="G3b">G3b</option>
               <option value="G4">G4</option><option value="G5">G5</option>
             </select>
-            <span class="field__note">Used for education only — it never changes your targets.</span>
-          </label>
-          <button type="button" class="linkbtn" data-learn="protein">Why only these three nutrients?</button>
-        </div>
+            <svg class="select-wrap__chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+          <span class="field__note">Used for education only — it never changes your targets.</span>
+        </label>
 
-        <!-- Step 3: labs (skippable) -->
-        <div class="onb__step" data-step="3" hidden>
-          <h1 class="h1">Recent labs?</h1>
-          <p class="helper">Have a recent lab report? Adding your potassium or phosphorus result tailors RenalRoute's tone. Totally optional — everything works without it.</p>
-          <div id="onbLabFields"></div>
-          <button type="button" class="btn btn--primary btn--block" id="onbLabAction">Skip for now</button>
-        </div>
+        <hr class="onb__rule">
+
+        <h2 class="h2">Your daily targets</h2>
+        <p class="helper">KDOQI guidelines don't set one-size-fits-all numbers for potassium or phosphorus — targets are personal, set with your care team.</p>
+        <div id="onbTargetFields"></div>
+        <p class="note" id="onbTargetCaption" hidden></p>
+        <button type="button" class="btn btn--primary btn--block" id="onbSaveCareTeam" disabled>Save my care team's targets</button>
+        <button type="button" class="btn btn--secondary btn--block" id="onbUseEducation">I don't have targets — use general education ranges</button>
+        <button type="button" class="linkbtn linkbtn--block" id="onbSkipTargets">Skip — track without targets</button>
+        <button type="button" class="linkbtn" data-learn="protein">Why only these three nutrients?</button>
+
+        <p class="note mt-2">Have recent lab results? You can add them any time from the Labs tab — RenalRoute works fully without them.</p>
       </div>
     </section>
 
@@ -278,7 +278,31 @@
         </div>
         <p class="note" id="callCounter"></p>
       </div>
+
+      <!-- Your data, and getting rid of it. Separate from the dev block
+           above because this one is for the person using the app. -->
+      <div class="card">
+        <h2 class="h2">Your data</h2>
+        <p class="note">Everything you log stays on this device, in this browser. Nothing is uploaded, and there is no account. Clearing your browser data removes it too.</p>
+        <button type="button" class="btn btn--danger btn--block mt-2" id="deleteAllBtn">Delete all my data</button>
+      </div>
     </section>
+
+    <!-- Delete-everything confirmation. Destructive and irreversible, so
+         it names exactly what goes and requires a second, deliberate tap. -->
+    <div id="wipeModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="wipeTitle" hidden>
+      <div class="modal modal--sm">
+        <h2 class="modal__title" id="wipeTitle">Delete everything?</h2>
+        <div class="modal__body">
+          <p id="wipeSummary"></p>
+          <p>This removes your meals, lab entries, targets, and settings from this device. It can't be undone.</p>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--danger" id="wipeConfirm">Delete everything</button>
+          <button type="button" class="btn btn--ghost" id="wipeCancel">Keep my data</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ───────── LEARN CARD (depth 2) ───────── -->
     <section class="screen" id="scr-learn" hidden>

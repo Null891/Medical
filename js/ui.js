@@ -99,15 +99,27 @@ const UI = (() => {
 
   /* ═══════════ onboarding ═══════════ */
 
-  let onbStep = 1;
 
+  /* One screen. Nothing is pre-filled — the target fields render empty
+     and stay empty until the user makes an explicit choice. */
   function renderOnboarding() {
-    $$('.onb__step').forEach(el => { el.hidden = Number(el.dataset.step) !== onbStep; });
-    $$('.onb__dots li').forEach(el => {
-      el.classList.toggle('is-active', Number(el.dataset.step) <= onbStep);
-    });
-    if (onbStep === 2) renderTargetFields('#onbTargetFields', {});
-    if (onbStep === 3) renderLabFields('#onbLabFields');
+    renderTargetFields('#onbTargetFields', {});
+  }
+
+  /* Name and stage are captured wherever the user leaves them, because
+     on a single screen they may fill those and then press any of the
+     three target buttons. Reading them at that moment is what makes the
+     fields genuinely optional rather than a hidden prerequisite. */
+  function commitOnboardingProfile() {
+    const name = $('#onbName').value.trim();
+    if (name.length > 40) {
+      $('#onbNameErr').textContent = "That's a bit long — 40 characters max.";
+      $('#onbNameErr').hidden = false;
+      return false;
+    }
+    $('#onbNameErr').hidden = true;
+    Store.updateProfile({ display_name: name, ckd_stage: $('#onbStage').value });
+    return true;
   }
 
   function targetFieldMarkup(which, value) {
@@ -170,12 +182,6 @@ const UI = (() => {
         <span class="field__label">Date of lab report</span>
         <input type="date" data-lab="date" value="${Store.todayISO()}" max="${Store.todayISO()}">
       </label>`;
-    if (sel === '#onbLabFields') {
-      $(sel).addEventListener('input', () => {
-        const any = ['k', 'p', 'egfr'].some(f => $(`${sel} [data-lab="${f}"]`).value.trim() !== '');
-        $('#onbLabAction').textContent = any ? 'Save and continue' : 'Skip for now';
-      });
-    }
   }
 
   function readLabs(sel) {
@@ -912,44 +918,30 @@ const UI = (() => {
       }
     });
 
-    // Onboarding
-    $$('[data-onb-next]').forEach(b => b.addEventListener('click', () => {
-      const name = $('#onbName').value.trim();
-      if (name.length > 40) {
-        $('#onbNameErr').textContent = "That's a bit long — 40 characters max.";
-        $('#onbNameErr').hidden = false; return;
-      }
-      Store.updateProfile({ display_name: name });
-      onbStep = 2; renderOnboarding();
-    }));
-
+    /* Onboarding — one screen, three ways out, all of them finished.
+       Each target button commits the optional profile fields first, so a
+       name typed at the top is never lost by pressing a button further
+       down. */
     $('#onbSaveCareTeam').addEventListener('click', () => {
+      if (!commitOnboardingProfile()) return;
       const r = readTargets('#onbTargetFields');
       if (!r.ok) return;
       Store.setTargets(r.values, 'care_team');
-      Store.updateProfile({ ckd_stage: $('#onbStage').value });
-      onbStep = 3; renderOnboarding();
+      go('home');
     });
 
     $('#onbUseEducation').addEventListener('click', () => {
+      if (!commitOnboardingProfile()) return;
       Store.useEducationRanges();
-      Store.updateProfile({ ckd_stage: $('#onbStage').value });
       renderTargetFields('#onbTargetFields', Store.targets());
       $('#onbTargetCaption').textContent = COPY.captionEducation;
       $('#onbTargetCaption').hidden = false;
-      onbStep = 3; renderOnboarding();
+      go('home');
     });
 
     $('#onbSkipTargets').addEventListener('click', () => {
+      if (!commitOnboardingProfile()) return;
       Store.skipTargets();
-      Store.updateProfile({ ckd_stage: $('#onbStage').value });
-      onbStep = 3; renderOnboarding();
-    });
-
-    $('#onbLabAction').addEventListener('click', () => {
-      const r = readLabs('#onbLabFields');
-      if (!r.ok) return;
-      if (r.any) Store.addLab({ k: r.values.k, p: r.values.p, egfr: r.values.egfr, lab_date: r.values.lab_date });
       go('home');
     });
 
@@ -1069,6 +1061,39 @@ const UI = (() => {
     });
     $('#resetBtn').addEventListener('click', () => {
       Store.reset(); location.reload();
+    });
+
+    /* Delete everything. Counts what will actually go before asking, so
+       the confirmation names real numbers rather than a vague warning —
+       "3 meals and 1 lab result" is a decision; "are you sure?" is not.
+       Focus moves into the dialog and returns on cancel, same contract
+       as the delete-a-meal modal. */
+    let wipeOpener = null;
+    $('#deleteAllBtn').addEventListener('click', (e) => {
+      const meals = Store.meals().length;
+      const labs = Store.labs().length;
+      const parts = [];
+      if (meals) parts.push(`${meals} meal${meals === 1 ? '' : 's'}`);
+      if (labs) parts.push(`${labs} lab result${labs === 1 ? '' : 's'}`);
+      $('#wipeSummary').textContent = parts.length
+        ? `You have ${parts.join(' and ')} saved.`
+        : 'You have nothing logged yet.';
+      wipeOpener = e.currentTarget;
+      $('#wipeModal').hidden = false;
+      $('#wipeCancel').focus();
+    });
+    const closeWipe = (restore) => {
+      $('#wipeModal').hidden = true;
+      if (restore && wipeOpener && document.contains(wipeOpener)) wipeOpener.focus();
+      wipeOpener = null;
+    };
+    $('#wipeCancel').addEventListener('click', () => closeWipe(true));
+    $('#wipeModal').addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') closeWipe(true);
+    });
+    $('#wipeConfirm').addEventListener('click', () => {
+      Store.reset();
+      location.reload();
     });
 
     // Disclaimers & learn
