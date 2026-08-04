@@ -3,7 +3,7 @@
   "private": true,
   "description": "Test harness only. Kept in test/ so no package.json sits at the repo root, where Vercel would treat this static site as a Node build.",
   "scripts": {
-    "test": "node verify.js && node e2e.js"
+    "test": "node verify.js && node e2e.js && node probe.js && node headers.js"
   },
   "devDependencies": {
     "jsdom": "^30.0.0"

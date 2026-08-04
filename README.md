@@ -159,9 +159,10 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 ```powershell
 cd test
 npm install     # once — pulls jsdom
-node verify.js  # 64 unit assertions
-node e2e.js     # 150 end-to-end assertions in a real DOM
+node verify.js  # 80 unit assertions
+node e2e.js     # 209 end-to-end assertions in a real DOM
 node probe.js   # 10 edge-case assertions (empty, no-target, hostile input)
+node headers.js #  24 deployment-header assertions
 ```
 
 `package.json` lives in `test/` on purpose. A `package.json` at the repo root would make Vercel treat this static site as a Node project and try to build it.
@@ -171,6 +172,14 @@ node probe.js   # 10 edge-case assertions (empty, no-target, hostile input)
 Boots `index.html` with every script and both stylesheets in jsdom, then drives the app by dispatching real clicks on real buttons: consent → onboarding → log a meal → save → XSS probe → clarify-once → delete → labs → every guidance mode → settings → learn cards → manual picker → seed. It asserts on computed styles, so it catches "the element is in the DOM but the CSS is showing it anyway" — which is exactly the class of bug that shipped the first time.
 
 It caught the click-blocking bug on its very first run and would have caught it before deploy.
+
+### `headers.js` — the layer the other suites cannot see
+
+This one exists because of a bug that shipped. `Permissions-Policy` denied `camera` and `microphone` to the page as a hardening measure; dictation and barcode scanning were added later. On the deployed site both were silently blocked by a header written weeks earlier — and nearly three hundred passing assertions could not see it, because **jsdom enforces neither CSP nor Permissions-Policy**.
+
+So it does not hardcode an expected policy. It **derives the requirements from the source**: greps for `getUserMedia`, `SpeechRecognition`, `srcObject`, `createObjectURL`, `serviceWorker.register`, `fetch('/api/…')`, then asserts the headers permit exactly those and nothing more. Add a capability and forget the header, and this fails.
+
+It also asserts the page never fetches a foreign origin directly — that invariant is the entire reason `/api/product` exists rather than calling Open Food Facts from the browser.
 
 ### `verify.js` — the arithmetic
 
