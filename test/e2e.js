@@ -44,7 +44,20 @@ const scripts = [
 ];
 
 // Provide a fetch stub so LLM.probe() doesn't explode.
-window.fetch = () => Promise.reject(new Error('Failed to fetch'));
+window.fetch = (url) => {
+  const u = String(url);
+  if (u.indexOf('/api/product') !== -1) {
+    if (u.indexOf('code=0000000000000') !== -1) return Promise.resolve({ ok: false, status: 404 });
+    if (u.indexOf('code=1111111111111') !== -1) return Promise.resolve({ ok: true, status: 200,
+      json: () => Promise.resolve({ code: '1111111111111', name: 'Plain Oats', brand: 'Acme',
+        ingredients: '', hasIngredients: false }) });
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+      code: '5449000000996', name: 'Cola', brand: 'TestBrand',
+      ingredients: 'carbonated water, sugar, colour, phosphoric acid, natural flavourings, caffeine',
+      hasIngredients: true }) });
+  }
+  return Promise.reject(new Error('Failed to fetch'));
+};
 
 // Load the real stylesheets so `hidden` behaviour is genuinely tested.
 const css = ['css/tokens.css', 'css/app.css']
@@ -383,8 +396,37 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19m. BARCODE LOOKUP ═══');
+  click('[data-nav="label"]'); await wait(30);
+  check('manual barcode entry always available', vis('#barcodeInput'), true);
+  // BarcodeDetector is Chrome/Android only, so the camera button is an
+  // enhancement — absent here, and the screen still works.
+  check('camera scan hidden where unsupported', vis('#scanBtn'), false);
+
+  type('#barcodeInput', '12'); click('#barcodeGo'); await wait(30);
+  check('too-short input rejected before any request',
+    $('#barcodeStatus').textContent.includes('8 to 14 digits'), true);
+
+  type('#barcodeInput', '5449000000996'); click('#barcodeGo'); await wait(60);
+  check('ingredients filled from the lookup',
+    $('#labelText').value.includes('phosphoric acid'), true);
+  check('  ...and the additive is flagged straight away',
+    $('#labelResults').textContent.includes('phosphoric acid'), true);
+  check('  ...naming the product found', $('#barcodeStatus').textContent.includes('TestBrand'), true);
+  check('  ...and telling the user to check it matches the packet',
+    $('#barcodeStatus').textContent.includes('check they match'), true);
+
+  type('#barcodeInput', '0000000000000'); click('#barcodeGo'); await wait(60);
+  check('a miss is reported as a miss', $('#barcodeStatus').textContent.includes("isn't in the open database"), true);
+  check('  ...and explicitly does NOT imply the food is fine',
+    $('#barcodeStatus').textContent.includes('tells you nothing about the food'), true);
+
+  type('#barcodeInput', '1111111111111'); click('#barcodeGo'); await wait(60);
+  check('listed-but-no-ingredients says so', $('#barcodeStatus').textContent.includes('without an ingredient list'), true);
+
   console.log('\n═══ 19l. LABEL CHECKER ═══');
   click('[data-nav="label"]'); await wait(30);
+  type('#labelText', ''); await wait(20);   // barcode section above left ingredients here
   check('label screen reachable', vis('#scr-label'), true);
   check('starts with a prompt, not a verdict',
     $('#labelResults').textContent.includes('Paste an ingredient list'), true);

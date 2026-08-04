@@ -74,6 +74,25 @@ const COPY = {
   pickerEmpty: "Search the food list — try 'potato' or 'milk'.",
   pickerNoResults: 'Nothing matched. Try a simpler word, or log it later.',
 
+  /* ── Barcode lookup ── */
+  barcode: {
+    invalid: "That doesn't look like a barcode — it should be 8 to 14 digits.",
+    looking: 'Looking it up…',
+    scanning: 'Point the camera at the barcode.',
+    found: (label) => `Found ${label}. Ingredients filled in below — check they match the packet.`,
+    /* A miss must read as a miss. This database is crowd-sourced and
+       incomplete, and "not found" meaning "nothing to worry about" is
+       precisely the false reassurance this screen exists to avoid. */
+    notFound:
+      "That barcode isn't in the open database. That tells you nothing about the food — " +
+      'plenty of products simply are not listed. Type the ingredients in below instead.',
+    noIngredients: (name) =>
+      `${name} is listed, but without an ingredient list. Type the ingredients in below instead.`,
+    failed: "The lookup didn't work just now. You can still type the ingredients in below.",
+    offline: "You're offline, so the lookup can't run — but typing the ingredients in below still works.",
+    cameraDenied: 'The camera is unavailable, so enter the number by hand instead.'
+  },
+
   /* ── Label checker ── */
   label: {
     idle: 'Paste an ingredient list above and RenalRoute will name what it finds.',

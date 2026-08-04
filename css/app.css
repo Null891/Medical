@@ -448,6 +448,15 @@ button { font: inherit; color: inherit; }
 .itemrow:last-child { border-bottom: 0; }
 .itemrow__name { font-weight: 600; word-break: break-word; }
 .itemrow__meta { font-size: var(--type-caption); color: var(--color-text-secondary); }
+.barcode-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.barcode-row input { flex: 1 1 auto; min-width: 0; }
+.barcode-row .btn { flex: 0 0 auto; }
+.scan-video {
+  display: block; width: 100%; max-height: 240px;
+  object-fit: cover; background: #000;
+  border-radius: var(--radius-field); margin-bottom: var(--space-2);
+}
+
 .cookrow { margin-top: var(--space-2); }
 .cookrow__q { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); }
 .cookrow .stepper button { padding: 0 var(--space-2); }

@@ -37,6 +37,10 @@ const UI = (() => {
       const active = t.dataset.nav === name;
       if (active) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
+    // Leaving the label screen by ANY route releases the camera. Hiding
+    // a video element does not stop its stream, and a camera light that
+    // stays on after you navigate away is alarming in a health app.
+    if (name !== 'label') stopScan();
     if (name === 'label') renderLabel();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label') {
@@ -953,6 +957,99 @@ const UI = (() => {
     </div>`;
   }
 
+  /* ═══════════ barcode lookup ═══════════
+     Two ways in, and manual entry is the baseline rather than the
+     fallback: BarcodeDetector ships on Chrome and Android but not
+     everywhere, and a feature that only exists on some phones cannot be
+     the only way to use the screen.
+
+     A miss is reported as a miss. Open Food Facts is crowd-sourced and
+     incomplete, so "not in the database" has to read as exactly that and
+     not as "nothing to worry about" — the whole point of this screen is
+     that absence of a finding is not a clean bill of health. */
+  let scanStream = null;
+  let scanTimer = null;
+
+  function barcodeStatus(msg) { $('#barcodeStatus').textContent = msg || ''; }
+
+  async function lookupBarcode(code) {
+    const clean = String(code || '').replace(/\D/g, '');
+    if (!/^[0-9]{8,14}$/.test(clean)) {
+      barcodeStatus(COPY.barcode.invalid);
+      return;
+    }
+
+    barcodeStatus(COPY.barcode.looking);
+    try {
+      const res = await fetch('/api/product?code=' + encodeURIComponent(clean));
+      if (res.status === 404) { barcodeStatus(COPY.barcode.notFound); return; }
+      if (!res.ok) { barcodeStatus(COPY.barcode.failed); return; }
+
+      const p = await res.json();
+      if (!p.hasIngredients) {
+        barcodeStatus(COPY.barcode.noIngredients(p.name || clean));
+        return;
+      }
+
+      $('#labelText').value = p.ingredients;
+      renderLabel();
+      const label = [p.brand, p.name].filter(Boolean).join(' — ') || clean;
+      barcodeStatus(COPY.barcode.found(label));
+    } catch (e) {
+      barcodeStatus(COPY.barcode.offline);
+    }
+  }
+
+  function scanSupported() {
+    return typeof window !== 'undefined' && 'BarcodeDetector' in window &&
+      !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  }
+
+  async function startScan() {
+    if (!scanSupported()) return;
+    try {
+      const detector = new window.BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128']
+      });
+      scanStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      const video = $('#scanVideo');
+      video.srcObject = scanStream;
+      await video.play();
+      $('#scanStage').hidden = false;
+      barcodeStatus(COPY.barcode.scanning);
+
+      scanTimer = setInterval(async () => {
+        try {
+          const hits = await detector.detect(video);
+          if (hits && hits.length) {
+            const code = hits[0].rawValue;
+            stopScan();
+            $('#barcodeInput').value = code;
+            lookupBarcode(code);
+          }
+        } catch (e) { /* a frame that will not decode is not an error */ }
+      }, 400);
+    } catch (e) {
+      stopScan();
+      barcodeStatus(COPY.barcode.cameraDenied);
+    }
+  }
+
+  function stopScan() {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (scanStream) {
+      // Releasing every track is what actually turns the camera light
+      // off. Leaving it lit on a health app is its own kind of alarming.
+      scanStream.getTracks().forEach(t => t.stop());
+      scanStream = null;
+    }
+    const v = $('#scanVideo');
+    if (v) v.srcObject = null;
+    $('#scanStage').hidden = true;
+  }
+
   /* ═══════════ manual picker ═══════════ */
 
   /* Token search, not substring search.
@@ -1544,7 +1641,17 @@ const UI = (() => {
     });
     $('#readDisclaimerBtn').addEventListener('click', () => $('#fullDisclaimerBtn').click());
     $('#labelText').addEventListener('input', renderLabel);
-    $('#labelBack').addEventListener('click', () => go(lastScreen));
+    $('#barcodeGo').addEventListener('click', () => lookupBarcode($('#barcodeInput').value));
+    $('#barcodeInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); lookupBarcode($('#barcodeInput').value); }
+    });
+    if (scanSupported()) {
+      $('#scanBtn').hidden = false;
+      $('#scanBtn').addEventListener('click', startScan);
+    }
+    $('#scanStop').addEventListener('click', () => { stopScan(); barcodeStatus(''); });
+    // Leaving the screen must release the camera, not just hide it.
+    $('#labelBack').addEventListener('click', () => { stopScan(); go(lastScreen); });
     $('#learnBack').addEventListener('click', () => go(lastScreen));
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }

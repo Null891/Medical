@@ -375,11 +375,40 @@
       <h1 class="h1">Check a food label</h1>
       <p class="helper">Type or paste the ingredient list from a package. RenalRoute looks for the additives that matter for kidneys — the ones that never show up on the nutrition panel.</p>
 
+      <!-- Barcode first, because typing an ingredient list off a packet
+           is exactly the chore this is meant to remove. Manual entry is
+           the baseline since it works in every browser; the camera is an
+           enhancement shown only where the platform supports it. -->
+      <div class="card card--warm">
+        <label class="field">
+          <span class="field__label">Barcode number</span>
+          <div class="barcode-row">
+            <input type="text" id="barcodeInput" inputmode="numeric" autocomplete="off"
+                   maxlength="14" placeholder="e.g. 5449000000996">
+            <button type="button" class="btn btn--secondary btn--sm" id="barcodeGo">Look up</button>
+          </div>
+          <span class="field__note">The digits under the bars. Looked up in Open Food Facts, an open database — nothing about you is sent with it.</span>
+        </label>
+        <button type="button" class="btn btn--ghost btn--block" id="scanBtn" hidden>
+          <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+               stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+            <path d="M7 8v8M10.5 8v8M14 8v8M17 8v8"/>
+          </svg>
+          Scan with the camera
+        </button>
+        <div id="scanStage" hidden>
+          <video id="scanVideo" class="scan-video" playsinline muted></video>
+          <button type="button" class="linkbtn" id="scanStop">Stop scanning</button>
+        </div>
+        <p class="note" id="barcodeStatus" role="status"></p>
+      </div>
+
       <label class="field">
         <span class="field__label">Ingredients</span>
         <textarea id="labelText" rows="5" maxlength="1200"
           placeholder="wheat flour, water, salt, sodium acid pyrophosphate, potassium chloride"></textarea>
-        <span class="field__note">Nothing is sent anywhere. This runs on your device, and works offline.</span>
+        <span class="field__note">Type or paste them yourself, or let a barcode fill this in. The checking itself runs on your device and works offline.</span>
       </label>
 
       <div id="labelResults"></div>
