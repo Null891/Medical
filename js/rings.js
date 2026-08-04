@@ -187,7 +187,11 @@ const Rings = (() => {
            <button type="button" class="linkbtn" data-nav="settings">Change</button>
          </div>` : '';
 
-    return `<div class="card">
+    /* Stone: the material for measured quantities. Denser and more
+       crisply edged than a plain card, so the numbers read as carved
+       rather than typed. See css/materials.css — material follows
+       meaning, and this card is the app's only page of arithmetic. */
+    return `<div class="card m-stone">
       <div class="rings">${rows.map(ringCell).join('')}</div>
       ${uncounted}
       ${provenance}
@@ -202,7 +206,7 @@ const Rings = (() => {
     const rows = model();
     const totals = Store.dayTotals();
 
-    return `<div class="card">` + rows.map(r => {
+    return `<div class="card m-stone">` + rows.map(r => {
 
       /* Audit F5: in low-potassium mode the whole block becomes a plain
          intake readout with no colour and no over-budget line. */

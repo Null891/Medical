@@ -1,0 +1,617 @@
+/* ═══════════════════════════════════════════════════════════════
+   MATERIALS, LAYOUT, AND SCREEN CHARACTER
+   ───────────────────────────────────────────────────────────────
+   Everything before this file treated every card as the same object:
+   white, rounded, shadowed, stacked. That is legible and it is also
+   why the app read as a form rather than a place. A column of
+   identical rectangles gives a reader no way to tell, before reading
+   a word, whether they are looking at a number, an explanation, or a
+   warning.
+
+   So surfaces get MATERIALS, and the material encodes what kind of
+   information is on it:
+
+     STONE   dense, matte, crisply edged, sits flat and heavy.
+             For measured quantities. The rings and the stat blocks.
+             Numbers should feel like they were carved, not typed.
+
+     PAPER   warm, soft-edged, faintly fibrous, no drop shadow.
+             For prose you are meant to read at length — education
+             cards, disclaimers, the coverage panel.
+
+     GLASS   translucent, blurred, floats above the content plane.
+             For anything that is ABOUT the page rather than part of
+             it: banners, toasts, the rail, sticky navigation.
+
+     LIQUID  a slow gradient drift, never still.
+             For things that are in motion over time — trends, the
+             day line, progress.
+
+     LIGHT   emissive; it glows rather than reflects.
+             For the one action the screen wants. Exactly one per
+             screen, or the idea collapses.
+
+   The rule is that material follows meaning. A glass education card
+   would be a bug, not a style choice.
+
+   Every material degrades to the plain card under reduced motion,
+   forced colours, high contrast, and print. None of them carries
+   information that the text does not also carry — this is texture,
+   never signal.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════ utility ═══════════
+   Present to assistive technology, absent from the page. Used where a
+   status must be ANNOUNCED but its visible counterpart is a drawing —
+   the teaching loader being the case that forced it. Not display:none,
+   which would remove it from the accessibility tree as well. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ═══════════ shared substrate ═══════════ */
+
+.m-stone,
+.m-paper,
+.m-glass,
+.m-liquid,
+.m-light {
+  position: relative;
+  isolation: isolate;              /* keep pseudo-element texture local */
+}
+
+/* ── STONE — for measured quantities ──
+   Denser than the base card: less rounding, a tighter and darker
+   shadow so it sits ON the canvas rather than floating over it, and a
+   hairline top highlight that reads as a milled edge. */
+.m-stone {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-surface) 100%, white 0%) 0%,
+      color-mix(in srgb, var(--color-surface) 97%, var(--color-canvas) 3%) 100%);
+  border: 1px solid var(--color-hairline);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 1px 1px rgba(43,43,43,.05),
+    0 8px 20px -8px rgba(43,43,43,.16);
+}
+
+/* ── PAPER — for prose ──
+   No drop shadow at all. Paper does not hover. The texture is a very
+   low-contrast repeating gradient standing in for fibre; at 1.4% it
+   is felt more than seen, which is the intent. */
+.m-paper {
+  background-color: var(--color-surface-warm);
+  border: 1px solid color-mix(in srgb, var(--color-hairline) 70%, transparent);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.m-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .014;
+  background-image:
+    repeating-linear-gradient(0deg,   #2B2B2B 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg,  #2B2B2B 0 1px, transparent 1px 4px);
+}
+
+/* ── GLASS — for things above the page ──
+   backdrop-filter is progressive: where it is unsupported the
+   fallback is a near-opaque tint, which is the same information with
+   less atmosphere. Never put body text on glass at low opacity. */
+.m-glass {
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-surface) 60%, var(--color-hairline));
+  border-radius: 14px;
+  box-shadow: 0 8px 32px -12px rgba(43,43,43,.28);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .m-glass {
+    background: color-mix(in srgb, var(--color-surface) 62%, transparent);
+    -webkit-backdrop-filter: saturate(1.7) blur(18px);
+    backdrop-filter: saturate(1.7) blur(18px);
+  }
+}
+
+/* ── LIQUID — for things that move over time ──
+   A wide, low-saturation gradient that drifts across the surface on a
+   40s loop. Slow enough that you never catch it moving; present
+   enough that the surface is never twice the same. */
+.m-liquid {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.m-liquid::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .5;
+  background:
+    radial-gradient(38% 42% at 20% 30%,
+      color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
+    radial-gradient(34% 38% at 78% 66%,
+      color-mix(in srgb, var(--color-status-ok) 13%, transparent), transparent 70%);
+  animation: liquidDrift 40s ease-in-out infinite alternate;
+}
+@keyframes liquidDrift {
+  0%   { transform: translate3d(-4%, -3%, 0) rotate(0deg)   scale(1); }
+  100% { transform: translate3d( 5%,  4%, 0) rotate(8deg)   scale(1.12); }
+}
+
+/* ── LIGHT — for the one action ──
+   Emissive: a coloured halo beneath the element plus an internal top
+   sheen. The halo is keyed to the CTA colour so it reads as the
+   button's own light rather than a generic shadow. */
+.m-light {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    0 2px 6px -1px color-mix(in srgb, var(--color-cta) 40%, transparent),
+    0 12px 28px -10px color-mix(in srgb, var(--color-cta) 55%, transparent);
+}
+.m-light:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    0 3px 8px -1px color-mix(in srgb, var(--color-cta) 46%, transparent),
+    0 18px 40px -12px color-mix(in srgb, var(--color-cta) 62%, transparent);
+}
+
+/* Materials are texture, never signal. Strip them wherever texture
+   would compete with legibility or cost the reader something. */
+@media (prefers-contrast: more), (forced-colors: active) {
+  .m-stone, .m-paper, .m-glass, .m-liquid {
+    background: var(--color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    border: 1px solid var(--color-text-secondary);
+  }
+  .m-paper::before, .m-liquid::before { display: none; }
+  .m-light { box-shadow: none; }
+}
+:root[data-contrast="high"] .m-glass {
+  background: var(--color-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-contrast="high"] .m-paper::before,
+:root[data-contrast="high"] .m-liquid::before { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-liquid::before { animation: none; }
+}
+
+@media print {
+  .m-stone, .m-paper, .m-glass, .m-liquid, .m-light {
+    background: #fff !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    border: 1px solid #ccc !important;
+  }
+  .m-paper::before, .m-liquid::before { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BENTO — the dashboard stops being a column
+   ───────────────────────────────────────────────────────────────
+   A single centred column is the correct mobile layout and the wrong
+   desktop one: at 1440px it was a phone in the middle of a monitor.
+   The bento gives the wide layout deliberate asymmetry — the rings
+   take a double-width cell because they are the answer to the
+   question the app exists to ask, and everything else sizes down
+   from there rather than everything being equally important.
+
+   Deliberately NOT a uniform grid. Equal tiles are a different way of
+   saying nothing is more important than anything else.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1180px) {
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-3);
+    align-items: start;
+  }
+  /* The hero cell. Four of six columns, and it starts the grid. */
+  .bento__hero    { grid-column: span 4; }
+  /* Stats sit beside the rings, narrow and tall — a reference column. */
+  .bento__side    { grid-column: span 2; }
+  .bento__wide    { grid-column: span 6; }
+  .bento__half    { grid-column: span 3; }
+  .bento__third   { grid-column: span 2; }
+
+  /* Controlled asymmetry: the action tile deliberately breaks the
+     column rhythm by hanging half a step above its row. It is the one
+     element allowed to sit outside the grid's discipline, because it
+     is the one element that is not information. */
+  .bento__action  { grid-column: span 2; transform: translateY(-10px); }
+}
+
+@media (min-width: 1180px) and (prefers-reduced-motion: reduce) {
+  .bento__action { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE GREETING AT SCALE
+   ───────────────────────────────────────────────────────────────
+   The old header ran the greeting at 20px, the same size as a card
+   title, which said the app had nothing it particularly wanted to
+   tell you. Type at this size is not decoration: it establishes that
+   the top of the screen belongs to the person using it, before any
+   number appears.
+
+   clamp() rather than breakpoints, so it scales continuously instead
+   of jumping. The floor stays comfortable on a 320px phone; the
+   ceiling stops short of the point where a long name would wrap
+   awkwardly.
+   ═══════════════════════════════════════════════════════════════ */
+
+.hdr__title--display {
+  font-size: clamp(2.25rem, 1.1rem + 5.4vw, 4.75rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 640;
+  margin: var(--space-1) 0 var(--space-2);
+  text-wrap: balance;
+}
+/* Text size preferences must still move this, or the control lies. */
+:root[data-textsize="large"]  .hdr__title--display { font-size: clamp(2.5rem, 1.2rem + 6vw, 5.25rem); }
+:root[data-textsize="xlarge"] .hdr__title--display { font-size: clamp(2.75rem, 1.3rem + 6.6vw, 5.75rem); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ORGANIC EDGES
+   ───────────────────────────────────────────────────────────────
+   A wave between sections instead of a rule. Kidneys are not
+   rectangles and neither is a day of eating; the app's only shapes
+   were rounded rectangles, which is what made "clinical" the first
+   word people reached for.
+
+   Purely decorative, so aria-hidden and zero height contribution
+   beyond its own box.
+   ═══════════════════════════════════════════════════════════════ */
+
+.wave {
+  display: block;
+  width: 100%;
+  height: 28px;
+  margin: var(--space-2) 0;
+  color: var(--color-hairline);
+  pointer-events: none;
+}
+.wave svg { display: block; width: 100%; height: 100%; }
+.wave path { fill: none; stroke: currentColor; stroke-width: 1.5; }
+
+/* A soft organic blob used behind empty states and the learn screen.
+   Two overlapping ellipses on a slow morph — cheap, and it reads as
+   growth rather than geometry. */
+.blob {
+  position: absolute;
+  inset: auto;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: .5;
+  animation: blobMorph 18s ease-in-out infinite alternate;
+}
+@keyframes blobMorph {
+  0%   { border-radius: 62% 38% 46% 54% / 55% 48% 52% 45%; transform: rotate(0deg) scale(1); }
+  100% { border-radius: 41% 59% 63% 37% / 43% 62% 38% 57%; transform: rotate(12deg) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCREEN CHARACTER
+   ───────────────────────────────────────────────────────────────
+   Each screen shifts the canvas a few degrees toward what it is for.
+   Not a theme per screen — that would fragment the product into five
+   apps — but enough that arriving somewhere feels like arriving.
+
+   The shifts are small on purpose: every one of them keeps the same
+   text and status tokens, so contrast ratios are unchanged and
+   nothing about meaning moves.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Label checker: the scanner. Cooler and a shade deeper — you are
+   inspecting something, and the surface should stop being cosy. */
+:root[data-screen="label"] .app {
+  --color-canvas: #F4F2F0;
+  --color-surface-warm: #FAF8F7;
+}
+/* Learn: the reading room. Warmer, softer, paper-forward. */
+:root[data-screen="learn"] .app {
+  --color-canvas: #FBF6EC;
+  --color-surface-warm: #FEFAF2;
+}
+/* Labs: clinical. The one place the warm palette steps back, because
+   this screen shows numbers a clinician gave you, not ones we made. */
+:root[data-screen="labs"] .app {
+  --color-canvas: #F5F7F8;
+  --color-surface-warm: #FAFCFC;
+}
+.app { transition: background-color var(--motion-screen) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .app { transition: none; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   TEACHING LOADER
+   ───────────────────────────────────────────────────────────────
+   A spinner says "wait" and nothing else. This says "wait" and also
+   teaches one true thing, because the two-to-six seconds a meal takes
+   to parse is the only moment in the app where a person is looking at
+   the screen with nothing to do.
+
+   The facts are the same static education set used on the empty
+   dashboard — real figures from the reference table, never generated.
+   The ring drawing itself is the app's own visual language, so the
+   wait looks like the product rather than like a library.
+   ═══════════════════════════════════════════════════════════════ */
+
+.tloader { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
+.tloader__ring { flex: 0 0 auto; width: 46px; height: 46px; }
+.tloader__ring circle { fill: none; stroke-width: 5; stroke-linecap: round; }
+.tloader__track { stroke: var(--color-track); }
+.tloader__fill {
+  stroke: var(--color-accent);
+  stroke-dasharray: 119;
+  stroke-dashoffset: 119;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+  animation: tloaderFill 1.6s var(--ease-out) infinite;
+}
+@keyframes tloaderFill {
+  0%   { stroke-dashoffset: 119; }
+  55%  { stroke-dashoffset: 24;  }
+  100% { stroke-dashoffset: 119; }
+}
+.tloader__text { min-width: 0; }
+.tloader__status { font-weight: 600; }
+.tloader__fact {
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-body);
+  margin-top: 2px;
+  animation: factIn var(--motion-modal) var(--ease-out);
+}
+@keyframes factIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tloader__fill { animation: none; stroke-dashoffset: 40; }
+  .tloader__fact { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MEAL RIPPLE — the signature transition
+   ───────────────────────────────────────────────────────────────
+   Saving a meal was a screen swap. It is the one moment the app has
+   a genuine causal story to tell: what you just entered is why those
+   numbers moved. A ripple that leaves the save button and reaches the
+   rings makes the causation visible instead of asking the user to
+   infer it from two numbers changing between screens.
+
+   It is a circle expanding through the page, not a particle system.
+   One element, transform and opacity only, removed on completion.
+   ═══════════════════════════════════════════════════════════════ */
+
+.ripple {
+  position: fixed;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  border-radius: 50%;
+  width: 24px; height: 24px;
+  margin: -12px 0 0 -12px;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-accent) 34%, transparent) 0%,
+    color-mix(in srgb, var(--color-accent) 12%, transparent) 45%,
+    transparent 70%);
+  animation: rippleOut 900ms cubic-bezier(.16,.84,.44,1) forwards;
+}
+@keyframes rippleOut {
+  0%   { transform: scale(1);   opacity: .95; }
+  100% { transform: scale(110); opacity: 0;   }
+}
+
+/* The rings acknowledge the arrival: one soft pulse as the wave
+   reaches them, timed by JS rather than guessed at in CSS. */
+.ring-arrive { animation: ringArrive 640ms var(--ease-out); }
+@keyframes ringArrive {
+  0%   { transform: scale(1); }
+  38%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEALTH BLOOM — the day closed inside its budget
+   ───────────────────────────────────────────────────────────────
+   Fires once per day, only when every live ring's HIGH end finished
+   under its target, and only if the day has meals in it. Deliberately
+   restrained: three short strokes that grow and fade, no confetti and
+   no score. The app is not entitled to congratulate anyone on a
+   health outcome it estimated to within forty per cent — this marks
+   an arithmetic fact, and it says so in the text beside it.
+   ═══════════════════════════════════════════════════════════════ */
+
+.bloom { position: relative; overflow: hidden; }
+.bloom__leaf {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to top,
+    color-mix(in srgb, var(--color-status-ok) 55%, transparent), transparent);
+  transform-origin: 50% 100%;
+  animation: bloomGrow 1.5s var(--ease-out) forwards;
+  pointer-events: none;
+}
+@keyframes bloomGrow {
+  0%   { height: 0;    opacity: 0;   transform: rotate(var(--leaf-rot, 0deg)) scaleY(.2); }
+  40%  {               opacity: .85; }
+  100% { height: 52px; opacity: 0;   transform: rotate(var(--leaf-rot, 0deg)) scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) { .bloom__leaf { display: none; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   MORPHING CARDS — a row expands into its page
+   ───────────────────────────────────────────────────────────────
+   Tapping a meal used to replace the screen, which asks the user to
+   rebuild the connection between the row they touched and the page
+   they got. The row now grows into the page it opens, so the
+   relationship is shown rather than remembered.
+
+   FLIP: measure the row, measure the destination, animate the
+   difference on transform only. JS sets the four custom properties.
+   ═══════════════════════════════════════════════════════════════ */
+
+.morph-ghost {
+  position: fixed;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--shadow-card);
+  opacity: .96;
+  animation: morphGrow 380ms cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes morphGrow {
+  from { transform: translate(0,0) scale(1); opacity: .96; }
+  to   { transform: translate(var(--dx,0), var(--dy,0)) scale(var(--sx,1), var(--sy,1)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .morph-ghost { display: none; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   SPOTLIGHT — the pointer has weight
+   ───────────────────────────────────────────────────────────────
+   A very soft warm light that follows the cursor across card
+   surfaces. Fine pointers only: it is meaningless on touch and would
+   cost battery for nothing. Nothing depends on it — if the custom
+   properties never update, the surface is simply unlit.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (hover: hover) and (pointer: fine) {
+  .spotlight-host .card::after,
+  .spotlight-host .m-stone::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--motion-standard) var(--ease-out);
+    background: radial-gradient(220px circle at var(--px, 50%) var(--py, 50%),
+      color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 68%);
+  }
+  .spotlight-host .card:hover::after,
+  .spotlight-host .m-stone:hover::after { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-host .card::after, .spotlight-host .m-stone::after { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FOCUS BLUR — the thing you are pointing at is the thing in focus
+   ───────────────────────────────────────────────────────────────
+   On the trends card, hovering one day's band recedes the others.
+   Opacity, never blur: a real blur filter on text is a legibility
+   problem for exactly the users this app is built for, and it costs a
+   repaint per frame.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (hover: hover) and (pointer: fine) {
+  .trend__svg:hover .trend-band { opacity: .32; transition: opacity var(--motion-fast) var(--ease-out); }
+  .trend__svg:hover .trend-band:hover { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trend__svg:hover .trend-band, .trend__svg:hover .trend-band:hover { transition: none; }
+}
+
+/* The narrative that appears when a band is pointed at or focused. */
+.trend__read {
+  min-height: 2.6em;
+  margin-top: var(--space-1);
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-body);
+}
+.trend__read.is-live { color: var(--color-text-primary); font-weight: 550; }
+.trend-band { cursor: default; }
+
+/* ═══════════════════════════════════════════════════════════════
+   DYNAMIC NAVIGATION — the rail condenses as you read
+   ───────────────────────────────────────────────────────────────
+   Scrolling past the fold means you are reading, not navigating. The
+   rail's supporting furniture recedes; the four destinations and the
+   glance figures never do, because those are the two things somebody
+   scrolling might actually want.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 900px) {
+  .rail__tip, .rail__foot {
+    transition: opacity var(--motion-standard) var(--ease-out),
+                max-height var(--motion-standard) var(--ease-out);
+    overflow: hidden;
+    max-height: 12rem;
+  }
+  .is-condensed .rail__tip,
+  .is-condensed .rail__foot { opacity: 0; max-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail__tip, .rail__foot { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATED EMPTY STATE
+   ───────────────────────────────────────────────────────────────
+   An empty dashboard is the first thing a judge creating a fresh
+   account sees. It used to be a sentence. It is now a slow drawing of
+   the thing the app is about — an arc filling and releasing, which is
+   the same idea as the rings before there is any data to put in them.
+   ═══════════════════════════════════════════════════════════════ */
+
+.emptyart { display: block; width: 100%; max-width: 220px; height: 92px; margin: 0 auto var(--space-2); }
+.emptyart circle, .emptyart path { fill: none; stroke-linecap: round; }
+.emptyart .ea-track { stroke: var(--color-track); stroke-width: 6; }
+.emptyart .ea-fill {
+  stroke: var(--color-accent); stroke-width: 6;
+  stroke-dasharray: 150; stroke-dashoffset: 150;
+  animation: eaSweep 6s ease-in-out infinite;
+}
+@keyframes eaSweep {
+  0%, 8%   { stroke-dashoffset: 150; }
+  46%, 62% { stroke-dashoffset: 58;  }
+  100%     { stroke-dashoffset: 150; }
+}
+/* The small companion circle has its own circumference (2πr ≈ 88), so
+   it needs its own dash geometry — reusing the arc's 150 would leave it
+   permanently full and the pair would fall out of step. */
+.emptyart circle.ea-fill {
+  stroke-dasharray: 88;
+  stroke-dashoffset: 88;
+  animation: eaSweepSmall 6s ease-in-out infinite;
+  animation-delay: .45s;
+  transform-origin: 168px 40px;
+  transform: rotate(-90deg);
+}
+@keyframes eaSweepSmall {
+  0%, 8%   { stroke-dashoffset: 88; }
+  46%, 62% { stroke-dashoffset: 30; }
+  100%     { stroke-dashoffset: 88; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .emptyart .ea-fill { animation: none; stroke-dashoffset: 58; }
+  .emptyart circle.ea-fill { animation: none; stroke-dashoffset: 30; }
+}

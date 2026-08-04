@@ -13,6 +13,12 @@
 
   UI.wire();
 
+  /* Signature behaviours: the cursor spotlight, the condensing rail,
+     and the drifting background highlight. All three are decoration in
+     the strict sense — if motion.js failed to load, nothing a user
+     needs and nothing a screen reader announces would be missing. */
+  if (typeof Motion !== 'undefined') Motion.init();
+
   /* Connectivity. Only meal parsing needs the network, so losing it
      degrades one path rather than breaking the app — the banner says so
      instead of leaving someone to discover it by failing to log. */
@@ -56,6 +62,12 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
+    /* Guarded, unlike its neighbours. Object shorthand would be a BARE
+       reference, and a bare reference to a module that failed to load
+       is a ReferenceError that takes the whole boot down — which is
+       precisely the dependency motion.js is contractually not allowed
+       to be. Every other module here is required; this one is not. */
+    Motion: (typeof Motion !== 'undefined') ? Motion : null,
     anchors: ANCHOR_FOODS,
     stats: ANCHOR_STATS,
     version: '1.0.0-reference'

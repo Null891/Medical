@@ -15,6 +15,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/materials.css">
 <!-- Runs before first paint so an explicit dark choice never flashes
      white. Must stay in <head> and must stay a file, not inline: the
      CSP sets script-src 'self'. -->
@@ -26,7 +27,7 @@
 
 <!-- Connectivity. Nothing here needs the network except meal parsing,
      so this says what still works rather than just "you are offline". -->
-<div id="offlineBanner" class="dev-banner dev-banner--offline" role="status" hidden>
+<div id="offlineBanner" class="dev-banner dev-banner--offline m-glass" role="status" hidden>
   <span><strong>You're offline.</strong> Logging still works — use the food list instead of typing a meal.</span>
 </div>
 
@@ -119,27 +120,41 @@
     <section class="screen" id="scr-home" hidden>
       <header class="hdr">
         <p class="hdr__eyebrow">Today</p>
-        <h1 class="hdr__title" id="homeGreeting">Good morning</h1>
+        <h1 class="hdr__title hdr__title--display" id="homeGreeting">Good morning</h1>
         <p class="hdr__line" id="homeDayLine"></p>
         <p class="hdr__date" id="homeDate"></p>
       </header>
 
       <div id="labModeBanners"></div>
-      <div id="ringCard"></div>
-      <div id="statBlocks"></div>
 
-      <button type="button" class="btn btn--primary btn--block btn--hero" data-nav="log">Log a meal</button>
+      <!-- Bento: one column on a phone, deliberately uneven on a wide
+           screen. The rings take four of six columns because they are
+           the answer to the question the app exists to ask. -->
+      <div class="bento">
+        <div class="bento__hero" id="ringCard"></div>
+        <div class="bento__side" id="statBlocks"></div>
 
-      <!-- Meals you actually repeat, one tap, zero AI calls. -->
-      <div id="quickAdd" hidden></div>
+        <div class="bento__action">
+          <button type="button" class="btn btn--primary btn--block btn--hero m-light" data-nav="log">Log a meal</button>
+        </div>
 
-      <div id="homeList"></div>
+        <!-- Meals you actually repeat, one tap, zero AI calls. -->
+        <div class="bento__third" id="quickAdd" hidden></div>
 
-      <!-- The day played back in order. Not notifications — a record. -->
-      <div id="todayFeed" hidden></div>
+        <div class="bento__half" id="homeList"></div>
 
-      <!-- Seven days as bands, not a line. See js/trends.js. -->
-      <div id="trendsCard"></div>
+        <!-- The day played back in order. Not notifications — a record. -->
+        <div class="bento__third" id="todayFeed" hidden></div>
+
+        <!-- Seven days as bands, not a line. See js/trends.js. -->
+        <div class="bento__wide" id="trendsCard"></div>
+      </div>
+
+      <div class="wave" aria-hidden="true">
+        <svg viewBox="0 0 320 28" preserveAspectRatio="none">
+          <path d="M0 18 C 40 4, 72 4, 112 16 S 190 30, 232 18 S 296 6, 320 12"/>
+        </svg>
+      </div>
 
       <footer class="disclaimer">
         <p id="footerDisclaimer"></p>
@@ -195,8 +210,15 @@
           <button type="button" class="linkbtn" id="photoClear">Remove photo</button>
         </div>
 
+        <!-- The wait is the only moment in the app where somebody is
+             looking at the screen with nothing to do, so it teaches one
+             true thing from the static education set rather than
+             spinning. Rendered by js/motion.js; the live region below
+             carries the status for screen readers, because a rotating
+             fact is not something to announce. -->
         <div id="logPending" hidden>
-          <div class="skeleton-row"><span class="spinner" aria-hidden="true"></span> <span id="logPendingText">Breaking your meal down…</span></div>
+          <div id="logPendingArt" aria-hidden="true"></div>
+          <p class="sr-only" role="status" id="logPendingText">Breaking your meal down…</p>
         </div>
         <div class="inline-error" id="logError" role="alert" hidden>
           <p id="logErrorText"></p>
@@ -432,7 +454,7 @@
   </main>
 
   <!-- ───────── BOTTOM TAB BAR ───────── -->
-  <nav class="tabbar" aria-label="Main">
+  <nav class="tabbar m-glass" aria-label="Main">
     <!-- Desktop-only rail furniture. Hidden on phones, where the bar is
          four tabs and nothing else. -->
     <div class="rail__brand" aria-hidden="true">
@@ -502,6 +524,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/motion.js"></script>
 <script src="js/exporter.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/seed.js"></script>

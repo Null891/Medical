@@ -51,6 +51,11 @@ const UI = (() => {
       // from its draft, not from a stale step.
       if (name !== 'log' && name !== 'onboarding') Store.setSetting('lastScreen', name);
     }
+    // Name the screen on the root element so the stylesheet can shift
+    // the canvas a few degrees toward what the screen is for — cooler
+    // for the label scanner, warmer for reading, clinical for labs.
+    // Data only: no colour decision lives in JS.
+    if (typeof Motion !== 'undefined') Motion.setScreen(name);
     // Guarded: not every environment implements scrollTo, and a missing
     // scroll must never take the navigation down with it.
     try { window.scrollTo(0, 0); } catch (e) { /* non-fatal */ }
@@ -343,6 +348,49 @@ const UI = (() => {
     renderToday();
     renderRail();
     $('#trendsCard').innerHTML = Trends.render();
+    if (typeof Motion !== 'undefined') Motion.livingChart($('#trendsCard'));
+    maybeBloom();
+  }
+
+  /* ═══════════ the bloom ═══════════
+     Three short strokes that grow out of the ring card once, on a day
+     that closed inside every budget being tracked.
+
+     The conditions are deliberately strict. Something must have been
+     logged — an empty day is not an achievement, and treating it as one
+     would be the cheapest lie the app could tell. Every LIVE ring must
+     be under its target on the HIGH end, the conservative reading, so
+     the mark never fires on a day that might have gone over. And it
+     fires once per calendar day, because a reward that repeats on every
+     render is a reward that means nothing.
+
+     There is deliberately no score, no streak, and no congratulation.
+     These figures are ±40% estimates; grading somebody's health from
+     them would be inventing certainty this app spent its whole design
+     refusing to invent. A day's arithmetic landed inside the lines —
+     that is the entire claim, and the copy beside it says so. */
+  function maybeBloom() {
+    if (typeof Motion === 'undefined') return;
+    if (!Store.hasTargets()) return;
+
+    const today = Store.todayISO();
+    if (Store.settings().bloomedOn === today) return;
+
+    const totals = Store.dayTotals();
+    if (!totals.mealCount) return;
+
+    const t = Store.targets();
+    let live = 0;
+    for (const key of ['k', 'p', 'na']) {
+      if (!t[key] || Clinical.ringSuppressed(key)) continue;
+      live++;
+      if (totals[key].high > t[key]) return;      // any ring over: no bloom
+    }
+    if (!live) return;
+
+    Store.setSetting('bloomedOn', today);
+    const host = $('#ringCard');
+    if (host && host.firstElementChild) Motion.bloom(host.firstElementChild);
   }
 
   /* ═══════════ quick add — the retention lever ═══════════
@@ -497,7 +545,18 @@ const UI = (() => {
 
     if (!meals.length) {
       const fact = COPY.emptyFacts[new Date().getDate() % COPY.emptyFacts.length];
-      host.innerHTML = `<div class="card empty">
+      /* The empty state draws the idea rather than only describing it:
+         an arc that fills and releases on a slow loop, which is the
+         rings' own language before there is any data to put in them.
+         A judge creating a fresh account gives this screen about five
+         seconds, and a page of text was losing them. */
+      host.innerHTML = `<div class="card m-paper empty">
+        <svg class="emptyart" viewBox="0 0 220 92" aria-hidden="true">
+          <path class="ea-track" d="M28 74 A 48 48 0 1 1 116 74"/>
+          <path class="ea-fill"  d="M28 74 A 48 48 0 1 1 116 74"/>
+          <circle class="ea-track" cx="168" cy="40" r="14"/>
+          <circle class="ea-fill"  cx="168" cy="40" r="14"/>
+        </svg>
         <p>${esc(COPY.emptyDashboard)}</p>
         <div class="empty__fact">${esc(fact)}</div>
       </div>`;
@@ -560,6 +619,18 @@ const UI = (() => {
       .forEach(s => { $('#' + s).hidden = (s !== id); });
   }
 
+  /* One place sets the waiting state, so the visible art and the
+     announced status can never drift apart. The fact rotates on every
+     call; the status string is what a screen reader hears, because
+     announcing a nutrition fact somebody did not ask for would be
+     noise at exactly the wrong moment. */
+  function setPending(status) {
+    const art = $('#logPendingArt');
+    if (art && typeof Motion !== 'undefined') art.innerHTML = Motion.loaderHtml(status);
+    const t = $('#logPendingText');
+    if (t) t.textContent = status;
+  }
+
   function resetLog(keep) {
     if (!keep) {
       draft = null; picker = [];
@@ -568,7 +639,7 @@ const UI = (() => {
       Store.setSetting('mealDraft', '');   // the draft is spent
     }
     $('#logPending').hidden = true;
-    $('#logPendingText').textContent = 'Breaking your meal down…';
+    setPending('Breaking your meal down…');
     $('#logError').hidden = true;
     $('#photoBtn').disabled = false;
     clearPhoto();          // a stale preview must not survive into a new meal
@@ -668,7 +739,7 @@ const UI = (() => {
 
     $('#photoPreview').src = shot.dataUrl;
     $('#photoPreviewWrap').hidden = false;
-    $('#logPendingText').textContent = 'Looking at your photo…';
+    setPending('Looking at your photo…');
     $('#logPending').hidden = false;
 
     try {
@@ -978,6 +1049,18 @@ const UI = (() => {
     if (!saved) { $('#saveError').hidden = false; return; }
     draft = null;
     toast(record.meal_date === Store.todayISO() ? 'Saved to today' : 'Saved');
+
+    /* The signature transition. A wave leaves the save control and
+       crosses the page; the rings pulse as it arrives. This is the one
+       moment in the app with a real causal story — what you entered is
+       WHY those numbers moved — and showing it beats making somebody
+       infer it from two figures changing between screens.
+       Fired before go() so the origin is measured while the button is
+       still on screen. */
+    if (typeof Motion !== 'undefined') {
+      Motion.ripple($('#saveMealBtn'));
+      Motion.ringsAcknowledge(300);
+    }
     go('home');
   }
 
@@ -1051,7 +1134,7 @@ const UI = (() => {
     if (s.missingP)  gaps.push(`phosphorus on ${s.missingP}`);
     if (s.missingK)  gaps.push(`potassium on ${s.missingK}`);
 
-    host.innerHTML = `<div class="card">
+    host.innerHTML = `<div class="card m-paper">
       <h2 class="h2">What this build doesn't know</h2>
       <p class="note">${esc(COPY.coverage.intro)}</p>
       ${gaps.length ? `<p class="note mt-2"><strong>Missing values:</strong> ${esc(gaps.join(', '))}.
@@ -1122,12 +1205,12 @@ const UI = (() => {
 
     const cards = found.length
       ? found.map(flagCardHtml).join('')
-      : `<div class="card card--warm">
+      : `<div class="card card--warm m-paper">
            <h2 class="h3">${esc(COPY.label.noneTitle)}</h2>
            <p class="note">${esc(COPY.label.noneBody)}</p>
          </div>`;
 
-    host.innerHTML = cards + `<div class="card card--warm">
+    host.innerHTML = cards + `<div class="card card--warm m-paper">
       <h2 class="h3">${esc(COPY.label.ruleTitle)}</h2>
       <p class="note">${esc(COPY.label.ruleBody)}</p>
     </div>`;
@@ -1505,7 +1588,16 @@ const UI = (() => {
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
-      if (el.dataset.meal) { renderDetail(el.dataset.meal); return; }
+      if (el.dataset.meal) {
+        /* The row grows into the page it opens. Measured before the
+           screen swap, drawn after, so the ghost travels from where the
+           finger actually was to where the content actually lands —
+           showing the relationship instead of asking somebody to
+           rebuild it from a cut. */
+        renderDetail(el.dataset.meal);
+        if (typeof Motion !== 'undefined') Motion.morph(el, $('#scr-detail'));
+        return;
+      }
       if (el.dataset.editMeal) { editMeal(el.dataset.editMeal); return; }
 
       if (el.dataset.repeat) { repeatMeal(el.dataset.repeat); return; }

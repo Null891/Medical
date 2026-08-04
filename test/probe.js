@@ -11,11 +11,20 @@ const dom=new JSDOM(fs.readFileSync(path.join(APP,'index.html'),'utf8'),
   {url:'https://renalroute.test/',runScripts:'dangerously',virtualConsole:vc,pretendToBeVisual:true});
 const {window}=dom, doc=window.document;
 window.fetch=()=>Promise.reject(new Error('Failed to fetch'));
+/* Asset list parsed out of index.html, never typed here. This file used
+   to carry its own hand-maintained copy and it drifted the moment
+   js/motion.js shipped — the probe then ran against an app missing a
+   file and died on a ReferenceError. Which, to be fair, is exactly what
+   an edge-case probe is for; it just should not have been probing its
+   own harness. */
+const indexHtml = fs.readFileSync(path.join(APP,'index.html'),'utf8');
+const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m=>m[1]);
+const scripts  = Array.from(indexHtml.matchAll(/<script src="([^"]+)"><\/script>/g)).map(m=>m[1]);
+if(scripts.length<5||!cssFiles.length) throw new Error('Could not parse the asset list out of index.html.');
 const style=doc.createElement('style');
-style.textContent=['css/tokens.css','css/app.css'].map(f=>fs.readFileSync(path.join(APP,f),'utf8')).join('\n');
+style.textContent=cssFiles.map(f=>fs.readFileSync(path.join(APP,f),'utf8')).join('\n');
 doc.head.appendChild(style);
-for(const s of ['js/theme.js','js/data/copy.js','js/data/anchor-foods.js','js/store.js','js/clinical.js',
- 'js/resolve.js','js/llm.js','js/cards.js','js/rings.js','js/trends.js','js/exporter.js','js/ui.js','js/seed.js','js/app.js']){
+for(const s of scripts){
   const el=doc.createElement('script');el.textContent=fs.readFileSync(path.join(APP,s),'utf8');doc.body.appendChild(el);}
 const $=s=>doc.querySelector(s);
 const click=s=>{const e=typeof s==='string'?$(s):s;e&&e.dispatchEvent(new window.MouseEvent('click',{bubbles:true,cancelable:true}));};

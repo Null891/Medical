@@ -93,8 +93,31 @@ const Trends = (() => {
       const status = target ? Clinical.ringStatus(r.high, target) : null;
       const cls = status ? 'trend-band--' + status.key : 'trend-band--none';
 
+      /* The narrative this band tells when somebody points at it or
+         tabs to it. A chart that only yields its meaning to a mouse
+         yields it to half the audience, so the bands are focusable and
+         this string is what both routes surface.
+
+         It says the SAME thing the chart's text alternative already
+         says — the range, the day, and how it sat against the target.
+         A hover that reveals a fact the chart does not otherwise carry
+         would be a fact hidden from everybody who cannot hover. */
+      const day = new Date(r.iso + 'T00:00:00')
+        .toLocaleDateString('en-US', { weekday: 'long' });
+      const width = Math.round(r.high - r.low);
+      const certainty = width > (target ? target * 0.25 : 400)
+        ? ' The range is wide, so much of that day was estimated rather than matched.'
+        : '';
+      const against = target
+        ? (r.high > target
+            ? ` Above the ${Clinical.fmt(target)} mg target on the high end.`
+            : ` Inside the ${Clinical.fmt(target)} mg target.`)
+        : '';
+      const read = `${r.isToday ? 'Today' : day}: ${Clinical.fmt(r.low)}–${Clinical.fmt(r.high)} mg.` +
+        against + certainty;
+
       return `<rect x="${x}" y="${top}" width="${BAND_W}" height="${h}"
-                rx="3" class="trend-band ${cls}"/>`;
+                rx="3" class="trend-band ${cls}" data-read="${esc(read)}"/>`;
     }).join('');
 
     const targetLine = target ? `
@@ -124,18 +147,21 @@ const Trends = (() => {
     const blocks = NUTRIENTS.map(n => {
       const svg = chart(n.key, t[n.key]);
       if (!svg) return null;
+      const logged = series(n.key).filter(r => r.logged).length;
+      const idle = `${logged} of ${DAYS} days logged.`;
       return `<div class="trend">
         <div class="trend__head">
           <span class="trend__name">${n.name}</span>
           ${t[n.key] ? `<span class="note">target ${Clinical.fmt(t[n.key])} mg</span>` : ''}
         </div>
         ${svg}
+        <p class="trend__read" data-idle="${esc(idle)}" aria-hidden="true">${esc(idle)}</p>
       </div>`;
     }).filter(Boolean);
 
     if (!blocks.length) return '';
 
-    return `<div class="card">
+    return `<div class="card m-liquid">
       <h2 class="h3">Your last 7 days</h2>
       <p class="note">Each bar is that day's range, not a single number — taller means less certain. The dashed line is your target.</p>
       ${blocks.join('')}

@@ -35,13 +35,25 @@ const dom = new JSDOM(html, {
 const { window } = dom;
 const doc = window.document;
 
-// jsdom won't fetch local files; inject the scripts and CSS by hand,
-// in the same order index.html declares them.
-const scripts = [
-  'js/theme.js', 'js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js', 'js/clinical.js',
-  'js/resolve.js', 'js/llm.js', 'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/exporter.js', 'js/ui.js',
-  'js/seed.js', 'js/app.js'
-];
+/* jsdom won't fetch local files, so scripts and CSS are injected by
+   hand — but the LIST is read out of index.html rather than typed here.
+
+   It used to be a hand-maintained array, and it drifted the moment a new
+   module shipped: js/motion.js was in the page and absent from this
+   list, so 253 assertions passed against an app missing a file. A
+   harness that quietly tests a different program than the one you ship
+   is worse than no harness, because it reports confidence it has not
+   earned.
+
+   Parsed from the markup in document order, so it cannot drift again. */
+const indexHtml = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
+const scripts = Array.from(indexHtml.matchAll(/<script src="([^"]+)"><\/script>/g))
+  .map(m => m[1]);
+const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g))
+  .map(m => m[1]);
+if (scripts.length < 5 || !cssFiles.length) {
+  throw new Error('Could not parse the asset list out of index.html — the harness would be testing nothing.');
+}
 
 // Provide a fetch stub so LLM.probe() doesn't explode.
 window.fetch = (url) => {
@@ -60,7 +72,7 @@ window.fetch = (url) => {
 };
 
 // Load the real stylesheets so `hidden` behaviour is genuinely tested.
-const css = ['css/tokens.css', 'css/app.css']
+const css = cssFiles
   .map(f => fs.readFileSync(path.join(APP, f), 'utf8')).join('\n');
 const styleEl = doc.createElement('style');
 styleEl.textContent = css;
@@ -759,6 +771,130 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   const headroom = 2500 - t.k.high;
   check('headroom left for the swap beat (>500mg)', headroom > 500, true);
   check('prior week seeded', window.RenalRoute.Store.meals().length > 10, true);
+
+  /* ═══════════════════════════════════════════════════════════════
+     MOTION AND MATERIALS
+
+     Everything in js/motion.js is decoration, so none of it may be
+     load-bearing. These tests check two different things: that the
+     decoration is actually present (a signature transition nobody can
+     see is not a feature), and — more importantly — that removing it
+     changes nothing a user depends on.
+
+     The bloom gets the most scrutiny of anything here, because it is
+     the one piece of motion that makes a CLAIM: it fires only when a
+     day's arithmetic closed inside every tracked budget. A bloom on an
+     empty day, or on a day that went over, would be the app
+     congratulating somebody on a number it does not have.
+     ═══════════════════════════════════════════════════════════════ */
+  console.log('\n═══ 22. MOTION AND MATERIALS ═══');
+
+  /* Reached through the RenalRoute surface, not window.Motion: every
+     module in this app is a top-level `const`, which lives in the
+     script's lexical scope and never becomes a window property. */
+  const M = window.RenalRoute.Motion;
+  check('Motion module loaded from index.html', typeof M, 'object');
+  ['ripple', 'ringsAcknowledge', 'bloom', 'morph', 'loaderHtml', 'livingChart', 'setScreen', 'init']
+    .forEach(fn => check(`Motion.${fn} is a function`, typeof M[fn], 'function'));
+
+  // Screen character is data only — a name on the root element that the
+  // stylesheet reads. No colour decision may live in JS.
+  window.RenalRoute.UI.go('labs');
+  check('screen character named on the root element', doc.documentElement.getAttribute('data-screen'), 'labs');
+  window.RenalRoute.UI.go('home');
+  check('screen character follows navigation', doc.documentElement.getAttribute('data-screen'), 'home');
+
+  // Bento: the wide layout exists in markup, and every home region the
+  // app writes into is still inside it and still addressable by id.
+  const bento = $('.bento');
+  check('bento wrapper present on home', !!bento, true);
+  ['ringCard', 'statBlocks', 'quickAdd', 'homeList', 'todayFeed', 'trendsCard']
+    .forEach(id => check(`#${id} still reachable inside the bento`, !!$('#' + id), true));
+
+  // Material follows meaning. Numbers get stone; prose gets paper.
+  check('rings card carries the stone material', !!$('#ringCard .m-stone'), true);
+  check('stat blocks carry the stone material', !!$('#statBlocks .m-stone'), true);
+
+  // The teaching loader replaces a spinner, so the visible art and the
+  // announced status must both exist and must not be the same node —
+  // a rotating nutrition fact is not something to announce.
+  const loaderHtml = M.loaderHtml('Breaking your meal down…');
+  check('loader renders a ring, not a spinner', loaderHtml.indexOf('tloader__ring') !== -1, true);
+  check('loader carries a fact', loaderHtml.indexOf('tloader__fact') !== -1, true);
+  check('loader status text present', loaderHtml.indexOf('Breaking your meal down') !== -1, true);
+  check('loader facts are a fixed set, never generated', Array.isArray(M.FACTS) && M.FACTS.length >= 3, true);
+  check('announced status is a live region', $('#logPendingText').getAttribute('role'), 'status');
+  check('loader art is hidden from assistive tech', $('#logPendingArt').getAttribute('aria-hidden'), 'true');
+
+  // Living chart: bands carry their narrative, and it says nothing the
+  // chart's own text alternative does not already say.
+  const band = $('.trend-band');
+  if (band) {
+    check('trend bands carry a narrative', !!band.getAttribute('data-read'), true);
+    check('trend bands are NOT focusable inside role=img',
+      band.hasAttribute('tabindex'), false);
+    const svg = band.closest('svg');
+    check('trend chart still exposes a full text alternative',
+      !!(svg && svg.getAttribute('aria-label') && svg.getAttribute('aria-label').length > 40), true);
+  }
+
+  console.log('\n═══ 23. THE BLOOM ONLY FIRES ON A TRUE CLAIM ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const iso = S.todayISO();
+
+    // An empty day is not an achievement. This is the claim that would
+    // be cheapest to fake and least defensible to make.
+    S.setSetting('bloomedOn', '');
+    S.meals(iso).forEach(m => S.deleteMeal(m.id));
+    window.RenalRoute.UI.go('home');
+    check('no bloom on a day with nothing logged', S.settings().bloomedOn !== iso, true);
+
+    // A day that went over budget must not be marked as inside it.
+    S.addMeal({
+      meal_text: 'over budget test', logged_at: new Date().toISOString(), meal_date: iso,
+      items: [], confidence: 'high',
+      total_potassium_low_mg: 9000, total_potassium_high_mg: 9000,
+      total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+      total_sodium_low_mg: 0, total_sodium_high_mg: 0
+    });
+    window.RenalRoute.UI.go('home');
+    check('no bloom on a day that went over', S.settings().bloomedOn !== iso, true);
+
+    // A logged day inside every tracked budget: the one true case.
+    S.meals(iso).forEach(m => S.deleteMeal(m.id));
+    S.addMeal({
+      meal_text: 'inside budget test', logged_at: new Date().toISOString(), meal_date: iso,
+      items: [], confidence: 'high',
+      total_potassium_low_mg: 100, total_potassium_high_mg: 120,
+      total_phosphorus_low_mg: 40, total_phosphorus_high_mg: 50,
+      total_sodium_low_mg: 200, total_sodium_high_mg: 240
+    });
+    window.RenalRoute.UI.go('home');
+    check('bloom fires on a logged day inside every budget', S.settings().bloomedOn, iso);
+
+    /* Once per day. A reward that repeats on every render means
+       nothing, and this app renders home on every navigation.
+
+       Counting leaves AFTER a re-render is the only honest measure —
+       re-rendering the ring card wipes the previous run's leaves
+       regardless, so comparing before-and-after counts would pass even
+       if the guard were removed. With bloomedOn already set for today,
+       a fresh render must add none. */
+    S.setSetting('bloomedOn', iso);
+    window.RenalRoute.UI.go('labs');
+    window.RenalRoute.UI.go('home');
+    check('bloom does not fire twice in one day',
+      doc.querySelectorAll('.bloom__leaf').length, 0);
+
+    // A new day re-arms it.
+    S.setSetting('bloomedOn', '1999-01-01');
+    window.RenalRoute.UI.go('labs');
+    window.RenalRoute.UI.go('home');
+    check('a new day re-arms the bloom', S.settings().bloomedOn, iso);
+
+    S.meals(iso).forEach(m => S.deleteMeal(m.id));
+  }
 
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
