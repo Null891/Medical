@@ -110,6 +110,48 @@ button { font: inherit; color: inherit; }
 .screen { animation: fade var(--motion-screen) var(--ease-out); }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
 
+/* ─────────────────────────────────────────────────────────────
+   ENTRANCE — the screen assembles instead of appearing.
+
+   Motion here is doing a job, not decorating: the stagger establishes
+   reading order, so the eye is led from the greeting to the rings to
+   the action rather than having to choose. It is 8px of travel over
+   400ms — enough to feel deliberate, too little to make anyone wait.
+
+   Everything collapses to nothing under prefers-reduced-motion, which
+   in this population is not an edge case.
+   ───────────────────────────────────────────────────────────── */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+#scr-home > *,
+#scr-log .logstep > *,
+#scr-labs > *,
+#scr-settings > * {
+  animation: riseIn 400ms var(--ease-out) both;
+}
+/* Six steps is enough to read as sequence; beyond that it reads as lag. */
+#scr-home > *:nth-child(1), #scr-log .logstep > *:nth-child(1),
+#scr-labs > *:nth-child(1), #scr-settings > *:nth-child(1) { animation-delay: 0ms; }
+#scr-home > *:nth-child(2), #scr-log .logstep > *:nth-child(2),
+#scr-labs > *:nth-child(2), #scr-settings > *:nth-child(2) { animation-delay: 40ms; }
+#scr-home > *:nth-child(3), #scr-log .logstep > *:nth-child(3),
+#scr-labs > *:nth-child(3), #scr-settings > *:nth-child(3) { animation-delay: 80ms; }
+#scr-home > *:nth-child(4), #scr-log .logstep > *:nth-child(4),
+#scr-labs > *:nth-child(4), #scr-settings > *:nth-child(4) { animation-delay: 120ms; }
+#scr-home > *:nth-child(5), #scr-log .logstep > *:nth-child(5),
+#scr-labs > *:nth-child(5), #scr-settings > *:nth-child(5) { animation-delay: 160ms; }
+#scr-home > *:nth-child(n+6), #scr-log .logstep > *:nth-child(n+6),
+#scr-labs > *:nth-child(n+6), #scr-settings > *:nth-child(n+6) { animation-delay: 200ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen, #scr-home > *, #scr-log .logstep > *, #scr-labs > *, #scr-settings > * {
+    animation: none !important;
+  }
+}
+
 /* ───────────── Typography ───────────── */
 .h1 { font-size: 24px; font-weight: 600; line-height: var(--leading-tight); margin-bottom: var(--space-2); }
 .h2 { font-size: var(--type-title); font-weight: 600; line-height: var(--leading-tight); margin-bottom: var(--space-2); }
@@ -137,7 +179,21 @@ button { font: inherit; color: inherit; }
 .hdr__eyebrow { font-size: var(--type-caption); font-weight: 600; letter-spacing: .04em;
   text-transform: uppercase; color: var(--color-accent); }
 .hdr__title { font-size: 28px; font-weight: 600; line-height: var(--leading-tight); }
-.hdr__date { color: var(--color-text-secondary); font-size: var(--type-caption); }
+.hdr__line { font-size: var(--type-body); color: var(--color-text-primary); margin-top: 2px; }
+.hdr__date { color: var(--color-text-secondary); font-size: var(--type-caption); margin-top: 2px; }
+
+/* Today, in order. A record, not a notification list. */
+.feed { margin-top: var(--space-2); }
+.feed__item {
+  display: grid; grid-template-columns: 62px 1fr; gap: var(--space-2);
+  padding: var(--space-2) 0; position: relative;
+}
+.feed__item + .feed__item { border-top: 1px solid var(--color-hairline); }
+.feed__time {
+  font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.feed__text { font-size: var(--type-caption); line-height: 1.5; }
 
 /* ───────────── Cards ───────────── */
 .card {
@@ -693,4 +749,50 @@ button { font: inherit; color: inherit; }
   .tab[aria-current="page"] { background: var(--color-tint-accent); }
   .main { max-width: var(--content-max-wide); padding: var(--space-5) var(--space-4) var(--space-6); }
   .toast { bottom: var(--space-4); left: auto; right: var(--space-4); transform: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   WIDE SCREENS — stop pouring one narrow column down the middle.
+
+   A 232px rail plus a 960px column centred in what remains leaves
+   roughly 360px of dead space on either side of a 1920px display, and
+   the app reads as a phone screenshot pasted onto a desktop. The
+   content does not need to be wider; it needs to be arranged.
+
+   So above 1180px the dashboard becomes two columns with a real
+   hierarchy: the rings and the primary action lead at a size that
+   earns the name "hero", and everything that is reference rather than
+   decision — what you logged, the week, what we don't know — sits
+   beside it instead of below the fold.
+   ───────────────────────────────────────────────────────────── */
+@media (min-width: 1180px) {
+  .main { max-width: 1180px; }
+
+  #scr-home {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-areas:
+      "hdr     hdr"
+      "banners banners"
+      "rings   quick"
+      "stats   list"
+      "cta     list"
+      "trends  list"
+      "footer  footer";
+    column-gap: var(--space-4);
+    align-items: start;
+  }
+  #scr-home > .hdr        { grid-area: hdr; }
+  #scr-home > #labModeBanners { grid-area: banners; }
+  #scr-home > #ringCard   { grid-area: rings; }
+  #scr-home > #statBlocks { grid-area: stats; }
+  #scr-home > .btn--hero  { grid-area: cta; margin-top: 0; }
+  #scr-home > #quickAdd   { grid-area: quick; }
+  #scr-home > #homeList   { grid-area: list; }
+  #scr-home > #trendsCard { grid-area: trends; }
+  #scr-home > .disclaimer { grid-area: footer; }
+
+  /* The rings are the centrepiece, so let them be one. */
+  #scr-home > #ringCard .ring__svg { max-width: 132px; }
+  #scr-home > #ringCard .ring__left { font-size: 26px; }
 }

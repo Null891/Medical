@@ -120,6 +120,7 @@
       <header class="hdr">
         <p class="hdr__eyebrow">Today</p>
         <h1 class="hdr__title" id="homeGreeting">Good morning</h1>
+        <p class="hdr__line" id="homeDayLine"></p>
         <p class="hdr__date" id="homeDate"></p>
       </header>
 
@@ -133,6 +134,9 @@
       <div id="quickAdd" hidden></div>
 
       <div id="homeList"></div>
+
+      <!-- The day played back in order. Not notifications — a record. -->
+      <div id="todayFeed" hidden></div>
 
       <!-- Seven days as bands, not a line. See js/trends.js. -->
       <div id="trendsCard"></div>

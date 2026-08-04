@@ -249,12 +249,80 @@ const UI = (() => {
 
   /* ═══════════ home ═══════════ */
 
+  /* ═══════════ the line under the greeting ═══════════
+     A greeting that only ever says "Good morning" is furniture. This
+     says the one true thing about the day so far, and it is deliberately
+     the least dramatic sentence available: no score out of a hundred, no
+     streak, no "excellent". Those invent a verdict out of estimates, and
+     shame is the emotion this app is least entitled to produce.
+
+     What it CAN say honestly is where the day stands and whether
+     anything needs attention. Nothing more. */
+  function dayLine() {
+    const t = Store.targets();
+    const totals = Store.dayTotals();
+    const mode = Clinical.potassiumMode();
+
+    if (mode.mode === 'paused') return COPY.today.paused;
+    if (!totals.mealCount) return COPY.today.nothingYet;
+
+    const meals = `${totals.mealCount} meal${totals.mealCount === 1 ? '' : 's'} logged`;
+    if (!Store.hasTargets()) return `${meals}. ${COPY.today.noTargets}`;
+
+    // Report the worst standing across the three, since that is the one
+    // that would change a decision.
+    const worst = ['k', 'p', 'na']
+      .filter(k => t[k])
+      .map(k => Clinical.ringStatus(totals[k].high, t[k]).key);
+    if (worst.includes('danger')) return `${meals}. ${COPY.today.over}`;
+    if (worst.includes('warn')) return `${meals}. ${COPY.today.close}`;
+    return `${meals}. ${COPY.today.room}`;
+  }
+
+  /* A plain record of what happened today, in order. Not notifications,
+     not a score — the things the person did, played back. It reads as a
+     day rather than a dataset, and it costs nothing to produce because
+     every entry already exists. */
+  function renderToday() {
+    const host = $('#todayFeed');
+    if (!host) return;
+
+    const meals = Store.meals(Store.todayISO())
+      .slice().sort((a, b) => a.logged_at < b.logged_at ? -1 : 1);
+    const labs = Store.labs().filter(l => l.entered_at && l.entered_at.slice(0, 10) === Store.todayISO());
+
+    const events = [
+      ...meals.map(m => ({
+        at: m.logged_at,
+        text: (m.items || []).some(i => i.source === 'uncounted')
+          ? `Logged ${esc(m.meal_text.slice(0, 60))} — part of it not counted`
+          : `Logged ${esc(m.meal_text.slice(0, 60))}`
+      })),
+      ...labs.map(l => ({ at: l.entered_at, text: 'Added a lab result' }))
+    ].sort((a, b) => a.at < b.at ? -1 : 1);
+
+    if (events.length < 2) { host.innerHTML = ''; host.hidden = true; return; }
+
+    host.hidden = false;
+    host.innerHTML = `<div class="card">
+      <h2 class="h3">Today, in order</h2>
+      <ol class="feed">
+        ${events.map(e => `<li class="feed__item">
+          <span class="feed__time">${new Date(e.at).toLocaleTimeString('en-US',
+            { hour: 'numeric', minute: '2-digit' })}</span>
+          <span class="feed__text">${e.text}</span>
+        </li>`).join('')}
+      </ol>
+    </div>`;
+  }
+
   function renderHome() {
     const p = Store.profile();
     const name = p.display_name ? esc(p.display_name) : '';
     const hour = new Date().getHours();
     const part = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     $('#homeGreeting').textContent = name ? `${part}, ${p.display_name}` : part;
+    $('#homeDayLine').textContent = dayLine();
     $('#homeDate').textContent = new Date().toLocaleDateString('en-US',
       { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -265,6 +333,7 @@ const UI = (() => {
     $('#statBlocks').innerHTML = Rings.renderStats();
     renderQuickAdd();
     renderMealList();
+    renderToday();
     $('#trendsCard').innerHTML = Trends.render();
   }
 

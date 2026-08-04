@@ -154,6 +154,18 @@ const COPY = {
       'words where one of them is potassium is worth a second look.'
   },
 
+  /* One honest sentence under the greeting. Deliberately not a score:
+     a number out of a hundred invents a verdict out of estimates, and
+     shame is the emotion this app is least entitled to produce. */
+  today: {
+    nothingYet: 'Nothing logged yet — the rings show your full day ahead.',
+    noTargets: 'No targets set, so this is a record rather than a comparison.',
+    room: 'Room left in all three today.',
+    close: 'Getting close on one of the three.',
+    over: 'Over on one of the three — worth a look before your next meal.',
+    paused: 'Coaching is paused while your potassium result is high. Logging still works.'
+  },
+
   /* ── Dashboard ── */
   /* A judge may open a brand-new account and give this screen five
      seconds. It has to say what the app IS before it says what to do,

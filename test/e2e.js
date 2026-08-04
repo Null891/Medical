@@ -396,6 +396,29 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and nothing was removed',
     window.RenalRoute.Store.meals().length, mealsBeforeWipe);
 
+  console.log('\n═══ 19p. DAY LINE + TODAY FEED ═══');
+  window.RenalRoute.Seed.run();
+  click('[data-nav="home"]'); await wait(40);
+  const dl = $('#homeDayLine').textContent;
+  check('greeting carries an honest one-liner', dl.length > 0, true);
+  check('  ...that reports meals logged', /meal/.test(dl), true);
+  // No invented verdict: this app must never grade a person's day.
+  check('  ...and never a score out of 100', /\b\d{1,3}\s*\/\s*100|score/i.test(dl), false);
+  check('  ...nor the word excellent', /excellent/i.test(dl), false);
+  check('today feed appears once there are 2+ events', vis('#todayFeed'), true);
+  check('  ...listing events in time order',
+    $$('#todayFeed .feed__item').length >= 2, true);
+  check('  ...with a timestamp per row', $$('#todayFeed .feed__time').length >= 2, true);
+  // resetToday() leaves breakfast in place by design, and the seeded lab
+  // counts as a second event — so empty the day properly to test empty.
+  window.RenalRoute.Store.meals(window.RenalRoute.Store.todayISO())
+    .forEach(m => window.RenalRoute.Store.deleteMeal(m.id));
+  click('[data-nav="home"]'); await wait(40);
+  check('the line says so when nothing is logged',
+    $('#homeDayLine').textContent.includes('Nothing logged yet'), true);
+  check('  ...and offers no verdict on a day with no data',
+    /over|close|room left/i.test($('#homeDayLine').textContent), false);
+
   console.log('\n═══ 19o. AKF LOW-K BADGE + COVERAGE HONESTY ═══');
   click('[data-nav="log"]'); await wait(20);
   click('#toPickerBtn'); await wait(20);
