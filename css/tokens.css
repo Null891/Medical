@@ -69,6 +69,50 @@
   --tabbar-h: 64px;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE — follows the device, no in-app toggle.
+
+   Warm, not cold. The obvious move is to invert toward blue-black,
+   which is exactly the clinical look the light palette spends its
+   whole budget avoiding — so these are warm charcoals carrying the
+   same undertone as #FBF7F2.
+
+   Accent and CTA are LIGHTER here than in light mode. A colour tuned
+   for contrast against white fails against charcoal, and this app
+   shows kidney numbers to people with age-related vision changes; the
+   status colours in particular have to stay distinguishable, since
+   green/amber/red is doing real work even though it is never the only
+   signal.
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas:        #17150F;
+    --color-surface:       #201D17;
+    --color-surface-warm:  #262218;
+    --color-text-primary:  #F2ECE3;   /* ~15:1 on canvas */
+    --color-text-secondary:#B7AE9F;   /* ~7:1 on surface */
+    --color-accent:        #6BC7B3;
+    --color-cta:           #D2593C;
+
+    --color-status-ok:     #5CBF8E;
+    --color-status-warn:   #E0A33F;   /* still amber, still not yellow */
+    --color-status-danger: #EF7C6B;
+
+    --color-track:         #332E25;
+    --color-hairline:      #3A342A;
+    --color-tint-ok:       #1B2A22;
+    --color-tint-warn:     #2C2416;
+    --color-tint-danger:   #2E1E1B;
+    --color-tint-accent:   #172824;
+
+    /* Shadows do almost nothing on a dark canvas — depth comes from
+       surface lightness instead, so these stay subtle rather than
+       turning into black smears. */
+    --shadow-card:  0 1px 2px rgba(0,0,0,.30), 0 6px 18px rgba(0,0,0,.28);
+    --shadow-modal: 0 12px 48px rgba(0,0,0,.60);
+  }
+}
+
 /* Reduced motion is a first-class mode, not an afterthought.
    Vestibular sensitivity is elevated in chronically ill populations. */
 @media (prefers-reduced-motion: reduce) {
