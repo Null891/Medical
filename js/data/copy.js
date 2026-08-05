@@ -49,6 +49,29 @@ const COPY_EN = {
     changed: 'Language changed'
   },
 
+  /* ── Install ──
+     Written per platform because the platforms genuinely differ, and a
+     single generic "install this app" is useless on the one where no
+     API exists. iOS gets the button names spelled out. */
+  install: {
+    title: 'Put RenalRoute on your home screen',
+    why:
+      'It opens like an app, works with no signal, and you stop having to find a browser tab ' +
+      'in a supermarket aisle. Nothing is uploaded and no account is created — installing changes ' +
+      'where the icon lives, not where your data does.',
+    button: 'Add to home screen',
+    ios:
+      'On an iPhone or iPad: tap the Share button at the bottom of Safari (the square with an arrow ' +
+      'pointing up), scroll down, and tap "Add to Home Screen".',
+    installed:
+      "You're running the installed app. It works offline, and your data stays on this device.",
+    unavailable:
+      'Your browser has not offered an install option here. RenalRoute works exactly the same in a ' +
+      'normal tab — you can also bookmark it.',
+    accepted: 'Added. Look for RenalRoute on your home screen.',
+    dismissed: 'No problem — the app works the same in a browser tab.'
+  },
+
   /* ── Backup ──
      Restore overwrites everything, so the confirmation says so in those
      words. "Are you sure?" on a destructive action tells nobody what

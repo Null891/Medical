@@ -46,6 +46,81 @@ const scripts = Array.from(html.matchAll(/<script src="([^"]+)"><\/script>/g)).m
    supported viewport is caught in the stylesheet instead. 320px is the
    floor the design commits to.
    ═══════════════════════════════════════════════════════════════ */
+console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
+
+/* "Add to home screen" did not work at all until this section existed.
+   The manifest declared NO icons and no icon files were present, which
+   means Chrome will not offer an install prompt and iOS falls back to a
+   blurry screenshot of the page. A PWA that cannot be installed is a
+   website with extra JSON — and nothing anywhere reported a problem,
+   because nothing was checking. */
+{
+  const manifest = JSON.parse(read('manifest.webmanifest'));
+
+  check('the manifest declares icons', Array.isArray(manifest.icons) && manifest.icons.length > 0,
+    'without icons no browser will offer to install this');
+
+  // Chrome's install criteria: a 192 and a 512, and at least one maskable.
+  const sizes = (manifest.icons || []).map(i => i.sizes);
+  check('  ...including 192x192', sizes.some(s => /\b192x192\b/.test(s)), sizes.join(' '));
+  check('  ...and 512x512', sizes.some(s => /\b512x512\b/.test(s)), sizes.join(' '));
+  check('  ...and a maskable one',
+    (manifest.icons || []).some(i => /maskable/.test(i.purpose || '')),
+    'without maskable, Android crops the icon badly');
+
+  // Declared files must exist, or the manifest is a promise it cannot keep.
+  const missing = (manifest.icons || [])
+    .map(i => i.src)
+    .filter(src => !fs.existsSync(path.join(ROOT, src)));
+  check('every declared icon file exists', missing.join(', ') || 'none', 'none');
+
+  // And they must be real PNGs, not renamed anything.
+  (manifest.icons || []).filter(i => /\.png$/.test(i.src)).forEach(i => {
+    const buf = fs.readFileSync(path.join(ROOT, i.src));
+    const sig = buf.slice(0, 8).toString('hex');
+    check(`${i.src} is a real PNG`, sig, '89504e470d0a1a0a');
+  });
+
+  check('start_url and scope are set',
+    !!manifest.start_url && !!manifest.scope, 'a PWA without scope can escape itself');
+  check('display is standalone', manifest.display, 'standalone');
+
+  // iOS reads none of the manifest for icons or the status bar.
+  check('iOS gets its own touch icon', /rel="apple-touch-icon"/.test(html),
+    'without it iOS uses a screenshot of the page');
+  check('  ...and knows it can run standalone',
+    /apple-mobile-web-app-capable/.test(html), '');
+  check('  ...and the apple-touch-icon file exists',
+    fs.existsSync(path.join(ROOT, 'icons/apple-touch-icon.png')), '');
+
+  /* Home-screen shortcuts must point at screens the router knows, or a
+     long-press menu becomes a set of dead links. */
+  const screens = new Set([...html.matchAll(/id="scr-([a-z]+)"/g)].map(m => m[1]));
+  const badShortcuts = (manifest.shortcuts || [])
+    .map(s => (s.url.match(/go=([a-z]+)/) || [])[1])
+    .filter(t => t && !screens.has(t));
+  check('every home-screen shortcut points at a real screen',
+    badShortcuts.join(', ') || 'none', 'none');
+  check('  ...and there are some', (manifest.shortcuts || []).length >= 3,
+    `${(manifest.shortcuts || []).length} shortcuts`);
+
+  /* THE SERVICE WORKER SHELL MUST NOT DRIFT. It was seventeen assets
+     behind index.html — every module added after the first week was
+     missing. Runtime caching meant a second visit still worked, so
+     nothing ever looked broken; what the stale list cost was the first
+     offline visit, and the icons were never cached at all. */
+  const sw = read('sw.js');
+  const shellBlock = sw.slice(sw.indexOf('const SHELL = ['), sw.indexOf('];', sw.indexOf('const SHELL = [')));
+  const shell = new Set([...shellBlock.matchAll(/'([^']+)'/g)].map(m => m[1]));
+  const pageAssets = cssFiles.concat(scripts);
+  const notCached = pageAssets.filter(a => !shell.has(a));
+  check('the service worker caches every asset the page loads',
+    notCached.join(', ') || 'none', 'none');
+  check('  ...and the icons too',
+    ['icons/icon-192.png', 'icons/icon-512.png'].every(i => shell.has(i)), true);
+  check('  ...but never the API', !shellBlock.includes('/api/'), true);
+}
+
 console.log('\n═══ 1. NOTHING IS WIDER THAN THE SMALLEST PHONE ═══');
 {
   const decls = Array.from(css.matchAll(/(?:^|[;{])\s*(min-width|width)\s*:\s*(\d+)px/g));

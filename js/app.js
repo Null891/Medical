@@ -17,6 +17,13 @@
 
   UI.wire();
 
+  /* Home-screen shortcuts. The manifest declares four; each opens
+     ./?go=<screen>, read once here and then stripped from the URL so a
+     refresh does not keep re-navigating somebody who has moved on. */
+  if (typeof Install !== 'undefined') {
+    Install.listen(() => { if (!document.getElementById('scr-settings').hidden) UI.renderSettings(); });
+  }
+
   /* Signature behaviours: the cursor spotlight, the condensing rail,
      and the drifting background highlight. All three are decoration in
      the strict sense — if motion.js failed to load, nothing a user
@@ -45,9 +52,18 @@
       UI.renderOnboarding();
     } else {
       // Resume where they were, but only somewhere it is safe to land.
-      const resumable = ['home', 'labs', 'settings'];
-      const last = Store.settings().lastScreen;
-      UI.go(resumable.includes(last) ? last : 'home');
+      /* A home-screen shortcut outranks "resume where you left off":
+         somebody who long-pressed the icon and chose "Log a meal" has
+         stated what they want more recently than their last session
+         did. */
+      const deepLink = (typeof Install !== 'undefined') ? Install.requestedScreen() : null;
+      if (deepLink) {
+        UI.go(deepLink);
+      } else {
+        const resumable = ['home', 'labs', 'settings'];
+        const last = Store.settings().lastScreen;
+        UI.go(resumable.includes(last) ? last : 'home');
+      }
     }
   }
 
@@ -66,7 +82,7 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
-    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup, I18N,
+    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup, I18N, Install,
     /* Guarded, unlike its neighbours. Object shorthand would be a BARE
        reference, and a bare reference to a module that failed to load
        is a ReferenceError that takes the whole boot down — which is

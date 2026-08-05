@@ -1416,6 +1416,37 @@ const UI = (() => {
     if (open) { const first = $('#fabMenu .fab__item'); if (first) first.focus(); }
   }
 
+  /* The install card renders from Install.state(), so the three
+     platform behaviours cannot drift apart in the markup. */
+  function renderInstall() {
+    const host = $('#installCard');
+    if (!host || typeof Install === 'undefined') return;
+    const c = COPY.install;
+    const st = Install.state();
+
+    const body =
+      st === 'installed' ? `<p class="note">${esc(c.installed)}</p>` :
+      st === 'ready'     ? `<p class="note">${esc(c.why)}</p>
+                           <button type="button" class="btn btn--secondary btn--block" id="installBtn">${esc(c.button)}</button>` :
+      st === 'ios'       ? `<p class="note">${esc(c.why)}</p><p class="note mt-2">${esc(c.ios)}</p>` :
+                           `<p class="note">${esc(c.unavailable)}</p>`;
+
+    host.innerHTML = `<h3 class="h3">${esc(c.title)}</h3>${body}
+      <p class="note mt-2" id="installResult" role="status"></p>`;
+
+    const btn = $('#installBtn');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const outcome = await Install.prompt();
+      $('#installResult').textContent =
+        outcome === 'accepted' ? COPY.install.accepted : COPY.install.dismissed;
+      // A dismissed prompt cannot be shown again, so the card re-renders
+      // to whatever is actually possible now rather than offering a
+      // button that would do nothing.
+      setTimeout(renderInstall, 2500);
+    });
+  }
+
   function showBackupError(msg) {
     $('#backupOk').hidden = true;
     $('#backupError').textContent = msg;
@@ -2639,6 +2670,8 @@ const UI = (() => {
     /* Sound is opt-in and previews itself the moment it is switched on
        — a toggle for something you cannot hear until later is a toggle
        people flip twice and then give up on. */
+    renderInstall();
+
     /* ── Language ──
        Native names, not English ones: somebody looking for Hindi is
        looking for हिन्दी. Coverage is stated per language because a
@@ -2823,5 +2856,6 @@ const UI = (() => {
   }
 
   return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals,
-           renderReferences, renderKitchen, toast, esc, searchFoods };
+           renderReferences, renderKitchen, renderSettings, renderInstall,
+           toast, esc, searchFoods };
 })();

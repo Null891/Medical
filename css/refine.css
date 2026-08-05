@@ -793,3 +793,57 @@ body { letter-spacing: var(--track-body); }
   /* The rail scrolls itself rather than pushing its own footer away. */
   .rail__rest { overflow-y: auto; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PHONE ADAPTABILITY
+   ───────────────────────────────────────────────────────────────
+   Written for the device this app is actually used on: a phone, held
+   one-handed, in a kitchen or a supermarket aisle, often by somebody
+   older than the median app user.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Installed as a home-screen app, there is no browser chrome, so the
+   top of the page IS the top of the screen and needs the safe-area
+   inset to clear the notch or the status bar. */
+@media (display-mode: standalone) {
+  .main { padding-top: calc(var(--space-4) + env(safe-area-inset-top, 0px)); }
+  /* No browser to go "back" with, so the in-app back links matter more. */
+  .linkbtn--back { font-weight: 620; }
+}
+
+/* Landscape on a phone is short, not wide. The tab bar and a full-size
+   header together leave almost nothing, so the header compresses
+   rather than the content scrolling forever. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .hdr { margin-bottom: var(--space-3); }
+  .hdr__title--display { font-size: 1.6rem; }
+  .hdr__line, .hdr__date { display: none; }
+  .fab { bottom: calc(var(--tabbar-h) + var(--space-2)); }
+}
+
+/* One-handed reach. On a tall phone the top of the screen is genuinely
+   hard to touch, so nothing that must be tapped lives up there — the
+   header is read, not operated, and every action sits in the lower two
+   thirds via the tab bar and the quick-action button. This rule just
+   guarantees the content never hides behind either of them. */
+.main {
+  padding-bottom: calc(var(--tabbar-h) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Inputs at 16px or larger, always. iOS Safari zooms the whole page
+   when a focused input is under 16px, and the resulting layout never
+   zooms back — a one-line rule that prevents a genuinely disorienting
+   bug on the most common phone. */
+input, select, textarea { font-size: max(16px, var(--type-body)); }
+
+/* Text selection on data, not on chrome. Somebody wanting to send a
+   nutrient figure to their dietitian should be able to select it; the
+   tab bar should not highlight when tapped twice. Already handled
+   globally — restated here so the phone-specific rules do not
+   accidentally re-enable it on controls. */
+.tabbar, .fab, .scenes { -webkit-user-select: none; user-select: none; }
+
+/* Momentum scrolling inside the horizontal rows, so a flick behaves the
+   way a phone user expects rather than stopping dead. */
+.tabs, .scenes, .chipset { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tabs::-webkit-scrollbar, .scenes::-webkit-scrollbar, .chipset::-webkit-scrollbar { display: none; }

@@ -13,6 +13,20 @@
 <meta name="robots" content="noindex">
 <title>RenalRoute — what's left today</title>
 <link rel="manifest" href="manifest.webmanifest">
+<!-- iOS ignores the manifest for home-screen icons and for the status
+     bar, so it needs its own tags. Without apple-touch-icon it uses a
+     blurry screenshot of the page, which is what "add to home screen"
+     produced before these existed. -->
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RenalRoute">
+<!-- default rather than black-translucent: translucent puts the status
+     bar OVER the header, and this app's header carries the greeting and
+     the day line. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/materials.css">
@@ -512,6 +526,12 @@
         <p class="inline-error" id="backupError" role="alert" hidden></p>
         <p class="note" id="backupOk" role="status" hidden></p>
 
+        <!-- Install. Somebody managing a kidney diet opens this several
+             times a day, in a kitchen, in an aisle, in a waiting room.
+             A browser tab they have to find again is friction paid at
+             every meal. -->
+        <div class="card m-stone" id="installCard"></div>
+
         <h3 class="h3 mt-2">Where our numbers come from</h3>
         <p class="note">Every position this app takes and the source behind it — including the ones we have not re-derived yet. Nutrition apps rarely publish this, which is why it is worth publishing.</p>
         <button type="button" class="btn btn--secondary btn--block" data-nav="references" id="toRefsBtn">Open references</button>
@@ -823,6 +843,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/install.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/meds.js"></script>
 <script src="js/plan.js"></script>
