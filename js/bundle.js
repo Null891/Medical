@@ -7589,6 +7589,21 @@ const UI = (() => {
      on a single screen they may fill those and then press any of the
      three target buttons. Reading them at that moment is what makes the
      fields genuinely optional rather than a hidden prerequisite. */
+  /* Nobody has to give a name. Somebody who skips it used to get a bare
+     "Good evening" — correct, and slightly cold, and it left the
+     passport and the export with an empty line where a name goes.
+
+     So a skipped name gets a PLACEHOLDER, and the placeholder is
+     deliberately not a person: no gender, no implied identity, and
+     obviously editable. "You" reads as the app addressing the reader
+     rather than the app having decided who they are — which is what
+     inventing a first name would do, in an app whose whole argument is
+     that it does not make things up about you.
+
+     Stored as a real value so the passport and the export are never
+     blank, and flagged as a placeholder so Settings can say so. */
+  const NAME_PLACEHOLDER = 'You';
+
   function commitOnboardingProfile() {
     const name = $('#onbName').value.trim();
     if (name.length > 40) {
@@ -7602,9 +7617,12 @@ const UI = (() => {
        screen genuinely optional rather than a hidden prerequisite. */
     const chosen = $('#onbStageSet .chip-opt.is-on');
     Store.updateProfile({
-      display_name: name,
+      display_name: name || NAME_PLACEHOLDER,
       ckd_stage: chosen ? chosen.dataset.val : 'not_sure'
     });
+    // Remembered so Settings can offer to replace it rather than
+    // presenting a name the reader never chose as one they did.
+    Store.setSetting('namePlaceholder', !name);
     return true;
   }
 
@@ -10785,6 +10803,69 @@ const Seed = (() => {
     ]}
   ];
 
+  /* ═══════════ MARIA'S WEEK — a different patient, visibly ═══════════
+     Both personas used to eat Frank's identical week, which made "two
+     personas" a claim rather than a fact: the same food, the same
+     totals, the same trends card, only the name on the greeting
+     different. Anybody switching between them saw nothing change.
+
+     Maria is G4 with a potassium of 5.2 — caution mode — and tighter
+     targets (2,200 / 800). Her week reads like somebody managing that:
+
+       · BOILED potatoes, not baked with the skin. Same food, half the
+         potassium, and the leaching lever is the one thing in the app
+         that changes a number without changing what you ate.
+       · No chili day, no deli-ham-and-processed-cheese day. Frank's
+         week has both, which is what gives him an amber potassium day
+         and an amber phosphorus day to look at.
+       · Cabbage, cucumber, bell pepper, green beans — the low-potassium
+         vegetables, repeatedly.
+       · Cola on one day, so the additive-phosphate card still has
+         something to fire on. She is careful, not perfect, and a
+         seven-day record with no flags in it teaches nobody anything.
+       · Lentils on day 2, so plant phosphorus appears beside the
+         additive kind and the bioavailability contrast is on screen.
+
+     The pattern detector needs several logged days to clear its
+     evidence floor, so the week is full rather than sparse. */
+  const MARIA_DAYS = [
+    { ago: 6, meals: [
+      { text: 'porridge oats with blueberries', items: [['white_bread', 1], ['blueberries', 1]] },
+      { text: 'chicken breast, white rice, green beans', items: [['chicken_breast', 1], ['white_rice', 1], ['green_beans_frozen', 1]] },
+      { text: 'apple, no skin', items: [['apple_noskin', 1]] }
+    ]},
+    { ago: 5, meals: [
+      { text: 'scrambled egg on white toast', items: [['egg', 1], ['white_bread', 1]] },
+      // Plant phosphorus, so the <40% absorption contrast has a subject.
+      { text: 'lentils with white rice', items: [['lentils', 1], ['white_rice', 1]] },
+      { text: 'cucumber salad', items: [['cucumber', 1]] }
+    ]},
+    { ago: 4, meals: [
+      { text: 'white toast with peanut butter', items: [['white_bread', 1], ['peanut_butter', 1]] },
+      // THE LEACHING BEAT: boiled, not baked with skin.
+      { text: 'salmon with boiled potatoes', items: [['salmon', 1], ['potato_boiled', 1]] },
+      { text: 'a cola with lunch', items: [['cola', 1]] }
+    ]},
+    { ago: 3, meals: [
+      { text: 'plain low-fat yogurt', items: [['yogurt_lowfat', 1]] },
+      { text: 'chicken breast with cooked cauliflower', items: [['chicken_breast', 1], ['cauliflower_cooked', 1]] },
+      { text: 'strawberries', items: [['strawberries', 1]] }
+    ]},
+    { ago: 2, meals: [
+      { text: 'scrambled egg and white toast', items: [['egg', 1], ['white_bread', 1]] },
+      { text: 'salmon, white rice, cabbage', items: [['salmon', 1], ['white_rice', 1], ['cabbage_raw', 1]] }
+    ]},
+    { ago: 1, meals: [
+      { text: 'white toast with peanut butter', items: [['white_bread', 1], ['peanut_butter', 1]] },
+      { text: 'chicken with green beans and boiled potatoes',
+        items: [['chicken_breast', 1], ['green_beans_frozen', 1], ['potato_boiled', 1]] },
+      { text: 'green pepper strips', items: [['bell_pepper_green', 1]] }
+    ]},
+    { ago: 0, meals: [
+      { text: 'plain low-fat yogurt', items: [['yogurt_lowfat', 1]], hour: 8 }
+    ]}
+  ];
+
   function buildMeal(spec, dateISO, hour) {
     const items = spec.items
       .map(([id, mult]) => Resolve.fromPicker(id, mult))
@@ -10808,22 +10889,34 @@ const Seed = (() => {
     }, t);
   }
 
-  function run() {
+  /* Takes WHO and WHAT THEY ATE, so the two personas are genuinely two
+     people rather than one week with two names on it. Defaults to
+     Frank, which is what every existing caller expects. */
+  function run(opts) {
+    const o = opts || {};
+    const who = o.profile || FRANK;
+    const week = o.days || DAYS;
+
     Store.reset();
     Store.load();
 
     Store.updateProfile(Object.assign({
       consent_accepted_at: new Date().toISOString(),
       consent_version: 'v1'
-    }, FRANK));
+    }, who));
 
-    // Baseline lab: normal mode, dated recently so it is not stale.
-    Store.addLab({
-      k: 4.6, p: 3.8, egfr: 38,
-      lab_date: Store.daysAgoISO(12)
-    });
+    /* Frank's baseline lab: normal mode, dated recently so it is not
+       stale. Maria passes lab:false because she has her own two-result
+       history — inheriting his would leave three results from two
+       different people on one Labs screen. */
+    if (o.lab !== false) {
+      Store.addLab({
+        k: 4.6, p: 3.8, egfr: 38,
+        lab_date: Store.daysAgoISO(12)
+      });
+    }
 
-    DAYS.forEach(day => {
+    week.forEach(day => {
       const dateISO = Store.daysAgoISO(day.ago);
       day.meals.forEach((spec, i) => {
         const hour = spec.hour !== undefined ? spec.hour : [8, 13, 19][i] || 20;
@@ -10882,15 +10975,15 @@ const Seed = (() => {
   };
 
   function runFull() {
-    run();                                    // the week of meals first
-    Store.updateProfile(MARIA);
+    /* HER OWN WEEK, not Frank's. Both personas used to share DAYS,
+       which made "two personas" a claim rather than a fact — same food,
+       same totals, same trends, only the greeting different. Somebody
+       switching between them saw nothing change.
 
-    /* run() seeds Frank's baseline lab, and Maria has her own history —
-       leaving both gives her three results from two different people.
-       Caught by the demo journey test asserting exactly two, which is
-       the kind of thing that would otherwise have sat in the demo
-       looking almost right. */
-    Store.labs().forEach(l => Store.deleteLab(l.id));
+       lab:false because her two-result history is seeded below;
+       inheriting Frank's baseline would leave three results from two
+       different people on one Labs screen. */
+    run({ profile: MARIA, days: MARIA_DAYS, lab: false });
 
     /* Two labs, four weeks apart, so the Labs screen has real history
        and the mode is derived rather than asserted. The later one is
@@ -11066,7 +11159,19 @@ const Seed = (() => {
      shell and reports on a page rather than on the app.
 
      It guards nothing — see js/demo-auth.js. */
-  if (typeof DemoAuth !== 'undefined' && DemoAuth.requested() && !Store.hasConsented()) {
+  /* THE ENTRANCE IS THE FIRST THING EVERYONE SEES, not a hidden route.
+     It used to appear only at ?demo=1, which meant an ordinary visitor
+     went straight into a consent gate and then four setup questions
+     before the app showed them anything — and anybody wanting to look
+     around first had no way to. Somebody evaluating this in ninety
+     seconds should not have to fill in a form to see what it does.
+
+     Three doors, and "set it up as myself" is the first and the
+     primary. The other two are explicitly a look around with somebody
+     else's fictional week in place. ?demo=1 still works and still
+     skips nothing — it is now just one way to reach a screen everyone
+     reaches anyway. */
+  if (typeof DemoAuth !== 'undefined' && !Store.hasConsented()) {
     UI.renderDemo();
   } else if (!Store.hasConsented()) {
     // Nothing behind the modal is reachable until it is acknowledged.

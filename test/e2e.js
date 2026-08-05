@@ -163,9 +163,23 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
      status role would keep announcing itself. */
   await wait(260);
   check('  ...then removed from the document entirely', $('#boot'), null);
-  check('consent modal is visible', vis('#consentModal'), true);
+  /* THE ENTRANCE IS THE FIRST THING, for everyone. It used to appear
+     only at ?demo=1, so an ordinary visitor went straight into a
+     consent gate and then four setup questions before the app showed
+     them anything, and anybody wanting to look around first had no way
+     to. Somebody evaluating this in ninety seconds should not have to
+     fill in a form to see what it does. */
+  check('the entrance is the first thing shown', vis('#demoModal'), true);
+  check('  ...offering three ways in', $$('#demoChoices [data-demo]').length, 3);
+  check('  ...with setting it up yourself first',
+    $$('#demoChoices [data-demo]')[0].dataset.demo, 'fresh');
+  check('app shell is hidden behind it', vis('#app'), false);
   check('delete modal is HIDDEN (was the click-blocking bug)', vis('#deleteModal'), false);
-  check('app shell is hidden behind consent', vis('#app'), false);
+
+  // Choosing to set it up yourself reaches the consent gate, unchanged.
+  click('#demoChoices [data-demo="fresh"]');
+  await wait(30);
+  check('choosing to set it up reaches the consent gate', vis('#consentModal'), true);
   check('consent body rendered', $('#consentBody').textContent.includes('not a medical device'), true);
   check('no page errors on boot', pageErrors.length, 0);
 
@@ -1374,8 +1388,18 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     // Name is last and still entirely optional.
     click('#onbUseEducation');
     await wait(20);
-    check('setup completes with no name typed', S.profile().display_name, '');
-    check('  ...and lands on a working dashboard', vis('#scr-home'), true);
+    /* Nobody has to give a name, and skipping it no longer leaves the
+       passport and the export with a blank where a name goes. The
+       placeholder is deliberately not a person — no gender, no implied
+       identity — because inventing a first name would be the app
+       deciding who somebody is. */
+    check('setup completes with no name typed', vis('#scr-home'), true);
+    check('  ...and the profile carries a neutral placeholder',
+      S.profile().display_name, 'You');
+    check('  ...flagged as a placeholder, not a chosen name',
+      S.settings().namePlaceholder, true);
+    check('  ...which is not a gendered first name',
+      /^(bob|frank|maria|john|jane|sam|alex)$/i.test(S.profile().display_name), false);
   }
 
   console.log('\n═══ 31. REFERENCES: CHECKABLE, INCLUDING THE UNFLATTERING ═══');

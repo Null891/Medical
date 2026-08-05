@@ -65,7 +65,19 @@
      shell and reports on a page rather than on the app.
 
      It guards nothing — see js/demo-auth.js. */
-  if (typeof DemoAuth !== 'undefined' && DemoAuth.requested() && !Store.hasConsented()) {
+  /* THE ENTRANCE IS THE FIRST THING EVERYONE SEES, not a hidden route.
+     It used to appear only at ?demo=1, which meant an ordinary visitor
+     went straight into a consent gate and then four setup questions
+     before the app showed them anything — and anybody wanting to look
+     around first had no way to. Somebody evaluating this in ninety
+     seconds should not have to fill in a form to see what it does.
+
+     Three doors, and "set it up as myself" is the first and the
+     primary. The other two are explicitly a look around with somebody
+     else's fictional week in place. ?demo=1 still works and still
+     skips nothing — it is now just one way to reach a screen everyone
+     reaches anyway. */
+  if (typeof DemoAuth !== 'undefined' && !Store.hasConsented()) {
     UI.renderDemo();
   } else if (!Store.hasConsented()) {
     // Nothing behind the modal is reachable until it is acknowledged.

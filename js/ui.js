@@ -357,6 +357,21 @@ const UI = (() => {
      on a single screen they may fill those and then press any of the
      three target buttons. Reading them at that moment is what makes the
      fields genuinely optional rather than a hidden prerequisite. */
+  /* Nobody has to give a name. Somebody who skips it used to get a bare
+     "Good evening" — correct, and slightly cold, and it left the
+     passport and the export with an empty line where a name goes.
+
+     So a skipped name gets a PLACEHOLDER, and the placeholder is
+     deliberately not a person: no gender, no implied identity, and
+     obviously editable. "You" reads as the app addressing the reader
+     rather than the app having decided who they are — which is what
+     inventing a first name would do, in an app whose whole argument is
+     that it does not make things up about you.
+
+     Stored as a real value so the passport and the export are never
+     blank, and flagged as a placeholder so Settings can say so. */
+  const NAME_PLACEHOLDER = 'You';
+
   function commitOnboardingProfile() {
     const name = $('#onbName').value.trim();
     if (name.length > 40) {
@@ -370,9 +385,12 @@ const UI = (() => {
        screen genuinely optional rather than a hidden prerequisite. */
     const chosen = $('#onbStageSet .chip-opt.is-on');
     Store.updateProfile({
-      display_name: name,
+      display_name: name || NAME_PLACEHOLDER,
       ckd_stage: chosen ? chosen.dataset.val : 'not_sure'
     });
+    // Remembered so Settings can offer to replace it rather than
+    // presenting a name the reader never chose as one they did.
+    Store.setSetting('namePlaceholder', !name);
     return true;
   }
 

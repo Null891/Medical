@@ -84,8 +84,17 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     const a = boot();
     let taps = 0;
 
-    check('the first thing shown is the consent gate', a.vis('#consentModal'), true);
+    /* The entrance comes first now, for everyone — not only at ?demo=1.
+       An ordinary visitor used to meet a consent gate and four setup
+       questions before the app showed them anything, and anybody who
+       wanted to look around first had no way to. */
+    check('the first thing shown is the entrance', a.vis('#demoModal'), true);
     check('  ...and nothing behind it is usable', a.vis('#app'), false);
+    check('  ...with setting it up yourself offered first',
+      a.$$('#demoChoices [data-demo]')[0].dataset.demo, 'fresh');
+
+    a.click('#demoChoices [data-demo="fresh"]'); taps++; await wait(20);
+    check('choosing that reaches the consent gate', a.vis('#consentModal'), true);
 
     a.click('#consentAccept'); taps++; await wait(20);
     check('the second thing is what the app refuses to do', a.vis('#refusalsModal'), true);
@@ -97,8 +106,21 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
        that screen is optional, and if it is not, the app has a funnel
        problem it will never see in a unit test. */
     a.click('#onbUseEducation'); taps++; await wait(20);
-    check('a working dashboard in three taps', a.vis('#scr-home'), true);
-    check(`  ...and it took exactly ${taps} taps`, taps <= 3, true);
+    check('a working dashboard, still in a handful of taps', a.vis('#scr-home'), true);
+    /* FOUR now, not three, and the extra one is the entrance. That is a
+       real cost paid by everyone who sets the app up themselves, and it
+       is recorded here rather than quietly absorbed.
+
+       It buys two things. Somebody evaluating this in ninety seconds
+       can be inside a populated app in ONE tap instead of four, and
+       anybody who does not want to hand over anything at all now has a
+       door — before, the only way in was through a consent gate and
+       four questions. A funnel that costs one tap and removes the
+       "fill in a form before you can see it" wall is the better trade.
+
+       The ceiling stays tight on purpose: five would mean the entrance
+       had grown a step, and that is worth failing over. */
+    check(`  ...and it took exactly ${taps}`, taps <= 4, true);
 
     /* THE COLD-OPEN TEST. A dashboard with nothing logged has to say
        what the app IS, not just that it is empty. A judge gives this
@@ -425,8 +447,22 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     await wait(40);
     check('Frank is the simpler tour: one lab, not two', b.R.Store.labs().length, 1);
     check('  ...and no medicines to explain', b.R.Meds.count(), 0);
-    check('  ...but the same week of meals',
-      b.R.Store.meals().length === R.Store.meals().length, true);
+    /* And they no longer eat the same week. Sharing DAYS made "two
+       personas" a claim rather than a fact: same food, same totals,
+       same trends card, only the greeting different. */
+    const frankFoods = new Set(b.R.Store.meals().map(m => m.meal_text));
+    const mariaFoods = new Set(R.Store.meals().map(m => m.meal_text));
+    const shared = [...frankFoods].filter(f => mariaFoods.has(f));
+    check('  ...and they do NOT eat an identical week',
+      shared.length < Math.min(frankFoods.size, mariaFoods.size), true);
+    check('  ...Frank has the chili day, which is his amber potassium',
+      [...frankFoods].some(f => /chili/i.test(f)), true);
+    check('  ...Maria does not', [...mariaFoods].some(f => /chili/i.test(f)), false);
+    /* The leaching lever is the one thing in the app that changes a
+       number without changing what you ate, and a caution-mode patient
+       is exactly who would be using it. */
+    check('  ...Maria boils her potatoes rather than baking them',
+      [...mariaFoods].some(f => /boiled potato/i.test(f)), true);
   }
 
   console.log('\n═══ JOURNEY 7 · SIGNING IN AND OUT OF THE DEMO ═══');
@@ -543,6 +579,12 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     a.R.Store.acceptConsent();
     a.R.Store.setSetting('refusalsSeen', true);
     a.R.Store.useEducationRanges();
+    /* Consent is accepted directly here rather than through the UI, so
+       the entrance modal boot opened is still on screen. Close it, or
+       the modal-first rule correctly eats the first Back press and this
+       tests the wrong thing. */
+    a.$('#demoModal').hidden = true;
+    a.$('#app').hidden = false;
     a.R.UI.go('home', { replace: true });
 
     const back = () => {
