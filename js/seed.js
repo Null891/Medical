@@ -219,7 +219,7 @@ const Seed = (() => {
     Store.setSetting('medications', MEDS);
 
     /* Vitals across several days, recorded and never interpreted. The
-       values drift slightly because a flat line looks like test data. */
+       values drift slightly because a perfectly flat line looks invented. */
     if (typeof Vitals !== 'undefined') {
       const readings = [
         { d: 12, w: 71.2, s: 138, dia: 84, sym: [] },

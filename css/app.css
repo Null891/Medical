@@ -74,7 +74,7 @@ button { font: inherit; color: inherit; }
 }
 .skiplink:focus { top: var(--space-2); }
 
-/* ───────────── Dev banner (reference build only) ───────────── */
+/* ───────────── Data-status notice ───────────── */
 .dev-banner {
   position: sticky; top: 0; z-index: var(--z-banner);
   display: flex; align-items: center; gap: var(--space-2);

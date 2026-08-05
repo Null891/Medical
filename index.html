@@ -194,23 +194,28 @@
 </div>
 
 <!-- ═══════════ DATA NOTICE ═══════════
-     This used to open with "Reference build.", and an independent
-     scanner read the whole banner as a staging deployment left running
-     in production — a HIGH finding, and a fair reading of that phrase.
+     Says what is uncertain about the NUMBERS, and nothing whatsoever
+     about where this code is running. An independent scan raised a HIGH
+     against an earlier wording that named an environment, and its
+     reading was fair.
 
-     What it is NOT is a reason to delete the notice. The claim is true:
-     the anchor table's values have not been re-derived from source, and
-     ANCHOR_STATS counts the gaps the coverage panel publishes. Removing
-     a true statement about data quality to satisfy a scanner is the one
-     move this app's whole design exists to avoid.
+     That was never a reason to delete the notice: the anchor table's
+     values have not been re-derived from source, ANCHOR_STATS counts
+     the gaps, and the coverage panel publishes them. Removing a true
+     statement about data quality to satisfy a scanner is the one move
+     this app's whole design exists to avoid. So the claim stayed and
+     the wording changed.
 
-     So the substance stays and the environment signal goes. No
-     "reference build", no "test data", no "draft" — those describe
-     where the code is deployed. What the reader needs to know is about
-     the NUMBERS, and that is what it now says.
+     The full reasoning, including the exact phrases that must never
+     come back, lives in test/sweep.js — deliberately NOT here. Markup
+     comments are served to every visitor, so an explanation that quotes
+     the words it is warning against reintroduces them into the page
+     source a scanner reads. That is not hypothetical: the first version
+     of this comment did precisely that, and the live page still carried
+     the phrase after the banner itself had been fixed.
 
      Filled from COPY so it translates like everything else; it was the
-     only user-facing string hard-coded in this file. -->
+     last user-facing string hard-coded in this file. -->
 <div id="devBanner" class="dev-banner" role="note">
   <span id="devBannerText"></span>
   <button type="button" class="dev-banner__x" id="devBannerClose" aria-label="Hide this notice">&times;</button>

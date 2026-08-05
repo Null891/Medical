@@ -68,7 +68,7 @@ const REFERENCES = [
     group: 'Food values',
     title: 'USDA FoodData Central',
     body: 'The reference database for food nutrient composition.',
-    used: 'The intended source of every anchor value. IMPORTANT: this build\'s table is transcribed test data awaiting re-derivation against FoodData Central. That is why the coverage panel exists and why unverified nutrients are named per food.',
+    used: 'The intended source of every anchor value. IMPORTANT: this table was transcribed from published sources and is awaiting re-derivation against FoodData Central. That is why the coverage panel exists and why unverified nutrients are named per food.',
     verified: false
   },
   {

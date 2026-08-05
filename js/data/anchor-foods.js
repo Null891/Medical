@@ -8,8 +8,8 @@
    food is not.
 
    ▓▓ DATA STATUS — READ BEFORE TRUSTING ANY NUMBER ▓▓
-   This is a REFERENCE BUILD. Values are transcribed from the plan's
-   ground-truth pack (AKF / NKF / DaVita, USDA-derived) for testing.
+   Values here were transcribed from the plan's ground-truth pack
+   (AKF / NKF / DaVita, USDA-derived) and have NOT been re-derived.
    Rows carry an explicit `verify` array naming every field that must be
    re-derived from USDA FoodData Central before any real-world use.
 

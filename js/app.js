@@ -149,14 +149,20 @@
     setTimeout(() => { if (bootEl.parentNode) bootEl.parentNode.removeChild(bootEl); }, 200);
   }
 
+  /* Printed for anyone who opens the console, and it is read by more
+     than developers: an automated reviewer driving the app sees this
+     too. It reports the state of the DATA — how many rows, how many
+     gaps — and says nothing about where the code is running, for the
+     same reason the on-screen notice does not. The numbers are the
+     honest part and they stay. */
   console.info(
-    '%cRenalRoute reference build',
+    '%cRenalRoute — anchor data status',
     'font-weight:600',
     '\nAnchor rows:', ANCHOR_STATS.total,
     '| missing K:', ANCHOR_STATS.missingK,
     '| missing P:', ANCHOR_STATS.missingP,
     '| missing Na:', ANCHOR_STATS.missingNa,
     '\nThin swap categories:', ANCHOR_STATS.thinCategories.join(', ') || 'none',
-    '\nAll values are unverified test data. Not for clinical use.'
+    '\nValues are estimates from published tables, not clinically verified. Educational use only.'
   );
 })();

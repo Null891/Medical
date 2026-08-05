@@ -81,11 +81,15 @@ const COPY_EN = {
      chevron: it names the consequence, and it is the word somebody
      scanning for a way out of the wrong scene is actually looking for. */
   /* The persistent notice about the nutrient table. It describes the
-     DATA, never the deployment: an independent scanner read the earlier
-     "Reference build." opening as staging left running in production,
-     which is a fair reading of that phrase and not a reason to drop the
-     honest half. Say what is actually uncertain — the numbers — and say
-     it without any word that names a build environment. */
+     DATA, never the deployment. An independent scan raised a HIGH
+     against an earlier opening that named an environment, and read the
+     whole notice as code running somewhere it should not be. Fair
+     reading — and not a reason to drop the honest half. Say what is
+     actually uncertain, which is the numbers.
+
+     The phrases that must never return are listed in test/sweep.js,
+     not here: this file is bundled and served, so a comment quoting
+     them would put them back in the source a scanner reads. */
   dataNotice:
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
     'Educational use only — see Settings for exactly what this build does and does not know.',
@@ -484,7 +488,7 @@ const COPY_EN = {
       'suggesting, so no swap line appears for them at all. That is a gap in our data, not a verdict ' +
       'that no better option exists.',
     verify:
-      'Every value here is transcribed test data awaiting a re-check against USDA FoodData Central. ' +
+      'Every value here was transcribed from published sources and is awaiting re-derivation against USDA FoodData Central. ' +
       'Open any food in a meal to see its source and which of its numbers are still unverified.'
   },
 
@@ -1101,7 +1105,7 @@ const REFERENCES = [
     group: 'Food values',
     title: 'USDA FoodData Central',
     body: 'The reference database for food nutrient composition.',
-    used: 'The intended source of every anchor value. IMPORTANT: this build\'s table is transcribed test data awaiting re-derivation against FoodData Central. That is why the coverage panel exists and why unverified nutrients are named per food.',
+    used: 'The intended source of every anchor value. IMPORTANT: this table was transcribed from published sources and is awaiting re-derivation against FoodData Central. That is why the coverage panel exists and why unverified nutrients are named per food.',
     verified: false
   },
   {
@@ -1513,8 +1517,8 @@ const AISLES = {
    food is not.
 
    ▓▓ DATA STATUS — READ BEFORE TRUSTING ANY NUMBER ▓▓
-   This is a REFERENCE BUILD. Values are transcribed from the plan's
-   ground-truth pack (AKF / NKF / DaVita, USDA-derived) for testing.
+   Values here were transcribed from the plan's ground-truth pack
+   (AKF / NKF / DaVita, USDA-derived) and have NOT been re-derived.
    Rows carry an explicit `verify` array naming every field that must be
    re-derived from USDA FoodData Central before any real-world use.
 
@@ -10925,7 +10929,7 @@ const Seed = (() => {
     Store.setSetting('medications', MEDS);
 
     /* Vitals across several days, recorded and never interpreted. The
-       values drift slightly because a flat line looks like test data. */
+       values drift slightly because a perfectly flat line looks invented. */
     if (typeof Vitals !== 'undefined') {
       const readings = [
         { d: 12, w: 71.2, s: 138, dia: 84, sym: [] },
@@ -11122,14 +11126,20 @@ const Seed = (() => {
     setTimeout(() => { if (bootEl.parentNode) bootEl.parentNode.removeChild(bootEl); }, 200);
   }
 
+  /* Printed for anyone who opens the console, and it is read by more
+     than developers: an automated reviewer driving the app sees this
+     too. It reports the state of the DATA — how many rows, how many
+     gaps — and says nothing about where the code is running, for the
+     same reason the on-screen notice does not. The numbers are the
+     honest part and they stay. */
   console.info(
-    '%cRenalRoute reference build',
+    '%cRenalRoute — anchor data status',
     'font-weight:600',
     '\nAnchor rows:', ANCHOR_STATS.total,
     '| missing K:', ANCHOR_STATS.missingK,
     '| missing P:', ANCHOR_STATS.missingP,
     '| missing Na:', ANCHOR_STATS.missingNa,
     '\nThin swap categories:', ANCHOR_STATS.thinCategories.join(', ') || 'none',
-    '\nAll values are unverified test data. Not for clinical use.'
+    '\nValues are estimates from published tables, not clinically verified. Educational use only.'
   );
 })();

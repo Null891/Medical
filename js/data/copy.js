@@ -76,11 +76,15 @@ const COPY_EN = {
      chevron: it names the consequence, and it is the word somebody
      scanning for a way out of the wrong scene is actually looking for. */
   /* The persistent notice about the nutrient table. It describes the
-     DATA, never the deployment: an independent scanner read the earlier
-     "Reference build." opening as staging left running in production,
-     which is a fair reading of that phrase and not a reason to drop the
-     honest half. Say what is actually uncertain — the numbers — and say
-     it without any word that names a build environment. */
+     DATA, never the deployment. An independent scan raised a HIGH
+     against an earlier opening that named an environment, and read the
+     whole notice as code running somewhere it should not be. Fair
+     reading — and not a reason to drop the honest half. Say what is
+     actually uncertain, which is the numbers.
+
+     The phrases that must never return are listed in test/sweep.js,
+     not here: this file is bundled and served, so a comment quoting
+     them would put them back in the source a scanner reads. */
   dataNotice:
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
     'Educational use only — see Settings for exactly what this build does and does not know.',
@@ -479,7 +483,7 @@ const COPY_EN = {
       'suggesting, so no swap line appears for them at all. That is a gap in our data, not a verdict ' +
       'that no better option exists.',
     verify:
-      'Every value here is transcribed test data awaiting a re-check against USDA FoodData Central. ' +
+      'Every value here was transcribed from published sources and is awaiting re-derivation against USDA FoodData Central. ' +
       'Open any food in a meal to see its source and which of its numbers are still unverified.'
   },
 

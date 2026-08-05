@@ -248,7 +248,12 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
   check('the data notice exists in COPY', notice.length > 0,
     'it must live in COPY so it translates, not hard-coded in markup');
 
-  const ENV_WORDS = /reference build|test data|staging|draft|dev build|prototype|not for production/i;
+  /* Deliberately NOT a broad word list. An earlier version matched bare
+     "staging", which flagged the phrase "staging a performance" in a
+     comment about the boot screen — ordinary English, and a lint that
+     cries wolf gets ignored. These are the phrases that actually read as
+     a claim about where the code is running. */
+  const ENV_WORDS = /reference build|test data|dev build|staging (?:build|deployment|environment|server)|not for production|pre-?production|prototype build/i;
   check('  ...and names no build environment', !ENV_WORDS.test(notice),
     'a scanner reads these as staging-in-production; describe the data instead');
 
@@ -264,9 +269,30 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
     /id="devBannerText"/.test(html), '');
   check('  ...that app.js fills from COPY',
     /devBannerText'\)\.textContent = COPY\.dataNotice/.test(read('js/app.js')), '');
-  check('  ...and no build-environment wording is left in the markup',
-    !ENV_WORDS.test(html.slice(html.indexOf('id="devBanner"'), html.indexOf('id="devBanner"') + 400)),
-    'the banner region still carries an environment word');
+  /* EVERY DEPLOYED FILE, not a window around the banner.
+
+     The first version of this check read 400 characters near
+     #devBanner and passed — while the HTML comment explaining the fix
+     sat further up, quoting the exact phrase it was removing. The live
+     page still carried it. The second version checked the whole
+     document and passed — while the JS bundle carried it seven times,
+     including in a console.info() line that an automated reviewer with
+     devtools open reads directly.
+
+     Comments ship. Console output ships. Anything the browser
+     downloads is source a scanner can read, so the check covers all of
+     it: the document, both bundles, theme.js and the 404 page. */
+  const DEPLOYED = ['index.html', 'css/bundle.css', 'js/bundle.js',
+                    'js/theme.js', '404.html'];
+  const offending = [];
+  DEPLOYED.forEach(f => {
+    if (!fs.existsSync(path.join(ROOT, f))) return;
+    read(f).split('\n').forEach((line, i) => {
+      if (ENV_WORDS.test(line)) offending.push(`${f}:${i + 1} ${line.trim().slice(0, 50)}`);
+    });
+  });
+  check('  ...and appears in NO file the browser downloads',
+    offending.length === 0, offending.slice(0, 3).join('  |  '));
 }
 
 console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ═══');
