@@ -31,7 +31,54 @@ const UI = (() => {
 
   const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen', 'more'];
 
+  /* ═══════════ the back button ═══════════
+     This app had no history integration at all. Every screen change
+     swapped `hidden` attributes and left the browser's history stack
+     untouched, so pressing Back did not go back — it left the app
+     entirely, discarding wherever somebody was.
+
+     On Android that is the primary navigation gesture. Installed to a
+     home screen there is no browser chrome to fall back on, so Back is
+     the ONLY way out of a screen other than hunting for an on-screen
+     control. An app that treats it as "quit" is an app people lose
+     work in.
+
+     go() therefore pushes; popstate replays. `silent` exists so the
+     popstate handler can move the app without pushing a fresh entry
+     and trapping somebody in a loop they cannot escape by holding
+     Back. The initial screen replaces rather than pushes, so the first
+     Back press leaves the app exactly as a user expects it to. */
   function go(name, opts) {
+    const o = opts || {};
+    render(name, o);
+
+    if (typeof window === 'undefined' || !window.history || !window.history.pushState) return;
+    if (o.silent) return;
+    try {
+      const state = { screen: name };
+      if (window.history.state && window.history.state.screen === name) return;   // no duplicate entries
+      if (o.replace) window.history.replaceState(state, '', window.location.href);
+      else window.history.pushState(state, '', window.location.href);
+    } catch (e) { /* history is never load-bearing */ }
+  }
+
+  /* Wired once at boot. A state without a screen is an entry this app
+     did not create — the very first page load — so it is left alone
+     rather than being coerced into a screen change. */
+  function wireHistory() {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('popstate', (e) => {
+      const target = e.state && e.state.screen;
+      if (!target || SCREENS.indexOf(target) === -1) return;
+      /* A modal is what Back should close first, before any screen
+         change — that is what the gesture means while one is open. */
+      if (!$('#deleteModal').hidden) { closeDeleteModal(true); return; }
+      if (!$('#demoModal').hidden) { $('#demoModal').hidden = true; return; }
+      go(target, { silent: true });
+    });
+  }
+
+  function render(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
     $$('.tab').forEach(t => {
       const active = t.dataset.nav === name;
@@ -73,6 +120,29 @@ const UI = (() => {
     if (name === 'log') resetLog(opts && opts.keepDraft);
     if (name === 'labs') { renderLabs(); renderVitals(); renderAppointments(); }
     if (name === 'settings') renderSettings();
+  }
+
+  /* ═══════════ storage failure ═══════════
+     Called by Store the moment a write fails, and again when one
+     succeeds after a failure. Persistent and undismissable: a dismiss
+     button here would restore the exact silence this exists to break. */
+  function renderStorageBanner(kind) {
+    const el = $('#storageBanner');
+    if (!el) return;
+    if (!kind) { el.hidden = true; return; }
+    $('#storageBannerText').textContent =
+      kind === 'quota' ? COPY.storage.quota : COPY.storage.unavailable;
+    el.hidden = false;
+  }
+
+  /* Every path that tells somebody their work was kept calls this
+     first. Returns true when the write landed. When it did not, the
+     banner is already up — so the caller shows a failure, never a
+     success, and never nothing. */
+  function saved(ok) {
+    if (ok) return true;
+    renderStorageBanner(Store.storageState() || 'unavailable');
+    return false;
   }
 
   function toast(msg) {
@@ -1886,6 +1956,15 @@ const UI = (() => {
       $('#vitError').hidden = false;
       return;
     }
+    /* The write is checked before anything claims it worked. This
+       path used to print "Recorded." unconditionally, which in private
+       browsing was simply false. */
+    if (!saved(Store.storageState() === null)) {
+      $('#vitOk').hidden = true;
+      $('#vitError').textContent = COPY.storage[Store.storageState() || 'unavailable'];
+      $('#vitError').hidden = false;
+      return;
+    }
     $('#vitError').hidden = true;
     $('#vitOk').textContent = COPY.vitals.saved;
     $('#vitOk').hidden = false;
@@ -1934,6 +2013,11 @@ const UI = (() => {
       $('#apptError').textContent = res.message;
       $('#apptError').hidden = false;
       return;
+    }
+    if (!saved(Store.storageState() === null)) {
+      $('#apptError').textContent = COPY.storage[Store.storageState() || 'unavailable'];
+      $('#apptError').hidden = false;
+      return;                                     // and the typed values stay put
     }
     $('#apptError').hidden = true;
     ['#apptDate', '#apptWho', '#apptQuestions'].forEach(sel => { $(sel).value = ''; });
@@ -2457,6 +2541,12 @@ const UI = (() => {
   /* ═══════════ event wiring ═══════════ */
 
   function wire() {
+    wireHistory();
+    /* Wired before anything else can write, and probed immediately, so
+       somebody is told BEFORE they type a meal into a browser that will
+       not keep it rather than after. */
+    Store.onStorageFail(renderStorageBanner);
+    if (!Store.storageWorks()) renderStorageBanner(Store.storageState());
     $('#consentAccept').addEventListener('click', acceptConsent);
 
     $('#devBannerClose').addEventListener('click', () => {
@@ -3014,7 +3104,11 @@ const UI = (() => {
     $('#refusalsGo').addEventListener('click', dismissRefusals);
     $('#passportFields').addEventListener('input', (e) => {
       const key = e.target && e.target.dataset && e.target.dataset.pp;
-      if (key) Passport.set(key, e.target.value);
+      if (!key) return;
+      Passport.set(key, e.target.value);
+      // Saves as you type, so a silent failure here loses the most and
+      // is noticed the least.
+      saved(Store.storageState() === null);
     });
     $('#passportCopy').addEventListener('click', async () => {
       const text = Passport.asText();
@@ -3036,7 +3130,7 @@ const UI = (() => {
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
 
-  return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
+  return { wire, go, render, wireHistory, renderStorageBanner, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
            renderReferences, renderKitchen, renderSettings, renderInstall,
            toast, esc, searchFoods };
 })();

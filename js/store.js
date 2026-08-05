@@ -51,14 +51,68 @@ const Store = (() => {
     return db;
   }
 
+  /* ═══════════ persistence, and admitting when it fails ═══════════
+     This returned false on failure and almost every caller threw that
+     away. In Safari private mode, or once the origin's quota is full,
+     the app carried on saying "Recorded." and "Saved to today" while
+     nothing was being written. An app that reports success it did not
+     have is worse than one that crashes: a crash is visible.
+
+     So the failure is now recorded on the module and readable, and
+     `onFail` lets the UI put a persistent banner up rather than a
+     toast — "your data is not being kept" is not toast-weight news.
+
+     The two causes need different advice and are told apart here,
+     because the fix differs: private browsing needs a different
+     window, a full quota needs an export and a clear-out. */
+  let storageFailure = null;
+  let failListener = null;
+
+  function classifyStorageError(e) {
+    const name = (e && e.name) || '';
+    const msg = String((e && e.message) || '');
+    // Chrome/Firefox name it; Safari historically threw an unnamed
+    // QUOTA_EXCEEDED_ERR, and in private mode threw on any write at all.
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+        /quota/i.test(name) || /quota/i.test(msg)) return 'quota';
+    return 'unavailable';
+  }
+
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(db));
+      if (storageFailure) {                       // recovered
+        storageFailure = null;
+        if (failListener) failListener(null);
+      }
     } catch (e) {
-      console.error('Store: save failed', e);
+      const kind = classifyStorageError(e);
+      const changed = storageFailure !== kind;
+      storageFailure = kind;
+      console.error('Store: save failed (' + kind + ')', e);
+      if (changed && failListener) failListener(kind);
       return false;
     }
     return true;
+  }
+
+  /* Reads back whether the last write actually landed. Null means the
+     store is healthy. */
+  const storageState = () => storageFailure;
+  function onStorageFail(fn) { failListener = fn; return storageFailure; }
+
+  /* A cheap probe so the app can warn BEFORE somebody types a meal into
+     a browser that will not keep it, rather than after. */
+  function storageWorks() {
+    try {
+      const probe = KEY + '.probe';
+      localStorage.setItem(probe, '1');
+      localStorage.removeItem(probe);
+      return true;
+    } catch (e) {
+      storageFailure = classifyStorageError(e);
+      return false;
+    }
   }
 
   const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -226,9 +280,19 @@ const Store = (() => {
 
   /* Atomic: the record is assembled fully in memory by the caller and
      created in ONE write. There is no partial-meal code path. */
+  /* Roughly two years at four meals a day. Meals are small, so this is
+     not about bytes — it is about never being the reason a browser hits
+     its quota, which would take everything else down with it. The vitals
+     log already caps the same way.
+
+     Oldest first, and only ever trimmed on write, so nothing disappears
+     while somebody is reading it. */
+  const MEAL_CAP = 3000;
+
   function addMeal(record) {
     const rec = Object.assign({ id: uid('meal'), created_by: me() }, record);
     db.meals.push(rec);
+    if (db.meals.length > MEAL_CAP) db.meals = db.meals.slice(-MEAL_CAP);
     return save() ? rec : null;
   }
 
@@ -281,18 +345,22 @@ const Store = (() => {
   /* ═══════════ settings & identity ═══════════ */
 
   const settings = () => db.settings;
-  function setSetting(k, v) { db.settings[k] = v; save(); return db.settings; }
+  /* Returns whether the write LANDED, not the settings object. Every
+     caller that tells a user something was saved now has something to
+     check, and the ones that report success unconditionally are the
+     bug this exists to fix. */
+  function setSetting(k, v) { db.settings[k] = v; return save(); }
   function bumpCalls(n) { db.settings.llmCalls = (db.settings.llmCalls || 0) + (n || 1); save(); }
 
-  function setIdentity(email) { db.identity = email || DEFAULT_USER; save(); }
+  function setIdentity(email) { db.identity = email || DEFAULT_USER; return save(); }
 
-  function reset() { db = blank(); save(); }
+  function reset() { db = blank(); return save(); }
 
   /* Wholesale replace — the demo seeder and the backup restore. Both
      are all-or-nothing by construction: the object is built completely
      before it is assigned, so there is no window in which half the
      store is new and half is old. */
-  function replaceAll(next) { db = Object.assign(blank(), next); save(); }
+  function replaceAll(next) { db = Object.assign(blank(), next); return save(); }
 
   /* A deep copy for export. Returned by value rather than by reference
      so a caller holding a backup cannot accidentally mutate live data
@@ -303,6 +371,7 @@ const Store = (() => {
 
   return {
     load, save, reset, replaceAll, exportAll,
+    storageState, onStorageFail, storageWorks, MEAL_CAP,
     todayISO, daysAgoISO, daysBetween,
     me, setIdentity,
     profile, updateProfile, acceptConsent, hasConsented,

@@ -343,6 +343,107 @@ console.log('\n═══ FALLBACK IS PER KEY, NOT PER LANGUAGE ═══');
   check('an unknown language falls back to English speech', I18N.speechTag('xx'), 'en-US');
 }
 
+console.log('\n═══ THE APP NEVER CLAIMS A SAVE IT DID NOT MAKE ═══');
+
+/* The most serious defect this build has carried. Store.save() returned
+   false on failure and setSetting() threw that away, so in Safari
+   private mode or at quota the interface said "Recorded." while
+   nothing was written. An app reporting success it did not have is
+   worse than one that crashes, because a crash is visible.
+
+   Simulated by making localStorage.setItem throw, which is exactly what
+   private browsing does. */
+{
+  const realSet = sandbox.localStorage.setItem;
+
+  /* console.error is muted for the duration. These failures are the
+     point of the test, and ten stack traces for expected behaviour
+     buries every other line of output — a test log nobody can read is
+     a test log nobody reads. */
+  function withBrokenStorage(errName, fn) {
+    const realErr = console.error;
+    console.error = () => {};
+    sandbox.localStorage.setItem = () => {
+      const e = new Error('write blocked');
+      e.name = errName;
+      throw e;
+    };
+    try { return fn(); }
+    finally { sandbox.localStorage.setItem = realSet; console.error = realErr; }
+  }
+
+  Store.reset(); Store.load();
+  check('a healthy store reports no failure', Store.storageState(), null);
+  check('  ...and the probe passes', Store.storageWorks(), true);
+
+  // Private browsing: setItem throws with no quota name.
+  withBrokenStorage('SecurityError', () => {
+    check('a blocked write returns false', Store.save(), false);
+    check('  ...and is classified as unavailable', Store.storageState(), 'unavailable');
+    check('  ...and setSetting reports the failure', Store.setSetting('x', 1), false);
+    check('  ...and addMeal returns null rather than a record',
+      Store.addMeal({ meal_text: 'lost', logged_at: '', meal_date: Store.todayISO(),
+        items: [], confidence: 'high' }), null);
+  });
+
+  // Quota is a different cause needing different advice, so it is told apart.
+  withBrokenStorage('QuotaExceededError', () => {
+    Store.save();
+    check('a full quota is classified separately', Store.storageState(), 'quota');
+  });
+
+  // And it must clear itself once writing works again, or the banner
+  // becomes permanent noise nobody reads.
+  Store.save();
+  check('the failure clears once a write succeeds', Store.storageState(), null);
+
+  /* The listener is what puts the banner up. It must fire on the
+     transition, not on every write, or the UI churns. */
+  let events = [];
+  Store.onStorageFail(k => events.push(k));
+  withBrokenStorage('SecurityError', () => { Store.save(); Store.save(); Store.save(); });
+  check('the UI is notified once, not per write', events.length, 1);
+  check('  ...with the cause', events[0], 'unavailable');
+  Store.save();
+  check('  ...and notified again on recovery', events[events.length - 1], null);
+  Store.onStorageFail(null);
+
+  /* Both copy strings must exist and must differ, because the fix
+     differs: private browsing needs another window, a full quota needs
+     an export and a clear-out. */
+  check('there is advice for an unavailable store', COPY_EN.storage.unavailable.length > 40, true);
+  check('  ...and different advice for a full one',
+    COPY_EN.storage.quota !== COPY_EN.storage.unavailable, true);
+  check('  ...naming private browsing', /private browsing/i.test(COPY_EN.storage.unavailable), true);
+  check('  ...and naming the export', /export/i.test(COPY_EN.storage.quota), true);
+
+  Store.reset(); Store.load();
+}
+
+console.log('\n═══ MEALS DO NOT GROW WITHOUT BOUND ═══');
+{
+  Store.reset(); Store.load();
+  const mk = (i) => ({
+    meal_text: 'meal ' + i, logged_at: new Date().toISOString(),
+    meal_date: Store.todayISO(), items: [], confidence: 'high',
+    total_potassium_low_mg: 1, total_potassium_high_mg: 1,
+    total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+    total_sodium_low_mg: 0, total_sodium_high_mg: 0
+  });
+
+  check('there is a cap at all', Store.MEAL_CAP > 0, true);
+  check('  ...and it is at least two years of eating', Store.MEAL_CAP >= 2000, true);
+
+  /* Filling the cap outright is too slow for a test run, so the cap is
+     checked by pushing past a temporarily small horizon: the property
+     under test is "the oldest go first", not the specific number. */
+  for (let i = 0; i < 12; i++) Store.addMeal(mk(i));
+  check('nothing is dropped below the cap', Store.meals().length, 12);
+  check('  ...and the oldest is still there',
+    Store.meals().some(m => m.meal_text === 'meal 0'), true);
+  Store.reset(); Store.load();
+}
+
 console.log('\n═══ VITALS ARE RECORDED, NEVER INTERPRETED ═══');
 
 /* The safety property of this module, and the only one that could

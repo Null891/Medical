@@ -900,3 +900,12 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   border-top: 1px solid var(--color-hairline);
   padding-top: var(--space-3);
 }
+
+/* The storage-failure banner. Danger-toned and undismissable — the one
+   banner in the app with no close button, because dismissing it would
+   restore exactly the silence it exists to break. */
+.dev-banner--danger {
+  background: var(--color-status-danger);
+  color: #fff;
+  font-weight: 550;
+}

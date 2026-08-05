@@ -76,6 +76,17 @@
      and role="note" describe what they ARE, but neither is a landmark. -->
 <header role="banner" aria-label="Site notices">
 
+<!-- ═══════════ STORAGE FAILURE ═══════════
+     Persistent, not a toast. In Safari private mode or at quota, every
+     write silently fails while the interface says "Recorded." — an app
+     reporting success it did not have is worse than one that crashes,
+     because a crash is visible. This is the only banner in the app
+     that cannot be dismissed: dismissing it would restore exactly the
+     silence it exists to break. -->
+<div id="storageBanner" class="dev-banner dev-banner--danger" role="alert" hidden>
+  <span id="storageBannerText"></span>
+</div>
+
 <!-- Connectivity. Nothing here needs the network except meal parsing,
      so this says what still works rather than just "you are offline". -->
 <div id="offlineBanner" class="dev-banner dev-banner--offline m-glass" role="status" hidden>

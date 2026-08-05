@@ -49,6 +49,20 @@ const COPY_EN = {
     changed: 'Language changed'
   },
 
+  /* ── Storage failure ──
+     Two causes, two different fixes, so two different sentences. A
+     generic "something went wrong" leaves somebody with no idea whether
+     to change window or delete something. */
+  storage: {
+    unavailable:
+      "This browser isn't letting RenalRoute save anything — usually private browsing. " +
+      'Nothing you enter will be kept when you close this tab. Open RenalRoute in a normal window instead.',
+    quota:
+      "This browser's storage for RenalRoute is full, so nothing new is being saved. " +
+      'Export a backup from Settings, then delete some older entries to make room.',
+    recovered: 'Saving is working again.'
+  },
+
   /* ── Vitals ──
      The framing is the whole safety argument. This app records these
      numbers; it does not read them. Saying so plainly is what stops a
