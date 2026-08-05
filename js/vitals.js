@@ -1,0 +1,149 @@
+/* ═══════════════════════════════════════════════════════════════
+   VITALS — recorded, never interpreted.
+   ───────────────────────────────────────────────────────────────
+   Weight, blood pressure and how somebody is feeling are the three
+   things a renal clinic asks about that this app was not capturing.
+   All three are routinely tracked in CKD, all three are things people
+   are told to write down, and almost nobody does, because writing them
+   down means finding a notebook.
+
+   THE LINE THIS MODULE DOES NOT CROSS, and it is the same line the
+   medicines module holds: it RECORDS. It does not interpret.
+
+     · No blood-pressure categories. Not "normal", not "stage 1", not
+       a colour. Those categories are a clinical judgement that depends
+       on somebody's targets, their medication, and what their team is
+       treating for — and a green badge on a reading a nephrologist
+       would act on is the worst thing this app could produce.
+     · No weight targets and no trend verdicts. Weight change in CKD
+       can be fluid, muscle, or diet, and telling those apart is the
+       entire skill. An arrow pointing up means nothing here.
+     · No symptom scoring and no advice. A symptom list becomes a
+       triage tool the moment it has a threshold on it.
+
+   What it DOES do is make the numbers easy to write down and easy to
+   hand over: they appear on the health passport, they go into the
+   export, and they carry their date. That is the whole feature, and it
+   is genuinely the thing people are asked for at appointments.
+
+   Plausibility bounds exist for the same reason they exist on labs:
+   an implausible value is far more likely a typo than a real reading,
+   and a typo that lands in a document somebody shows a clinician is
+   worse than a rejected entry. The bounds are engineering guards and
+   the copy says so — they are deliberately wide enough to accept
+   readings a clinician would find alarming, because refusing to record
+   an alarming true value would be the worst possible failure.
+   ═══════════════════════════════════════════════════════════════ */
+
+const Vitals = (() => {
+
+  const KEY = 'vitals';
+
+  /* Wide on purpose. A systolic of 210 is a real reading somebody may
+     genuinely have; refusing it because it looks wrong would delete
+     the single most important number in the log. These reject
+     impossibilities, not abnormalities. */
+  const BOUNDS = {
+    weight_kg:  { min: 20,  max: 400, label: 'Weight',   unit: 'kg', dp: 1 },
+    systolic:   { min: 50,  max: 260, label: 'Systolic', unit: 'mmHg', dp: 0 },
+    diastolic:  { min: 30,  max: 180, label: 'Diastolic', unit: 'mmHg', dp: 0 }
+  };
+
+  /* A fixed vocabulary rather than free text, so the export reads
+     consistently — but "something else" is always available, because a
+     fixed list that cannot describe what somebody is feeling teaches
+     them the app is not listening. */
+  const SYMPTOMS = [
+    { key: 'swelling',  label: 'Swelling in legs, ankles or feet' },
+    { key: 'tired',     label: 'More tired than usual' },
+    { key: 'breath',    label: 'Short of breath' },
+    { key: 'cramps',    label: 'Muscle cramps' },
+    { key: 'itching',   label: 'Itching' },
+    { key: 'appetite',  label: 'Poor appetite' },
+    { key: 'nausea',    label: 'Nausea' },
+    { key: 'sleep',     label: 'Sleeping badly' }
+  ];
+
+  const all = () => {
+    const raw = Store.settings()[KEY];
+    return Array.isArray(raw) ? raw : [];
+  };
+
+  function validate(field, value) {
+    const b = BOUNDS[field];
+    if (!b) return { ok: false, message: 'Unknown measurement.' };
+    if (value === '' || value === null || value === undefined) return { ok: true, value: null };
+    const n = Number(value);
+    if (!isFinite(n)) return { ok: false, message: `Enter ${b.label.toLowerCase()} as a number.` };
+    if (n < b.min || n > b.max) {
+      return {
+        ok: false,
+        message: `That looks outside what this app can record for ${b.label.toLowerCase()} ` +
+                 `(${b.min}–${b.max} ${b.unit}). Check the reading — this limit is technical, not medical.`
+      };
+    }
+    return { ok: true, value: Math.round(n * Math.pow(10, b.dp)) / Math.pow(10, b.dp) };
+  }
+
+  /* Blood pressure is stored as a pair or not at all. Half a reading is
+     not a reading, and a lone systolic in an export is a number a
+     clinician cannot use. */
+  function add(entry) {
+    const rec = {
+      id: 'vit_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      at: new Date().toISOString(),
+      date: Store.todayISO(),
+      weight_kg: null, systolic: null, diastolic: null,
+      symptoms: [], note: ''
+    };
+
+    for (const field of ['weight_kg', 'systolic', 'diastolic']) {
+      const v = validate(field, entry[field]);
+      if (!v.ok) return { ok: false, message: v.message };
+      rec[field] = v.value;
+    }
+    if ((rec.systolic === null) !== (rec.diastolic === null)) {
+      return { ok: false, message: 'Blood pressure needs both numbers — the top one and the bottom one.' };
+    }
+
+    rec.symptoms = Array.isArray(entry.symptoms)
+      ? entry.symptoms.filter(k => SYMPTOMS.some(s => s.key === k)).slice(0, SYMPTOMS.length)
+      : [];
+    rec.note = String(entry.note || '').slice(0, 300);
+
+    const hasSomething = rec.weight_kg !== null || rec.systolic !== null ||
+      rec.symptoms.length || rec.note.trim();
+    if (!hasSomething) return { ok: false, message: 'Nothing to record yet — add a number or pick how you are feeling.' };
+
+    const next = all().concat(rec).slice(-400);   // a year of daily entries
+    Store.setSetting(KEY, next);
+    return { ok: true, record: rec };
+  }
+
+  function remove(id) {
+    const next = all().filter(r => r.id !== id);
+    Store.setSetting(KEY, next);
+    return true;
+  }
+
+  // Newest first, which is the order somebody scanning a list wants.
+  const recent = (n) => all().slice().reverse().slice(0, n || 10);
+  const latest = (field) => all().slice().reverse().find(r => r[field] !== null && r[field] !== undefined) || null;
+
+  const symptomLabel = (k) => (SYMPTOMS.find(s => s.key === k) || {}).label || k;
+
+  /* Plain lines for the passport and the export. Deliberately flat: a
+     date, a number, a unit. No arrows, no comparisons, no colour. */
+  function asLines(limit) {
+    return recent(limit || 8).map(r => {
+      const bits = [];
+      if (r.weight_kg !== null) bits.push(`weight ${r.weight_kg} kg`);
+      if (r.systolic !== null) bits.push(`BP ${r.systolic}/${r.diastolic} mmHg`);
+      if (r.symptoms.length) bits.push(r.symptoms.map(symptomLabel).join('; ').toLowerCase());
+      if (r.note.trim()) bits.push(`"${r.note.trim()}"`);
+      return `${r.date} — ${bits.join(' · ')}`;
+    });
+  }
+
+  return { KEY, BOUNDS, SYMPTOMS, all, add, remove, recent, latest, validate, asLines, symptomLabel };
+})();

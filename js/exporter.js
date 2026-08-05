@@ -63,6 +63,19 @@ const Exporter = (() => {
       if (l.egfr_ml_min_1_73m2     != null) lines.push(`  eGFR:       ${l.egfr_ml_min_1_73m2} mL/min/1.73m²`);
       lines.push(`  Dated:      ${l.lab_date}`);
       lines.push('');
+
+    /* Recorded readings travel with the summary, flat and
+       uninterpreted. A clinic asks for these and almost nobody has them
+       ready; the whole point of writing them down in an app is being
+       able to hand them over without a notebook. */
+    if (typeof Vitals !== 'undefined') {
+      const vit = Vitals.asLines(10);
+      if (vit.length) {
+        lines.push('RECENT READINGS (self-recorded, not interpreted by this app)');
+        vit.forEach(l => lines.push('  ' + l));
+        lines.push('');
+      }
+    }
     }
 
     lines.push(`LAST ${DAYS} DAYS`);

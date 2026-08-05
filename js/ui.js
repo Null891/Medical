@@ -71,7 +71,7 @@ const UI = (() => {
 
     if (name === 'home') renderHome();
     if (name === 'log') resetLog(opts && opts.keepDraft);
-    if (name === 'labs') renderLabs();
+    if (name === 'labs') { renderLabs(); renderVitals(); }
     if (name === 'settings') renderSettings();
   }
 
@@ -1606,6 +1606,7 @@ const UI = (() => {
      The extracted numbers live only in this closure until saved. A
      photograph of a lab report is the most sensitive thing this app
      ever handles, and it is never written to storage in any form. */
+  let vitalsPicked = [];
   let scanRows = null;
   let scanConfirmed = [];
 
@@ -1782,6 +1783,68 @@ const UI = (() => {
             <p class="note ref__used"><strong>${esc(COPY.references.usedLabel)}:</strong> ${esc(r.used)}</p>
           </article>`).join('')}
       </section>`).join('');
+  }
+
+  /* ═══════════ vitals ═══════════
+     Recorded, never interpreted. Every rendering decision here follows
+     from that: the history is a flat list with no comparison to the
+     previous entry, no arrow, and no colour. */
+  function renderVitals() {
+    const host = $('#vitSymptoms');
+    if (!host) return;
+    $('#vitalsIntro').textContent = COPY.vitals.intro;
+
+    const picked = vitalsPicked;
+    host.innerHTML = Vitals.SYMPTOMS.map(sy =>
+      `<button type="button" class="chip-opt${picked.includes(sy.key) ? ' is-on' : ''}"
+        aria-pressed="${picked.includes(sy.key)}" data-symptom="${esc(sy.key)}">${esc(sy.label)}</button>`
+    ).join('');
+
+    const rows = Vitals.recent(8);
+    $('#vitalsHistory').innerHTML = rows.length
+      ? `<div class="card m-paper">
+           <h3 class="h3">${esc(COPY.vitals.historyTitle)}</h3>
+           ${rows.map(r => `<div class="vitrow">
+             <span class="vitrow__line">${esc(vitalLine(r))}</span>
+             <button type="button" class="linkbtn" data-vitdel="${esc(r.id)}">${esc(COPY.vitals.remove)}</button>
+           </div>`).join('')}
+         </div>`
+      : `<div class="card m-paper"><p class="note">${esc(COPY.vitals.empty)}</p></div>`;
+  }
+
+  /* One flat line per entry. No trend, no delta, no verdict — weight
+     change in CKD can be fluid, muscle or diet, and telling those apart
+     is the entire skill. An arrow pointing up would mean nothing. */
+  function vitalLine(r) {
+    const bits = [];
+    if (r.weight_kg !== null) bits.push(`${r.weight_kg} kg`);
+    if (r.systolic !== null) bits.push(`${r.systolic}/${r.diastolic} mmHg`);
+    if (r.symptoms.length) bits.push(r.symptoms.map(Vitals.symptomLabel).join(', '));
+    if (r.note.trim()) bits.push(r.note.trim());
+    return `${r.date} — ${bits.join(' · ')}`;
+  }
+
+  function saveVitals() {
+    const res = Vitals.add({
+      weight_kg: $('#vitWeight').value,
+      systolic: $('#vitSys').value,
+      diastolic: $('#vitDia').value,
+      symptoms: vitalsPicked,
+      note: $('#vitNote').value
+    });
+    if (!res.ok) {
+      $('#vitOk').hidden = true;
+      $('#vitError').textContent = res.message;
+      $('#vitError').hidden = false;
+      return;
+    }
+    $('#vitError').hidden = true;
+    $('#vitOk').textContent = COPY.vitals.saved;
+    $('#vitOk').hidden = false;
+    ['#vitWeight', '#vitSys', '#vitDia', '#vitNote'].forEach(sel => { $(sel).value = ''; });
+    vitalsPicked = [];
+    if (typeof Motion !== 'undefined') Motion.haptic('commit');
+    renderVitals();
   }
 
   /* ═══════════ health passport ═══════════
@@ -2309,7 +2372,7 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
@@ -2326,6 +2389,15 @@ const UI = (() => {
       }
       if (el.dataset.kitchen) { kitchenTab = el.dataset.kitchen; renderKitchen(); return; }
       if (el.dataset.cook) { cookRecipe(el.dataset.cook); return; }
+      if (el.dataset.symptom) {
+        const k = el.dataset.symptom;
+        vitalsPicked = vitalsPicked.includes(k)
+          ? vitalsPicked.filter(x => x !== k) : vitalsPicked.concat(k);
+        el.classList.toggle('is-on', vitalsPicked.includes(k));
+        el.setAttribute('aria-pressed', String(vitalsPicked.includes(k)));
+        return;
+      }
+      if (el.dataset.vitdel) { Vitals.remove(el.dataset.vitdel); renderVitals(); return; }
       if (el.dataset.scanok) {
         // One tap, one field. Confirming a boundary-crossing reading
         // never confirms any other.
@@ -2768,6 +2840,7 @@ const UI = (() => {
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
+    $('#vitSave').addEventListener('click', saveVitals);
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));
 
     /* ── Quick actions ──

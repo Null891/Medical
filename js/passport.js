@@ -128,6 +128,17 @@ const Passport = (() => {
       out.push('');
     }
 
+    /* Weight, blood pressure and symptoms, exactly as recorded. No
+       interpretation travels with them, because none was ever made. */
+    if (typeof Vitals !== 'undefined') {
+      const lines = Vitals.asLines(6);
+      if (lines.length) {
+        out.push('RECENT READINGS (self-recorded, not interpreted)');
+        lines.forEach(l => out.push('  ' + l));
+        out.push('');
+      }
+    }
+
     out.push(`Generated ${new Date().toLocaleDateString('en-US',
       { year: 'numeric', month: 'long', day: 'numeric' })} by RenalRoute,`);
     out.push('an educational wellness app. Not a medical record.');

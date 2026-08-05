@@ -49,6 +49,22 @@ const COPY_EN = {
     changed: 'Language changed'
   },
 
+  /* ── Vitals ──
+     The framing is the whole safety argument. This app records these
+     numbers; it does not read them. Saying so plainly is what stops a
+     patient treating a saved blood pressure as an opinion about their
+     blood pressure. */
+  vitals: {
+    intro:
+      'RenalRoute writes these down and hands them over — it does not interpret them. There are no ' +
+      'categories, no colours and no arrows here, because what a reading means depends on your targets, ' +
+      'your medicines and what your team is treating for. All of it appears on your health passport and in your export.',
+    saved: 'Recorded.',
+    empty: 'Nothing recorded yet. These are the numbers a kidney clinic asks for and almost nobody has ready.',
+    historyTitle: 'What you have recorded',
+    remove: 'Remove'
+  },
+
   /* ── Install ──
      Written per platform because the platforms genuinely differ, and a
      single generic "install this app" is useless on the one where no

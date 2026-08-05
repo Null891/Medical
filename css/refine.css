@@ -847,3 +847,25 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
    way a phone user expects rather than stopping dead. */
 .tabs, .scenes, .chipset { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .tabs::-webkit-scrollbar, .scenes::-webkit-scrollbar, .chipset::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   VITALS
+   ───────────────────────────────────────────────────────────────
+   Deliberately plain. No status colour, no trend arrow, no comparison
+   with the previous entry — this app records these numbers and does
+   not read them, and the styling has to say the same thing the copy
+   does. A coloured badge here would be an interpretation nobody made.
+   ═══════════════════════════════════════════════════════════════ */
+.vitalgrid { display: grid; gap: var(--space-3); }
+@media (min-width: 520px) { .vitalgrid { grid-template-columns: repeat(3, 1fr); } }
+
+.vitrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-hairline);
+}
+.vitrow:first-of-type { border-top: 0; }
+.vitrow__line { font-variant-numeric: tabular-nums; line-height: var(--leading-body); }

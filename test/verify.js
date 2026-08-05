@@ -27,16 +27,16 @@ vm.createContext(sandbox);
 ['js/data/copy.js', 'js/data/copy.es.js', 'js/data/copy.zh.js', 'js/data/copy.hi.js',
  'js/data/anchor-foods.js', 'js/store.js',
  'js/clinical.js', 'js/i18n.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js',
- 'js/data/recipes.js', 'js/plan.js', 'js/backup.js'].forEach(f => {
+ 'js/data/recipes.js', 'js/plan.js', 'js/backup.js', 'js/vitals.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
 vm.runInContext('I18N.apply("en");', sandbox);
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, I18N, COPY_EN,
+const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, Vitals, I18N, COPY_EN,
         COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, I18N, COPY_EN, COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, Vitals, I18N, COPY_EN, COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -341,6 +341,63 @@ console.log('\n═══ FALLBACK IS PER KEY, NOT PER LANGUAGE ═══');
   check('speech tag for Chinese is regional', I18N.speechTag('zh'), 'zh-CN');
   check('speech tag for Hindi is regional', I18N.speechTag('hi'), 'hi-IN');
   check('an unknown language falls back to English speech', I18N.speechTag('xx'), 'en-US');
+}
+
+console.log('\n═══ VITALS ARE RECORDED, NEVER INTERPRETED ═══');
+
+/* The safety property of this module, and the only one that could
+   matter: it writes numbers down and hands them over. It does not read
+   them. A blood-pressure category, a weight trend arrow, or a colour on
+   a reading would each be a clinical judgement that depends on somebody's
+   targets, their medication, and what their team is treating for — and a
+   green badge on a reading a nephrologist would act on is the worst
+   thing this app could produce. */
+{
+  Store.reset(); Store.load();
+
+  const src = read('js/vitals.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  [['blood-pressure categories', /hypertens|stage\s*[12]|prehyperten|normal.?bp|elevated/i],
+   ['weight verdicts',           /gained|lost|trend|improv|worsen|target.?weight/i],
+   ['symptom scoring',           /severity|score|triage|urgent|seek.?care/i],
+   ['any interpretation at all', /interpret|diagnos|recommend|youshould/i]
+  ].forEach(([what, re]) => {
+    check(`vitals.js contains no ${what}`, re.test(src), false);
+  });
+  // The lint has to be able to fail.
+  check('  ...and that lint can fail',
+    /hypertens|stage\s*[12]/i.test('function bpCategory(){ return "stage 1 hypertension"; }'), true);
+
+  /* Bounds reject IMPOSSIBILITIES, not abnormalities. Refusing to record
+     an alarming true reading would delete the single most important
+     number in the log. */
+  check('a very high systolic is still recordable', Vitals.validate('systolic', 205).ok, true);
+  check('a very low systolic is still recordable', Vitals.validate('systolic', 78).ok, true);
+  check('an impossible systolic is refused', Vitals.validate('systolic', 900).ok, false);
+  check('  ...and says the limit is technical, not medical',
+    /technical, not medical/i.test(Vitals.validate('systolic', 900).message), true);
+  check('a 250 kg weight is recordable', Vitals.validate('weight_kg', 250).ok, true);
+  check('a 5 kg weight is refused', Vitals.validate('weight_kg', 5).ok, false);
+
+  /* Half a blood pressure is not a blood pressure. A lone systolic in an
+     export is a number a clinician cannot use. */
+  check('a lone systolic is refused', Vitals.add({ systolic: 130 }).ok, false);
+  check('  ...with both numbers it saves', Vitals.add({ systolic: 130, diastolic: 82 }).ok, true);
+  check('an entirely empty entry is refused', Vitals.add({}).ok, false);
+
+  // Symptoms come from a fixed vocabulary; anything else is dropped.
+  const r = Vitals.add({ weight_kg: 78.4, symptoms: ['swelling', 'not_a_real_symptom'] });
+  check('a real symptom is kept', r.ok && r.record.symptoms.indexOf('swelling') !== -1, true);
+  check('  ...and an invented one is dropped',
+    r.record.symptoms.indexOf('not_a_real_symptom'), -1);
+
+  // The output that reaches a clinician must be flat and dated.
+  const lines = Vitals.asLines(5);
+  check('records export as dated lines', lines.length >= 2, true);
+  check('  ...each carrying its date', /^\d{4}-\d{2}-\d{2} —/.test(lines[0]), true);
+  check('  ...and no verdict of any kind',
+    /\bhigh\b|\blow\b|\bnormal\b|\bgood\b|\bconcerning\b/i.test(lines.join(' ')), false);
+
+  Store.reset(); Store.load();
 }
 
 console.log('\n═══ BACKUP: LEAVING IS ACTUALLY POSSIBLE ═══');

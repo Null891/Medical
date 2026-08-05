@@ -356,6 +356,47 @@
         <button type="button" class="btn btn--primary btn--block" id="saveLabBtn">Save lab values</button>
       </div>
       <div id="labHistory"></div>
+
+      <!-- ───────── VITALS ─────────
+           Weight, blood pressure and how you are feeling. RECORDED,
+           never interpreted: no categories, no colours, no arrows. A
+           green badge on a reading a nephrologist would act on is the
+           worst thing this app could produce, so it produces none. -->
+      <div class="card m-stone">
+        <h2 class="h2">Weight, blood pressure and how you feel</h2>
+        <p class="note" id="vitalsIntro"></p>
+
+        <div class="vitalgrid">
+          <label class="field">
+            <span class="field__label">Weight (kg)</span>
+            <input type="number" id="vitWeight" step="0.1" inputmode="decimal" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Blood pressure, top number</span>
+            <input type="number" id="vitSys" step="1" inputmode="numeric" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Blood pressure, bottom number</span>
+            <input type="number" id="vitDia" step="1" inputmode="numeric" autocomplete="off">
+          </label>
+        </div>
+
+        <fieldset class="onb__step">
+          <legend class="h3">Anything you have noticed?</legend>
+          <div class="chipset" id="vitSymptoms"></div>
+        </fieldset>
+
+        <label class="field">
+          <span class="field__label">Anything else worth writing down</span>
+          <textarea id="vitNote" rows="2" maxlength="300"></textarea>
+        </label>
+
+        <p class="inline-error" id="vitError" role="alert" hidden></p>
+        <button type="button" class="btn btn--primary btn--block" id="vitSave">Record this</button>
+        <p class="note" id="vitOk" role="status" hidden></p>
+      </div>
+
+      <div id="vitalsHistory"></div>
     </section>
 
     <!-- ───────── MORE ─────────
@@ -843,6 +884,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/vitals.js"></script>
 <script src="js/install.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/meds.js"></script>
