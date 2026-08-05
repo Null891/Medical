@@ -4801,11 +4801,14 @@ const Vitals = (() => {
 
    So this exists, and what it is matters enormously:
 
-     IT IS a demonstration entrance at ?demo=1. It offers three doors —
-     set it up yourself, continue as Frank, or continue as Maria, who
-     has used every feature — seeds the chosen patient's data, and
-     marks the session so a reviewer can walk every screen with
-     realistic content in front of them.
+     IT IS the app's front door, shown to every visitor who has not yet
+     accepted consent — not a hidden route, though ?demo=1 still reaches
+     it directly. It offers three ways to start: set it up yourself,
+     continue as Frank, or continue as Maria, who has used every
+     feature. It seeds the chosen patient's example data and marks the
+     session, so anybody — a reviewer, a judge, a patient deciding
+     whether this is worth their time — can walk every screen with
+     realistic content in front of them instead of an empty app.
 
      IT IS NOT an authentication boundary and must never be described
      as one. It guards NOTHING. There is no privileged data behind it,

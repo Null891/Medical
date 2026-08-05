@@ -345,12 +345,28 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
      ?demo=1. Every visitor sees it now, and telling a patient the first
      screen is a demonstration says the whole app is one. Same defect,
      different surface. */
+  /* Checked across every DEPLOYED file, not just the copy block. The
+     first version of this looked only at `demo: {` in copy.js and
+     passed — while js/demo-auth.js's header still opened "IT IS a
+     demonstration entrance at ?demo=1", and that file is bundled and
+     served. Third time this exact lesson has landed: comments ship,
+     console output ships, and a guard scoped to one block finds only
+     what is in that block. */
+  const demoOffenders = [];
+  DEPLOYED.forEach(f => {
+    if (!fs.existsSync(path.join(ROOT, f))) return;
+    read(f).split('\n').forEach((line, i) => {
+      if (/demonstration|this is a demo\b/i.test(line)) {
+        demoOffenders.push(`${f}:${i + 1} ${line.trim().slice(0, 45)}`);
+      }
+    });
+  });
+  check('nothing served calls the app a demonstration',
+    demoOffenders.length === 0, demoOffenders.slice(0, 3).join('  |  '));
+
   const copySrc = read('js/data/copy.js');
   const demoBlock = copySrc.slice(copySrc.indexOf('  demo: {'),
                                  copySrc.indexOf('  demo: {') + 1400);
-  check('the entrance does not call itself a demonstration',
-    !/demonstration|this is a demo\b/i.test(demoBlock),
-    'it is the first screen every visitor sees, not a hidden hatch');
   /* The two things that must survive any rewrite of it. */
   check('  ...but still says there is no account',
     /no accounts and no sign-up|no account/i.test(demoBlock), '');
