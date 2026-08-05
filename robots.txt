@@ -1,0 +1,13 @@
+# RenalRoute — an educational CKD dietary companion.
+#
+# Everything here is a single-page app; there are no server-rendered
+# pages to index beyond the root. The API route is listed as
+# disallowed not because it is secret — it holds no data and returns
+# nothing without a POST — but because there is no reason for a crawler
+# to hit it, and saying so is the standard place to say it.
+
+User-agent: *
+Allow: /$
+Disallow: /api/
+
+Sitemap: https://chronic-california.vercel.app/sitemap.xml

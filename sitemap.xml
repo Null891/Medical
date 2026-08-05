@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- One entry, honestly. RenalRoute is a single-page app: every screen
+     is a client-side state of the same document, so listing them as
+     separate URLs would tell a crawler something untrue about the site.
+     A sitemap that overstates itself is worse than a short one. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://chronic-california.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

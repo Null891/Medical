@@ -121,6 +121,61 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
   check('  ...but never the API', !shellBlock.includes('/api/'), true);
 }
 
+console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ═══');
+
+/* The free deep scan scored 95/100 and flagged seven things. Each is a
+   check here now, so none of them can quietly come back.
+
+   The HIGH one was real and worth stating plainly: reference-build
+   controls — a data-reset button, a persona seeder, a demo-mode
+   toggle — shipped in the DOM to every anonymous visitor, alongside
+   the name of the internal build platform. A destructive action
+   reachable by anybody who loads the page, with no gate on it. */
+{
+  const devIdx = html.indexOf('id="devControls"');
+  check('the reference-build controls exist and ship hidden',
+    devIdx !== -1 && /hidden/.test(html.slice(devIdx, devIdx + 60)),
+    'a reset button reachable by anyone is a destructive action with no gate on it');
+  const uiSrc = read('js/ui.js');
+  check('  ...revealed only inside a demo session',
+    /devControls[\s\S]{0,200}DemoAuth\.isActive/.test(uiSrc),
+    'gating must be a render decision, not a CSS rule');
+
+  // The two disclosures: internal platform name, internal route.
+  check('no internal build platform is named in the markup',
+    !/Base44/i.test(html), 'naming internal tooling tells an attacker where to look next');
+  check('no serverless route is printed in the markup',
+    !/\/api\/invoke-llm/.test(html),
+    'the client must KNOW the route; it need not advertise it in prose');
+
+  // The four LOW findings.
+  check('Open Graph tags are present',
+    /property="og:title"/.test(html) && /property="og:image"/.test(html) &&
+    /property="og:description"/.test(html),
+    'a shared link renders as a bare URL without them');
+  check('  ...and the OG image is the mark, not a screenshot',
+    /og:image" content="[^"]*icon-512\.png/.test(html),
+    'a screenshot of a health dashboard shared into a group chat shows somebody numbers');
+  check('a canonical link is present', /rel="canonical"/.test(html),
+    'query-string variants split ranking signal, and this app generates its own');
+  check('robots.txt exists', fs.existsSync(path.join(ROOT, 'robots.txt')), '');
+  check('sitemap.xml exists', fs.existsSync(path.join(ROOT, 'sitemap.xml')), '');
+  check('  ...and does not overstate a single-page app',
+    (read('sitemap.xml').match(/<url>/g) || []).length === 1,
+    'listing client-side screens as URLs would tell a crawler something untrue');
+
+  /* The MEDIUM finding was that their axe run was blocked by our CSP.
+     The fix is NOT to weaken script-src — that header is what makes
+     stored XSS in a free-text meal field unexploitable, and trading a
+     real defence for a green tick on a report measuring defences is
+     exactly backwards. The fix is running axe ourselves. */
+  check('script-src is still locked to self',
+    /script-src 'self'/.test(read('vercel.json')),
+    'never add unsafe-inline to satisfy a scanner');
+  check('  ...and axe-core runs in our own suite instead',
+    fs.existsSync(path.join(ROOT, 'test/a11y.js')), '');
+}
+
 console.log('\n═══ 1. NOTHING IS WIDER THAN THE SMALLEST PHONE ═══');
 {
   const decls = Array.from(css.matchAll(/(?:^|[;{])\s*(min-width|width)\s*:\s*(\d+)px/g));

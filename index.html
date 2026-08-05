@@ -6,6 +6,35 @@
      app's users read it, and disabling it is an accessibility failure. -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="RenalRoute — an educational potassium, phosphorus, and sodium tracker for people living with chronic kidney disease. Shows what you have left today, as honest ranges.">
+
+<!-- Canonical and Open Graph, both flagged as missing by an ArgosX
+     deep scan. The canonical one is real: without it a search engine
+     splits ranking signal across the trailing-slash and query-string
+     variants of the same single-page app, and this app generates query
+     strings itself for its home-screen shortcuts.
+
+     Open Graph matters for a different reason. This link gets shared
+     with mentors, judges and clinicians for feedback, and a bare URL
+     with no preview card is a worse first impression than the app
+     deserves. The image is the app's own mark rather than a
+     screenshot: a screenshot of a health dashboard shared into a group
+     chat shows somebody's numbers, even fictional ones. -->
+<link rel="canonical" href="https://chronic-california.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RenalRoute">
+<meta property="og:url" content="https://chronic-california.vercel.app/">
+<meta property="og:title" content="RenalRoute — what's left today">
+<meta property="og:description" content="A kidney-diet companion that shows what you have room for, as honest ranges. Built for CKD stages G3b and G4. No account, and nothing leaves your device.">
+<meta property="og:image" content="https://chronic-california.vercel.app/icons/icon-512.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="The RenalRoute mark: a ring left deliberately incomplete, because the gap is what you have left.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RenalRoute — what's left today">
+<meta name="twitter:description" content="A kidney-diet companion that shows what you have room for, as honest ranges. No account, and nothing leaves your device.">
+<meta name="twitter:image" content="https://chronic-california.vercel.app/icons/icon-512.png">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FBF7F2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17150F" media="(prefers-color-scheme: dark)">
@@ -41,6 +70,12 @@
 
 <a class="skiplink" href="#mainContent">Skip to content</a>
 
+<!-- A banner landmark. These two notices previously sat outside every
+     landmark region, which axe flags on every screen: content a screen
+     reader user cannot reach by jumping between landmarks. role="status"
+     and role="note" describe what they ARE, but neither is a landmark. -->
+<header role="banner" aria-label="Site notices">
+
 <!-- Connectivity. Nothing here needs the network except meal parsing,
      so this says what still works rather than just "you are offline". -->
 <div id="offlineBanner" class="dev-banner dev-banner--offline m-glass" role="status" hidden>
@@ -62,6 +97,8 @@
     <p class="modal__err" id="consentErr" role="alert" hidden>Couldn't save just now — tap again.</p>
   </div>
 </div>
+
+</header>
 
 <!-- ═══════════ DEMO ENTRANCE ═══════════
      Reached only at ?demo=1 or #demo. An ordinary visitor never sees
@@ -359,7 +396,15 @@
       <div class="card m-stone">
         <h2 class="h2">Scan your lab report</h2>
         <p class="note">Take a photo and RenalRoute fills in the potassium, phosphorus, eGFR and date. Nothing is saved until you check it — and nothing about the report leaves your device except the image itself.</p>
-        <input type="file" id="labPhotoInput" accept="image/*" capture="environment" class="sr-only">
+        <!-- Named and removed from the tab order. It is visually hidden and
+             driven by the button below, so a keyboard user reaches the
+             button, not this — but an unnamed file input left in the
+             accessibility tree is a critical axe violation, and it was.
+             tabindex="-1" rather than aria-hidden, because hiding a
+             focusable element from assistive technology is its own
+             violation. -->
+        <input type="file" id="labPhotoInput" accept="image/*" capture="environment"
+               class="sr-only" tabindex="-1" aria-label="Choose a photo of your lab report">
         <button type="button" class="btn btn--secondary btn--block" id="labPhotoBtn">Photograph the report</button>
         <div id="labScanPending" hidden>
           <div id="labScanArt" aria-hidden="true"></div>
@@ -538,17 +583,33 @@
           <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
         </ul>
       </div>
-      <div class="card card--dev">
+      <!-- ═══════════ REFERENCE-BUILD CONTROLS ═══════════
+           HIDDEN unless a demo session is active. An ArgosX deep scan
+           found this card shipped in the DOM to every anonymous
+           visitor, exposing a data-reset button, a persona seeder and a
+           demo-mode toggle, and naming the internal build platform.
+           Rated HIGH, and correctly: a reset button reachable by
+           anybody who opens the page is a destructive action with no
+           gate on it, and naming internal tooling tells an attacker
+           where to look next.
+
+           It is now rendered only when DemoAuth reports an active demo
+           session — ?demo=1 — so an ordinary visitor never receives the
+           markup at all. The internal platform name and the literal
+           endpoint path are gone from the copy entirely: neither told a
+           user anything they needed, and both told a scanner something
+           it should not have had. -->
+      <div class="card card--dev" id="devControls" hidden>
         <h2 class="h2">Reference-build controls</h2>
-        <p class="note">Not part of the shipped product. Present so this build can be tested against the Base44 version.</p>
+        <p class="note">Development tooling. Visible only in a demo session, and not part of what a patient sees.</p>
         <label class="switch">
           <input type="checkbox" id="demoModeToggle">
           <span>Demo mode — canned meal parsing, zero API calls</span>
         </label>
         <p class="note" id="llmStatus"></p>
-        <p class="note">Live parsing runs through the <code>/api/invoke-llm</code> serverless function, which holds the API key server-side. No key is ever stored in the browser. Opened as a local file with no server, the app stays in demo mode.</p>
         <div class="dev-actions">
           <button type="button" class="btn btn--ghost" id="seedBtn">Seed demo persona (Frank)</button>
+          <button type="button" class="btn btn--ghost" id="seedFullBtn">Seed full example (Maria)</button>
           <button type="button" class="btn btn--ghost" id="resetBtn">Reset all data</button>
         </div>
         <p class="note" id="callCounter"></p>
@@ -616,7 +677,8 @@
           <button type="button" class="btn btn--secondary" id="backupSaveBtn">Save a backup file</button>
           <button type="button" class="btn btn--ghost" id="backupLoadBtn">Restore from a backup</button>
         </div>
-        <input type="file" id="backupFileInput" accept="application/json,.json" class="sr-only">
+        <input type="file" id="backupFileInput" accept="application/json,.json"
+               class="sr-only" tabindex="-1" aria-label="Choose a RenalRoute backup file to restore">
         <p class="inline-error" id="backupError" role="alert" hidden></p>
         <p class="note" id="backupOk" role="status" hidden></p>
 

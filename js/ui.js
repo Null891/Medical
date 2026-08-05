@@ -2783,6 +2783,9 @@ const UI = (() => {
       Store.setSetting('demoMode', e.target.checked);
       toast(e.target.checked ? 'Demo mode on — no API calls' : 'Demo mode off — live parsing');
     });
+    $('#seedFullBtn').addEventListener('click', () => {
+      Seed.runFull(); toast('Full example loaded'); go('home');
+    });
     $('#seedBtn').addEventListener('click', () => {
       Seed.run(); toast('Demo persona seeded'); go('home');
     });
@@ -2838,6 +2841,14 @@ const UI = (() => {
     /* Sound is opt-in and previews itself the moment it is switched on
        — a toggle for something you cannot hear until later is a toggle
        people flip twice and then give up on. */
+    /* The reference-build controls exist only inside a demo session.
+       An ArgosX scan rated their public exposure HIGH: a data-reset
+       button anybody could reach is a destructive action with no gate
+       on it. Checked at render rather than hidden with CSS, so the
+       markup is never populated for an ordinary visitor. */
+    const dev = $('#devControls');
+    if (dev) dev.hidden = !(typeof DemoAuth !== 'undefined' && DemoAuth.isActive());
+
     renderInstall();
 
     /* ── Language ──

@@ -3,9 +3,13 @@
   "private": true,
   "description": "Test harness only. Kept in test/ so no package.json sits at the repo root, where Vercel would treat this static site as a Node build.",
   "scripts": {
-    "test": "node verify.js && node e2e.js && node probe.js && node headers.js && node wiring.js && node sweep.js && node journey.js"
+    "test": "node verify.js && node e2e.js && node probe.js && node headers.js && node wiring.js && node sweep.js && node journey.js && node a11y.js"
   },
   "devDependencies": {
-    "jsdom": "^30.0.0"
+    "jsdom": "^30.0.0",
+    "axe-core": "^4.12.1"
+  },
+  "dependencies": {
+    "axe-core": "^4.12.1"
   }
 }
