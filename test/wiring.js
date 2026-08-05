@@ -114,6 +114,55 @@ screens.forEach(s => {
     'router will try to toggle an element that does not exist');
 });
 
+console.log('\n═══ THE APP DOES NOT MANAGE MEDICATIONS ═══');
+
+/* js/meds.js stores a list and shows one line of binder timing. The
+   line it must never cross is doing anything a medication manager does
+   — doses, interactions, contraindications, schedules, reminders. Each
+   of those is a real medical-device function, each would be done badly
+   here, and the app tells users in writing that it does none of them.
+
+   A promise in copy that nothing enforces is a promise waiting to be
+   broken by a well-meaning feature six commits from now. So it is
+   enforced against the source. */
+{
+  const medsSrc = fs.readFileSync(path.join(ROOT, 'js/meds.js'), 'utf8');
+  const code = medsSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  /* No \b anchors. The first version used them and would have walked
+     straight past `checkInteractions()` — the word boundary fails in
+     the middle of camelCase, which is exactly how such a function would
+     actually be named. Its own self-test caught it. */
+  const FORBIDDEN = [
+    ['dose arithmetic',      /dose\s*[*/+-]|mg\s*\*|calculatedose|dosage\s*=/i],
+    ['interaction checking', /interact|contraindicat|conflictswith/i],
+    ['scheduling',           /schedule|remind|nextdue|setinterval|notification/i],
+    ['clinical decisions',   /shouldtake|issafe|recommenddose|warnabout/i]
+  ];
+  FORBIDDEN.forEach(([what, re]) => {
+    check(`meds.js contains no ${what}`, !re.test(code),
+      `js/meds.js has grown ${what} — the app promises in writing that it does not manage medications`);
+  });
+
+  // It must also never read a lab value or touch a threshold: education
+  // that changes with somebody's potassium is guidance, not a list.
+  ['latestLab', 'potassiumMode', 'phosphorusMode', 'ringStatus'].forEach(fn => {
+    check(`meds.js never calls ${fn}`, medsSrc.indexOf(fn) === -1,
+      'medication education must not vary with a lab value — that is clinical guidance');
+  });
+
+  /* And the lint has to be able to fail — against realistically-named
+     code, in every category, not against a string chosen to match. */
+  const DECOYS = [
+    'function checkInteractions(a, b) { return true; }',
+    'const nextDose = mg * 2;',
+    'setInterval(remindUser, 3600);',
+    'function isSafeToTake(med) { return true; }'
+  ];
+  const caught = DECOYS.filter(d => FORBIDDEN.some(([, re]) => re.test(d)));
+  check('the medication lint catches every decoy', caught.length, DECOYS.length);
+}
+
 console.log('\n═══ DECORATION IS NEVER LOAD-BEARING ═══');
 
 /* js/motion.js is decoration by contract: if it failed to load, the app

@@ -1036,7 +1036,20 @@ const UI = (() => {
     }
     $('#saveMealBtn').disabled = false;
 
-    host.innerHTML = `<div class="card">` + items.map((it, idx) => {
+    /* Binder timing. The one piece of medication guidance this app
+       gives, shown when a meal is on screen because that is the only
+       moment somebody can act on it. Not a dose, not a schedule, not an
+       interaction check — the same sentence for every binder, which is
+       precisely why it is safe to show. */
+    const binders = Meds.hasPhosphateBinder() ? Meds.phosphateBinders() : [];
+    const binderNote = binders.length
+      ? `<div class="card m-paper binder">
+           <h3 class="h3">${esc(COPY.meds.binderTiming)}</h3>
+           <p class="note">${esc(COPY.meds.binderNamed(binders.join(', ')))} ${esc(COPY.meds.disclaimer)}</p>
+         </div>`
+      : '';
+
+    host.innerHTML = binderNote + `<div class="card">` + items.map((it, idx) => {
       const chip = it.source === 'anchor'
         ? `<span class="chip chip--ok"><span aria-hidden="true">✓</span> Matched</span>`
         : it.source === 'llm'

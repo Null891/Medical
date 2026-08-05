@@ -1332,6 +1332,69 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  console.log('\n═══ 33. MEDICINES AND WARNING SIGNS ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const M = window.RenalRoute.Meds;
+
+    S.setSetting('medications', '');
+    check('no binder note when no medicines are listed', M.hasPhosphateBinder(), false);
+
+    S.setSetting('medications', 'Lisinopril 10mg daily\nSevelamer 800mg with meals');
+    check('a phosphate binder is recognised', M.hasPhosphateBinder(), true);
+    check('  ...by name', M.phosphateBinders().join(), 'sevelamer');
+    check('  ...and the list is two lines', M.count(), 2);
+
+    /* Potassium binders are a different class taken differently.
+       Conflating them and showing with-food advice that does not apply
+       would be exactly the sloppiness this module exists to avoid. */
+    S.setSetting('medications', 'Patiromer 8.4g daily');
+    check('a potassium binder is NOT treated as a phosphate binder',
+      M.hasPhosphateBinder(), false);
+    check('  ...but is still recognised as its own class',
+      M.potassiumBinders().length > 0, true);
+
+    // The binder line appears on a meal, where somebody can act on it.
+    S.setSetting('medications', 'Sevelamer 800mg');
+    S.meals().forEach(m => S.deleteMeal(m.id));
+    window.RenalRoute.UI.go('kitchen');
+    click('#kitchenBody [data-cook]');
+    await wait(30);
+    window.RenalRoute.UI.go('log');
+    click('#toPickerBtn'); await wait(20);
+    type('#pickerSearch', 'banana'); await wait(20);
+    const pick = $('#pickerResults [data-pick]');
+    if (pick) {
+      click(pick); click('#pickerReview'); await wait(30);
+      const review = $('#reviewItems').textContent;
+      check('binder timing appears on a meal', /taken WITH food/i.test(review), true);
+      check('  ...and says the app does not manage medications',
+        /does not manage medications/i.test(review), true);
+      /* The boundary, checked in the rendered output rather than only
+         in the source: no dose, no schedule, no interaction claim. */
+      check('  ...and gives no dose', /take \d|\d+\s*mg (before|after|with) each/i.test(review), false);
+      check('  ...and sets no schedule', /every \d+ hours|at \d+ ?[ap]m/i.test(review), false);
+    }
+
+    // Warning signs: the unreliability has to come BEFORE any symptom.
+    window.RenalRoute.UI.go('settings');
+    click('[data-learn="warnings"]');
+    await wait(20);
+    const w = $('#learnBody').textContent;
+    check('the warning-signs card opens', vis('#scr-learn'), true);
+    check('  ...and leads with how unreliable symptoms are',
+      w.indexOf('no symptoms at all') < w.indexOf('muscle weakness'), true);
+    check('  ...says feeling fine is not evidence',
+      /feeling fine is not evidence/i.test(w), true);
+    check('  ...names the emergency signs', /emergency services/i.test(w), true);
+    check('  ...carries the salt-substitute case', /7\.5/.test(w), true);
+    check('  ...and says the app cannot tell you if it applies',
+      /cannot tell you/i.test(w), true);
+
+    S.setSetting('medications', '');
+    S.meals().forEach(m => S.deleteMeal(m.id));
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

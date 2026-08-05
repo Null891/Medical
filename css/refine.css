@@ -537,3 +537,9 @@ body { letter-spacing: var(--track-body); }
   border-top: 1px solid var(--color-hairline);
 }
 .shoplist li:first-child { border-top: 0; }
+
+/* The binder note. Paper, at the top of the review — it is education
+   sitting beside a decision, not a warning about the meal itself, so it
+   deliberately does not use a status colour. */
+.binder { margin-bottom: var(--space-3); }
+.binder .h3 { margin-bottom: var(--space-1); }

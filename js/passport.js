@@ -31,8 +31,13 @@ const Passport = (() => {
     { key: 'conditions',  label: 'Conditions',
       hint: 'Kidney diagnosis and anything else a stranger should know first.',
       placeholder: 'CKD stage G3b. Type 2 diabetes.' },
+    /* Shares its storage key with js/meds.js, deliberately. The
+       passport is where a medicine list is actually useful, and two
+       separate lists would immediately disagree with each other. Meds
+       reads this same field to recognise binders for the one timing
+       note shown on a meal. */
     { key: 'medications', label: 'Medicines',
-      hint: 'Names and doses as written on the packet. Include binders.',
+      hint: 'Names and doses as written on the packet. Include binders. One per line.',
       placeholder: 'Lisinopril 10mg daily\nSevelamer 800mg with meals' },
     { key: 'allergies',   label: 'Allergies and reactions',
       hint: 'What happened, not just the name.',

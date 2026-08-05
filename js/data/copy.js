@@ -28,6 +28,25 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── Medicines ──
+     One line of timing, and nothing else. Binders working with food is
+     the most commonly missed practical fact about the class, it is
+     identical for every binder, and the meal review is the only moment
+     somebody is in a position to act on it.
+
+     No dose, no schedule, no interaction check — and the app says so
+     in the same breath, because a medicines feature that does not
+     state its own limits invites people to assume it has none. */
+  meds: {
+    binderTiming:
+      'Phosphate binders work when they are taken WITH food, not before or after.',
+    binderNamed: (names) => `You have ${names} on your list.`,
+    disclaimer:
+      'Follow the timing your prescriber gave you. RenalRoute does not manage medications — ' +
+      'it stores what you type so you can show someone, and it never checks doses, interactions, or timing beyond this note.',
+    passportHint: 'Anything here also appears on your health passport.'
+  },
+
   /* ── Kitchen ──
      Careful about what is NOT said. No recipe is called "kidney-safe":
      whether a meal suits a person depends on their labs, their targets
@@ -506,6 +525,25 @@ const COPY = {
 
   /* ── Learn cards (G.8) ── */
   learn: {
+    /* ── Warning signs ──
+       The honest framing IS the card. Symptoms of high potassium are
+       genuinely unreliable — many people have none until it is already
+       dangerous — and a symptom list published without saying so
+       teaches people to treat "I feel fine" as evidence. That is the
+       exact false reassurance that makes hyperkalaemia dangerous, so
+       the unreliability comes first, before any symptom is named. */
+    warnings: {
+      title: 'Warning signs worth knowing',
+      body: [
+        'Ask your care team what YOUR warning signs are and when they want you to call. What follows is general education, and the most important part of it is how unreliable symptoms are.',
+        'High potassium often causes no symptoms at all until it is already dangerous. Feeling fine is not evidence that your potassium is fine — a blood test is the only thing that answers that question. Never use how you feel to decide whether to skip a lab or a clinic appointment.',
+        'When it does cause symptoms, they can include muscle weakness or heaviness in the legs, numbness or tingling, a heartbeat that feels irregular or unusually slow, nausea, and unusual tiredness. All of these have many other causes, which is another reason they cannot be used to rule anything in or out.',
+        'Chest pain, a racing or irregular heartbeat, trouble breathing, or severe muscle weakness are emergencies. Call emergency services — do not wait, and do not look it up first.',
+        'One specific thing worth knowing: most "low sodium" or "lite" salts replace sodium with potassium chloride. In a published case an older adult with kidney disease reached a potassium of 7.5 mEq/L after one was added to their meals. Check the label of anything used as a salt substitute, including seasonings a family member may have bought to help.',
+        'RenalRoute cannot tell you whether any of this applies to you. It tracks food. If you enter a potassium result of 6.0 or above it stops giving food guidance entirely and tells you to contact your care team.'
+      ]
+    },
+
     protein: {
       title: "Why doesn't RenalRoute track protein or fluid?",
       body: [
