@@ -720,3 +720,58 @@ body { letter-spacing: var(--track-body); }
   #pickerResults > *:nth-child(4) { animation-delay: 66ms; }
   #pickerResults > *:nth-child(n+5) { animation-delay: 88ms; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE MORE HUB
+   ───────────────────────────────────────────────────────────────
+   Cards, not a list of links. Six screens were reachable only through
+   single lines inside Settings, which is where features go to be
+   forgotten — and where the Kitchen very nearly stayed.
+
+   Each card leads with what the screen is FOR rather than its name,
+   because a one-word label only works for somebody who already knows
+   what is behind it. "A card for an ambulance" tells you more than
+   "Passport" ever will.
+   ═══════════════════════════════════════════════════════════════ */
+.hub {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-section);
+}
+@media (min-width: 620px) { .hub { grid-template-columns: 1fr 1fr; } }
+
+.hub__card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  min-height: 44px;
+  transition: transform var(--motion-standard) var(--ease-out);
+}
+.hub__card:hover { transform: translateY(-2px); }
+.hub__name {
+  display: block;
+  font-size: var(--type-title);
+  font-weight: 640;
+  letter-spacing: var(--track-title);
+  margin-bottom: var(--space-2);
+}
+.hub__what {
+  display: block;
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-body);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub__card { transition: none; }
+  .hub__card:hover { transform: none; }
+}
+
+/* Five tabs, not four. Labels stay visible at every width — an icon
+   without a word is a guess, and this app's users should never have to
+   make one. */
+.tabbar .tab__label { font-size: 11px; }
+@media (max-width: 359px) { .tabbar .tab__label { font-size: 10px; } }

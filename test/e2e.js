@@ -1452,6 +1452,59 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('switching back restores English', /I understand/.test(window.COPY.consentButton), true);
   }
 
+  console.log('\n═══ 35. NAVIGATION A FIRST-TIME VISITOR CAN USE ═══');
+  {
+    /* The failure this section exists to prevent: eleven screens behind
+       four tabs, with the one screen that makes the case for the app
+       reachable only from a secondary button. Nothing broke and no test
+       failed — navigation had simply grown by accretion. */
+    const tabs = $$('.tabbar .tab');
+    check('five tabs, not four', tabs.length, 5);
+    check('  ...and every one has a visible word, not just an icon',
+      tabs.every(t => (t.querySelector('.tab__label') || {}).textContent), true);
+
+    const targets = tabs.map(t => t.dataset.nav);
+    check('the Kitchen is one tap from anywhere', targets.indexOf('kitchen') !== -1, true);
+    check('  ...and it opens the question the product is built around',
+      (() => { click('.tabbar [data-nav="kitchen"]');
+               return /what can dinner be/i.test($('#scr-kitchen').textContent); })(), true);
+
+    // The More hub replaces six links buried inside Settings.
+    click('.tabbar [data-nav="more"]');
+    await wait(20);
+    check('the More hub opens', vis('#scr-more'), true);
+    const hubCards = $$('#scr-more .hub__card');
+    check('  ...with a card per destination', hubCards.length >= 4, true);
+    /* Each card must say what the screen is FOR, not just name it — a
+       one-word label only works for somebody who already knows what is
+       behind it, and these users are meeting all of them cold. */
+    check('  ...each explaining what it is for',
+      hubCards.every(c => {
+        const what = c.querySelector('.hub__what');
+        return what && what.textContent.trim().length > 40;
+      }), true);
+    check('  ...and every card routes somewhere real',
+      hubCards.every(c => ['label','passport','references','settings'].includes(c.dataset.nav)), true);
+
+    // The coverage panel — the strongest credibility card in the app —
+    // moved out of Settings, where it sat between a text-size control
+    // and an export button.
+    check('the coverage panel is on the hub',
+      $('#coverageCardMore').textContent.includes("doesn't know"), true);
+
+    // Settings is still reachable, just no longer competing for a tab.
+    click('#scr-more [data-nav="settings"]');
+    await wait(20);
+    check('Settings is one tap from the hub', vis('#scr-settings'), true);
+
+    // Every tab must actually land somewhere.
+    for (const t of targets) {
+      click(`.tabbar [data-nav="${t}"]`);
+      await wait(20);
+      check(`the ${t} tab lands on its screen`, vis('#scr-' + t), true);
+    }
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

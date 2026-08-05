@@ -344,6 +344,58 @@
       <div id="labHistory"></div>
     </section>
 
+    <!-- ───────── MORE ─────────
+         A hub, not a menu. Six screens were reachable only through
+         single links inside Settings, which is where features go to be
+         forgotten. Each one gets a card that says what it is FOR in the
+         reader's terms — "a card for an ambulance" rather than
+         "passport" — because a label only works if you already know
+         what is behind it. -->
+    <section class="screen" id="scr-more" hidden>
+      <header class="hdr">
+        <p class="hdr__eyebrow">Everything else</p>
+        <h1 class="hdr__title hdr__title--display">More</h1>
+        <p class="hdr__line">The things you need occasionally, rather than every day.</p>
+      </header>
+
+      <div class="hub">
+        <button type="button" class="hub__card m-stone" data-nav="label">
+          <span class="hub__name">Check a food label</span>
+          <span class="hub__what">Paste an ingredient list and RenalRoute names the phosphate additives, added potassium, and salt substitutes it recognises — the things that never appear on the nutrition panel.</span>
+        </button>
+
+        <button type="button" class="hub__card m-stone" data-nav="passport">
+          <span class="hub__name">Health passport</span>
+          <span class="hub__what">A card for an ambulance, a new doctor, or a pharmacy in another city. Conditions, medicines, allergies, who to call. Works offline and prints.</span>
+        </button>
+
+        <button type="button" class="hub__card m-stone" data-nav="references">
+          <span class="hub__name">Where our numbers come from</span>
+          <span class="hub__what">Every position this app takes and the source behind it — including the ones we have not re-derived yet.</span>
+        </button>
+
+        <button type="button" class="hub__card m-stone" data-nav="settings">
+          <span class="hub__name">Settings</span>
+          <span class="hub__what">Targets, language, text size, contrast, sound, and your data.</span>
+        </button>
+      </div>
+
+      <h2 class="h2">Learn</h2>
+      <ul class="rowlist">
+        <li><button type="button" class="rowbtn" data-learn="protein">Why no protein or fluid tracking?<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="medicines">Medicines and potassium<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="warnings">Warning signs worth knowing<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="leaching">Cooking tip: lowering potassium<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
+      </ul>
+
+      <div id="coverageCardMore"></div>
+
+      <footer class="disclaimer">
+        <p id="moreDisclaimer"></p>
+      </footer>
+    </section>
+
     <!-- ───────── SETTINGS ───────── -->
     <section class="screen" id="scr-settings" hidden>
       <header class="hdr"><h1 class="hdr__title">Settings</h1></header>
@@ -665,13 +717,31 @@
       <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
       <span class="tab__label">Log</span>
     </button>
+    <!-- The Kitchen is a TAB, not a link buried two levels down.
+         "What can dinner be?" is the question this whole product is
+         built to answer, and it spent several commits reachable only
+         from a secondary button — eleven screens behind four tabs, so a
+         first-time visitor would never find the one screen that makes
+         the case for the app. Navigation grew by accretion; this is the
+         correction. -->
+    <button type="button" class="tab" data-nav="kitchen">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="fillable" d="M12 3.6a8.4 8.4 0 0 1 8.4 8.4H3.6A8.4 8.4 0 0 1 12 3.6z"/>
+        <path d="M2.4 12h19.2M6 16.2h12M8 19.8h8" stroke-linecap="round"/>
+      </svg>
+      <span class="tab__label">Kitchen</span>
+    </button>
     <button type="button" class="tab" data-nav="labs">
       <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><path class="fillable" d="M12 3c3.4 4.2 5.4 7.1 5.4 9.5A5.4 5.4 0 0 1 12 18a5.4 5.4 0 0 1-5.4-5.5C6.6 10.1 8.6 7.2 12 3z"/></svg>
       <span class="tab__label">Labs</span>
     </button>
-    <button type="button" class="tab" data-nav="settings">
-      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="fillable" cx="12" cy="12" r="3.4"/><path d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.3 6.3l1.6 1.6M16.1 16.1l1.6 1.6M17.7 6.3l-1.6 1.6M7.9 16.1l-1.6 1.6" stroke-linecap="round"/></svg>
-      <span class="tab__label">Settings</span>
+    <button type="button" class="tab" data-nav="more">
+      <svg class="tab__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="fillable" cx="5.5" cy="12" r="1.9"/>
+        <circle class="fillable" cx="12" cy="12" r="1.9"/>
+        <circle class="fillable" cx="18.5" cy="12" r="1.9"/>
+      </svg>
+      <span class="tab__label">More</span>
     </button>
 
     <!-- Everything below here is the rail earning its width. -->

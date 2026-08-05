@@ -114,6 +114,83 @@ screens.forEach(s => {
     'router will try to toggle an element that does not exist');
 });
 
+console.log('\n═══ EVERY SCREEN IS REACHABLE FROM A TAB ═══');
+
+/* Written after finding eleven screens behind four tabs. The Kitchen —
+   "what can dinner be?", the question this entire product exists to
+   answer — was reachable only from a secondary button and the desktop
+   rail. A first-time visitor would never have found the one screen
+   that makes the case for the app.
+
+   Nothing broke. No test failed. Navigation had simply grown by
+   accretion: every new screen added a link from wherever happened to be
+   convenient, and nobody ever asked whether the whole thing was still
+   navigable. That is not a bug a unit test finds, so it needs a
+   structural one.
+
+   The rule: from the tab bar, every screen must be reachable in at most
+   two taps. Two rather than one because depth-2 detail screens (a meal,
+   a Learn card) are legitimately reached by acting on something. Three
+   is where things start getting lost. */
+{
+  const screens = new Set([...html.matchAll(/id="scr-([a-z]+)"/g)].map(m => m[1]));
+  const tabTargets = [...html.matchAll(/class="tab"[^>]*data-nav="([a-z]+)"/g)].map(m => m[1]);
+  check('the tab bar was found', tabTargets.length >= 4, `only ${tabTargets.length} tabs`);
+
+  /* Edges: which screen's markup contains a link to which other screen.
+     Sections are sliced out of the markup so a link on Home is not
+     credited to Settings. */
+  const edges = {};
+  screens.forEach(from => {
+    const start = html.indexOf(`id="scr-${from}"`);
+    if (start === -1) { edges[from] = []; return; }
+    // Up to the next screen section, or the end of the app shell.
+    const nextIdx = [...html.matchAll(/id="scr-[a-z]+"/g)]
+      .map(m => m.index).find(i => i > start);
+    const block = html.slice(start, nextIdx === undefined ? html.length : nextIdx);
+    edges[from] = [...block.matchAll(/data-nav="([a-z]+)"/g)].map(m => m[1]);
+  });
+  // The tab bar and the floating quick actions are reachable from every
+  // screen, so their targets are edges from everywhere.
+  const globalNav = tabTargets.concat(
+    [...(html.match(/<div class="fab"[\s\S]*?<\/div>\s*<\/div>/) || [''])[0]
+      .matchAll(/data-nav="([a-z]+)"/g)].map(m => m[1]));
+
+  const depth = {};
+  tabTargets.forEach(t => { depth[t] = 1; });
+  globalNav.forEach(t => { if (depth[t] === undefined) depth[t] = 1; });
+  for (let pass = 0; pass < 4; pass++) {
+    Object.keys(depth).forEach(from => {
+      (edges[from] || []).forEach(to => {
+        if (depth[to] === undefined || depth[to] > depth[from] + 1) depth[to] = depth[from] + 1;
+      });
+    });
+  }
+
+  /* Onboarding and detail are excluded by design: onboarding is a
+     one-time gate you are placed into, and detail is opened by tapping
+     a meal row rather than by navigating. */
+  const excluded = new Set(['onboarding', 'detail', 'learn']);
+  const unreachable = [...screens].filter(s => !excluded.has(s) && depth[s] === undefined);
+  check('every screen is reachable from the tab bar',
+    unreachable.join(', ') || 'none', 'none');
+
+  const tooDeep = [...screens].filter(s => !excluded.has(s) && depth[s] > 2);
+  check('  ...within two taps', tooDeep.join(', ') || 'none', 'none');
+
+  /* The product thesis specifically. If "what can dinner be?" is ever
+     more than one tap from anywhere, the app has lost its own argument. */
+  check('the Kitchen is a tab, not a buried link', tabTargets.indexOf('kitchen') !== -1,
+    'the screen that answers the question this product is built around must be a destination');
+
+  // Learn cards are opened by data-learn, so check that route separately.
+  const learnKeys = [...new Set([...html.matchAll(/data-learn="([a-z]+)"/g)].map(m => m[1]))];
+  check('learn cards have entry points', learnKeys.length >= 4, `${learnKeys.length} found`);
+  const copySrc = fs.readFileSync(path.join(ROOT, 'js/data/copy.js'), 'utf8');
+  const missingCards = learnKeys.filter(k => !new RegExp('\\b' + k + ':\\s*{').test(copySrc));
+  check('  ...and every one has copy behind it', missingCards.join(', ') || 'none', 'none');
+}
+
 console.log('\n═══ THE APP DOES NOT MANAGE MEDICATIONS ═══');
 
 /* js/meds.js stores a list and shows one line of binder timing. The

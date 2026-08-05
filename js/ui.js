@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen', 'more'];
 
   function go(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
@@ -45,6 +45,7 @@ const UI = (() => {
     if (name === 'passport') renderPassport();
     if (name === 'references') renderReferences();
     if (name === 'kitchen') renderKitchen();
+    if (name === 'more') renderMore();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
         name !== 'passport' && name !== 'references' && name !== 'kitchen') {
@@ -1304,8 +1305,12 @@ const UI = (() => {
 
      Rendered from ANCHOR_STATS rather than written by hand, so it cannot
      quietly become untrue as the table changes. */
-  function renderCoverage() {
-    const host = $('#coverageCard');
+  /* Takes a target so the same panel can live on More (where it
+     belongs, as the app's strongest credibility card) without being
+     duplicated. Defaults to its original home so nothing that called it
+     without an argument breaks. */
+  function renderCoverage(sel) {
+    const host = $(sel || '#coverageCard');
     if (!host) return;
     const s = ANCHOR_STATS;
 
@@ -1324,6 +1329,19 @@ const UI = (() => {
         ${esc(COPY.coverage.thin)}</p>` : ''}
       <p class="note mt-2">${esc(COPY.coverage.verify)}</p>
     </div>`;
+  }
+
+  /* ═══════════ more ═══════════
+     A hub rather than a menu. Each card says what the screen is FOR in
+     the reader's own terms, because a one-word label only works for
+     somebody who already knows what is behind it — and the people this
+     app is built for are meeting every one of these for the first time. */
+  function renderMore() {
+    $('#moreDisclaimer').textContent = COPY.footerDisclaimer;
+    // The coverage panel moves here: "what this build doesn't know" is
+    // the app's strongest credibility card and it was buried in Settings
+    // between a text-size control and an export button.
+    renderCoverage('#coverageCardMore');
   }
 
   /* ═══════════ scenes ═══════════
