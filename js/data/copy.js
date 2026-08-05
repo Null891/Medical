@@ -68,6 +68,18 @@ const COPY_EN = {
      numbers; it does not read them. Saying so plainly is what stops a
      patient treating a saved blood pressure as an opinion about their
      blood pressure. */
+  /* Every word here is chosen against the same rule: report the record,
+     never grade the person. "Getting old" is a fact about a date.
+     "Overdue" would be a claim about somebody's care that this app
+     cannot support — they may have a lab booked for Thursday. */
+  checklist: {
+    title: 'What is out of date',
+    allCurrent: 'Nothing here is going stale.',
+    foot:
+      'Dates from your own record — not a to-do list, and not a schedule. ' +
+      'How often you need labs or readings is your care team\'s call, not this app\'s.'
+  },
+
   vitals: {
     intro:
       'RenalRoute writes these down and hands them over — it does not interpret them. There are no ' +

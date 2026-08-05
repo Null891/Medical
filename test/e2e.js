@@ -1546,6 +1546,80 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     }
   }
 
+  /* ═══ 36. WHAT IS OUT OF DATE ═══
+     Most of these assert the ABSENCE of things. That is the point: the
+     checklist is defined more by what it refuses to become — a score, a
+     streak, a set of instructions — than by what it displays, and an
+     absence is exactly what quietly returns during a later edit. */
+  console.log('\n═══ 36. WHAT IS OUT OF DATE ═══');
+  {
+    const Chk = window.RenalRoute.Checklist;
+    window.RenalRoute.Seed.run();
+    click('[data-nav="home"]'); await wait(40);
+
+    check('the checklist card renders', vis('#checklistCard'), true);
+    check('  ...with a row per thing it tracks', $$('#checklistCard .chk__row').length, 5);
+    check('  ...and every row goes somewhere real',
+      $$('#checklistCard .chk__btn').every(b => b.dataset.nav), true);
+
+    const text = $('#checklistCard').textContent;
+    // RULE 1 — no streaks, no score, no percentage complete.
+    check('no score anywhere on it', /\b\d{1,3}\s*\/\s*\d|\bscore\b|\bpoints\b/i.test(text), false);
+    check('  ...no streak', /\bstreak\b|\bin a row\b|\bday\s*\d+\b/i.test(text), false);
+    check('  ...no percentage complete', /\d+\s*%|\bcomplete\b/i.test(text), false);
+    check('  ...and no "x of y" fraction of things done',
+      /\b\d+\s+of\s+\d+\b/i.test(text), false);
+
+    // RULE 2 — staleness, never failure.
+    check('nothing is called missed', /\bmissed\b|\boverdue\b|\bbehind\b|\bfailed\b/i.test(text), false);
+    check('  ...nor framed as a duty', /\byou should\b|\byou need to\b|\bmust\b/i.test(text), false);
+    check('  ...and it says whose call the schedule is',
+      /care team/i.test(text), true);
+    check('  ...and that it is not a to-do list',
+      /not a to-do list/i.test(text), true);
+
+    // RULE 3 — nothing is ever red.
+    check('no row carries a danger tone', $$('#checklistCard [class*="danger"]').length, 0);
+
+    // The states themselves, driven from the store rather than asserted.
+    const keys = Chk.rows().map(r => r.key).join(',');
+    check('it tracks the five things it claims to',
+      keys, 'meals,labs,vitals,passport,appointment');
+    check('  ...and every state is one of three',
+      Chk.rows().every(r => ['current', 'stale', 'none'].includes(r.state)), true);
+
+    /* An empty record is a starting point, not a failing — a brand-new
+       user must not open the app and be told five things are wrong. */
+    window.RenalRoute.Store.reset();
+    window.RenalRoute.Store.acceptConsent();
+    click('[data-nav="home"]'); await wait(40);
+    const fresh = window.RenalRoute.Checklist.rows();
+    check('a brand-new record reports nothing as stale',
+      fresh.filter(r => r.state === 'stale').length, 0);
+    check('  ...and the summary stays quiet', window.RenalRoute.Checklist.summary(), null);
+    check('  ...while still saying where to start',
+      $('#checklistCard').textContent.includes('None on file'), true);
+
+    // A lab older than the staleness window reads as old, and says so
+    // as a fact about the date rather than a verdict on the person.
+    const old = window.RenalRoute.Store.daysAgoISO(200);
+    window.RenalRoute.Store.addLab({ lab_date: old, k: 4.4 });
+    click('[data-nav="home"]'); await wait(40);
+    const labRow = window.RenalRoute.Checklist.rows().find(r => r.key === 'labs');
+    check('a 200-day-old lab reads as stale', labRow.state, 'stale');
+    check('  ...described in months, not a day count',
+      /months|over a year/.test(labRow.detail), true);
+    check('  ...and the summary names it once',
+      /getting old/i.test(window.RenalRoute.Checklist.summary()), true);
+
+    // Ages round to plain English and never to false precision.
+    check('ages read in plain words', Chk.describeAge(0), 'today');
+    check('  ...a single day', Chk.describeAge(1), 'a day');
+    check('  ...weeks past a fortnight', Chk.describeAge(21), '3 weeks');
+    check('  ...months past two', Chk.describeAge(120), '4 months');
+    check('  ...and stops counting past a year', Chk.describeAge(500), 'over a year');
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

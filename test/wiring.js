@@ -173,10 +173,10 @@ console.log('\n═══ EVERY SCREEN IS REACHABLE FROM A TAB ═══');
   const excluded = new Set(['onboarding', 'detail', 'learn']);
   const unreachable = [...screens].filter(s => !excluded.has(s) && depth[s] === undefined);
   check('every screen is reachable from the tab bar',
-    unreachable.join(', ') || 'none', 'none');
+    unreachable.length === 0, unreachable.join(', '));
 
   const tooDeep = [...screens].filter(s => !excluded.has(s) && depth[s] > 2);
-  check('  ...within two taps', tooDeep.join(', ') || 'none', 'none');
+  check('  ...within two taps', tooDeep.length === 0, tooDeep.join(', '));
 
   /* The product thesis specifically. If "what can dinner be?" is ever
      more than one tap from anywhere, the app has lost its own argument. */
@@ -188,7 +188,7 @@ console.log('\n═══ EVERY SCREEN IS REACHABLE FROM A TAB ═══');
   check('learn cards have entry points', learnKeys.length >= 4, `${learnKeys.length} found`);
   const copySrc = fs.readFileSync(path.join(ROOT, 'js/data/copy.js'), 'utf8');
   const missingCards = learnKeys.filter(k => !new RegExp('\\b' + k + ':\\s*{').test(copySrc));
-  check('  ...and every one has copy behind it', missingCards.join(', ') || 'none', 'none');
+  check('  ...and every one has copy behind it', missingCards.length === 0, missingCards.join(', '));
 }
 
 console.log('\n═══ THE APP DOES NOT MANAGE MEDICATIONS ═══');
@@ -237,7 +237,9 @@ console.log('\n═══ THE APP DOES NOT MANAGE MEDICATIONS ═══');
     'function isSafeToTake(med) { return true; }'
   ];
   const caught = DECOYS.filter(d => FORBIDDEN.some(([, re]) => re.test(d)));
-  check('the medication lint catches every decoy', caught.length, DECOYS.length);
+  check('the medication lint catches every decoy',
+    caught.length === DECOYS.length,
+    `caught ${caught.length} of ${DECOYS.length}`);
 }
 
 console.log('\n═══ DECORATION IS NEVER LOAD-BEARING ═══');

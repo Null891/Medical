@@ -54,6 +54,7 @@ const Passport = (() => {
   ];
 
   const KEY = 'passport';
+  const TOUCHED_KEY = 'passportTouchedAt';
   const MAXLEN = 600;
 
   function data() {
@@ -65,6 +66,11 @@ const Passport = (() => {
     const next = Object.assign({}, data());
     next[key] = String(value || '').slice(0, MAXLEN);
     Store.setSetting(KEY, next);
+    /* When it was last touched, so the checklist can say how old the
+       page is rather than only whether it is empty. A date, not a
+       timestamp — nothing here needs the hour, and the coarser value is
+       the one that survives an export somebody might read. */
+    Store.setSetting(TOUCHED_KEY, Store.todayISO());
     return next;
   }
 
@@ -157,5 +163,5 @@ const Passport = (() => {
     return out.join('\n');
   }
 
-  return { FIELDS, KEY, MAXLEN, data, set, filledCount, isEmpty, labLine, asText };
+  return { FIELDS, KEY, TOUCHED_KEY, MAXLEN, data, set, filledCount, isEmpty, labLine, asText };
 })();

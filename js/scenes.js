@@ -39,7 +39,7 @@ const Scenes = (() => {
       icon: 'house',
       opens: 'home',
       lead: { label: 'Log a meal', nav: 'log' },
-      cards: ['orbit', 'rings', 'stats', 'quick', 'list', 'today', 'trends', 'insights'],
+      cards: ['orbit', 'rings', 'stats', 'quick', 'list', 'today', 'checklist', 'trends', 'insights'],
       tip: null
     },
     {
@@ -49,7 +49,7 @@ const Scenes = (() => {
       icon: 'basket',
       opens: 'label',
       lead: { label: 'Check a label', nav: 'label' },
-      cards: ['orbit', 'rings', 'stats', 'list', 'trends', 'insights'],
+      cards: ['orbit', 'rings', 'stats', 'list', 'trends', 'insights', 'checklist'],
       tip: 'Any ingredient with PHOS in it is added phosphate — absorbed almost completely, and it never shows on the nutrition panel.'
     },
     {
@@ -59,7 +59,7 @@ const Scenes = (() => {
       icon: 'fork',
       opens: 'log',
       lead: { label: 'Log what you ordered', nav: 'log' },
-      cards: ['orbit', 'rings', 'stats', 'list', 'insights', 'trends'],
+      cards: ['orbit', 'rings', 'stats', 'list', 'insights', 'trends', 'checklist'],
       /* Category-level, because that is all restaurant sodium supports.
          The same rule the flag cards already follow — this scene just
          says it out loud before the meal rather than after. */
@@ -72,7 +72,7 @@ const Scenes = (() => {
       icon: 'clipboard',
       opens: 'home',
       lead: { label: 'Open my health passport', nav: 'passport' },
-      cards: ['trends', 'insights', 'orbit', 'rings', 'stats', 'list'],
+      cards: ['checklist', 'trends', 'insights', 'orbit', 'rings', 'stats', 'list'],
       tip: 'Your seven-day view and a one-page summary are both under Settings → Your data. The passport prints.'
     },
     {
@@ -82,7 +82,7 @@ const Scenes = (() => {
       icon: 'plane',
       opens: 'home',
       lead: { label: 'Log a meal', nav: 'log' },
-      cards: ['orbit', 'rings', 'quick', 'stats', 'list', 'trends'],
+      cards: ['orbit', 'rings', 'quick', 'stats', 'list', 'trends', 'checklist'],
       tip: 'Everything except reading a typed meal works with no signal. The food list, the rings, and your passport are all on this device.'
     }
   ];
@@ -127,13 +127,13 @@ const Scenes = (() => {
      because of the time of day would be a bug. */
   const ORDERS = {
     // Nothing logged yet: what today can be.
-    morning: ['orbit', 'rings', 'quick', 'stats', 'list', 'today', 'insights', 'trends'],
+    morning: ['orbit', 'rings', 'quick', 'stats', 'list', 'today', 'checklist', 'insights', 'trends'],
     // Mid-day: how much room is left, and what has gone in.
-    midday:  ['orbit', 'rings', 'stats', 'list', 'quick', 'today', 'trends', 'insights'],
+    midday:  ['orbit', 'rings', 'stats', 'list', 'quick', 'today', 'trends', 'insights', 'checklist'],
     // The question the whole app exists for: what can dinner be?
-    evening: ['orbit', 'rings', 'stats', 'quick', 'list', 'today', 'insights', 'trends'],
+    evening: ['orbit', 'rings', 'stats', 'quick', 'list', 'today', 'insights', 'trends', 'checklist'],
     // Day effectively done: the record and the week.
-    night:   ['orbit', 'rings', 'today', 'list', 'stats', 'trends', 'insights', 'quick']
+    night:   ['orbit', 'rings', 'today', 'list', 'checklist', 'stats', 'trends', 'insights', 'quick']
   };
 
   function order() {

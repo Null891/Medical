@@ -72,7 +72,7 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
   const missing = (manifest.icons || [])
     .map(i => i.src)
     .filter(src => !fs.existsSync(path.join(ROOT, src)));
-  check('every declared icon file exists', missing.join(', ') || 'none', 'none');
+  check('every declared icon file exists', missing.length === 0, missing.join(', '));
 
   // And they must be real PNGs, not renamed anything.
   (manifest.icons || []).filter(i => /\.png$/.test(i.src)).forEach(i => {
@@ -83,7 +83,7 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
 
   check('start_url and scope are set',
     !!manifest.start_url && !!manifest.scope, 'a PWA without scope can escape itself');
-  check('display is standalone', manifest.display, 'standalone');
+  check('display is standalone', manifest.display === 'standalone', manifest.display);
 
   // iOS reads none of the manifest for icons or the status bar.
   check('iOS gets its own touch icon', /rel="apple-touch-icon"/.test(html),
@@ -100,7 +100,7 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
     .map(s => (s.url.match(/go=([a-z]+)/) || [])[1])
     .filter(t => t && !screens.has(t));
   check('every home-screen shortcut points at a real screen',
-    badShortcuts.join(', ') || 'none', 'none');
+    badShortcuts.length === 0, badShortcuts.join(', '));
   check('  ...and there are some', (manifest.shortcuts || []).length >= 3,
     `${(manifest.shortcuts || []).length} shortcuts`);
 
@@ -115,7 +115,7 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
   const pageAssets = cssFiles.concat(scripts);
   const notCached = pageAssets.filter(a => !shell.has(a));
   check('the service worker caches every asset the page loads',
-    notCached.join(', ') || 'none', 'none');
+    notCached.length === 0, notCached.join(', '));
   check('  ...and the icons too',
     ['icons/icon-192.png', 'icons/icon-512.png'].every(i => shell.has(i)), true);
   check('  ...but never the API', !shellBlock.includes('/api/'), true);
@@ -186,8 +186,21 @@ console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ══�
     const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     check('structured data is present', !!m, 'JSON-LD block missing');
     if (m) {
-      const want = 'sha256-' + crypto.createHash('sha256').update(m[1], 'utf8').digest('base64');
-      check('  ...and its CSP hash matches the block exactly',
+      /* NORMALISED TO LF BEFORE HASHING, and this is not a detail.
+         A CSP hash covers the exact bytes the browser receives. Git
+         stores this file with LF and Vercel builds on Linux, so the
+         deployed bytes are LF — but a Windows working copy is CRLF, and
+         hashing that produces a value that matches locally and matches
+         NOTHING in production.
+
+         That is precisely what happened: the hash committed here was
+         the CRLF one, so the browser silently dropped the JSON-LD block
+         on the live site while every local check passed. .gitattributes
+         now pins this file to LF so the two can't diverge again, and
+         this line means the test would still be right if it did. */
+      const block = m[1].replace(/\r\n/g, '\n');
+      const want = 'sha256-' + crypto.createHash('sha256').update(block, 'utf8').digest('base64');
+      check('  ...and its CSP hash matches the block as DEPLOYED (LF)',
         read('vercel.json').indexOf(want) !== -1,
         `CSP needs '${want}' — the block changed and the hash did not`);
       let parsed = null;
@@ -195,7 +208,7 @@ console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ══�
       check('  ...and it is valid JSON', !!parsed, 'the schema block does not parse');
       if (parsed) {
         check('  ...describing a health application',
-          parsed.applicationCategory, 'HealthApplication');
+          parsed.applicationCategory === 'HealthApplication', parsed.applicationCategory);
         /* Structured data is read by machines that will repeat whatever
            a health app claims about itself, so it carries the same
            disclaimer the app does and makes no medical claim. */
@@ -528,6 +541,93 @@ console.log('\n═══ 4. STATUS SURVIVES GRAYSCALE ═══');
   check('  ...the stall notice is the only timed thing on it',
     /boot-slow/.test(bootCss) && /6s/.test(bootCss),
     'the one timer should admit a failure, not stage a performance');
+
+  /* ═══ 9. THE TEST HARNESS ITSELF ═══
+     This project runs two check() signatures: (label, ok, detail) in the
+     lint suites, and (label, actual, expected) in the behavioural ones.
+     Mixing them has now cost four separate incidents — three false
+     FAILURES on clean runs, and once, worse, a silent PASS: the service
+     worker drift guard was written in the wrong form, so a non-empty
+     list of uncached files was read as a truthy "ok" and the assertion
+     could never fail. It sat green while the shell drifted by two
+     modules, guarding nothing.
+
+     A false pass is far more expensive than a false failure, so this
+     file now checks its own calls: in a (label, ok, detail) suite, the
+     second argument must actually be a boolean expression. */
+  console.log('\n═══ 9. THE TEST HARNESS ITSELF ═══');
+  {
+    /* Arguments are split by bracket matching, not by a regex on commas:
+       a naive split breaks on the commas inside `path.join(a, b)` and
+       reports the wrong argument, which is how the first version of
+       this lint produced four false positives of its own. */
+    function checkArgs(s, i) {
+      let depth = 0, quote = null, out = [], cur = '';
+      for (; i < s.length; i++) {
+        const c = s[i];
+        if (quote) { cur += c; if (c === quote && s[i - 1] !== '\\') quote = null; continue; }
+        if (c === "'" || c === '"' || c === '`') { quote = c; cur += c; continue; }
+        if ('([{'.indexOf(c) !== -1) { depth++; cur += c; continue; }
+        if (')]}'.indexOf(c) !== -1) {
+          if (c === ')' && depth === 0) { out.push(cur); return out; }
+          depth--; cur += c; continue;
+        }
+        if (c === ',' && depth === 0) { out.push(cur); cur = ''; continue; }
+        cur += c;
+      }
+      return out;
+    }
+
+    /* The bug class, stated precisely: an argument that produces a
+       STRING where a boolean belongs. Every real instance took one of
+       these shapes — `list.join(', ')`, a bare string literal, or a
+       plain property read like `manifest.display` — and every one of
+       them is truthy, so the assertion passed no matter what the app
+       did. A bare identifier (`ok`, `sig`) is left alone: those hold
+       booleans, and flagging them would train people to ignore this. */
+    /* Every suite that uses the (label, ok, detail) signature, not just
+       this one. The inert assertions found so far were spread across
+       two files, and the one in wiring.js was self-testing a clinical
+       lint — it reported that a medication-safety check caught all four
+       decoys while only counting them. The suites using
+       (label, actual, expected) are deliberately excluded: there, a
+       value in the second position is correct. */
+    const OK_DETAIL_SUITES = ['test/sweep.js', 'test/wiring.js', 'test/headers.js', 'test/a11y.js'];
+    const src = OK_DETAIL_SUITES.map(read).join('\n');
+
+    /* `.join(` and a leading quote are decisive on their own: an `||`
+       between two strings is still a string, so the presence of a
+       boolean-looking operator proves nothing. The real instance was
+       literally `notCached.join(', ') || 'none'` — a first version of
+       this lint let that through because of the `||`, which is why the
+       string-producing forms below are checked BEFORE anything else. */
+    /* An ALLOW-LIST first, because these settle the question on their
+       own: a comparison, or a call that can only return a boolean. It
+       has to run first for two reasons found by testing this lint
+       against the file it lints — `fs.existsSync(path.join(...))`
+       contains `.join(` without producing a string, and a regex literal
+       like /content="[^"]*icon/.test(html) contains a double quote that
+       the argument splitter reads as the start of a string. */
+    const STRONG_BOOL = /===|!==|[<>]=?|&&\s*\w+\s*===|\.every\(|\.some\(|\.includes\(|\.test\(|existsSync|^!/;
+    // Otherwise: does it produce a string where a boolean belongs?
+    const ALWAYS_STRING = /\.join\(|^'|^"|^`/;
+    const BARE_READ = /^[\w$]+(?:\.[\w$]+)+$/;   // e.g. manifest.display
+    const bad = [];
+    const re = /\bcheck\(/g;
+    let m;
+    while ((m = re.exec(src))) {
+      const a = checkArgs(src, m.index + 6).map(x => x.trim());
+      if (a.length < 2) continue;
+      const arg = a[1];
+      if (STRONG_BOOL.test(arg)) continue;
+      if (ALWAYS_STRING.test(arg) || BARE_READ.test(arg)) {
+        bad.push(a[0].slice(0, 40) + ' → ' + arg.slice(0, 34));
+      }
+    }
+    check('every assertion in the ok/detail suites passes a boolean, not a value',
+      bad.length === 0,
+      'these can never fail: ' + bad.slice(0, 4).join('  |  '));
+  }
 }
 
 console.log(`\n═══ ${pass} passed, ${fail} failed ═══`);

@@ -660,6 +660,7 @@ const UI = (() => {
     $('#trendsCard').innerHTML = Trends.render();
     if (typeof Motion !== 'undefined') Motion.livingChart($('#trendsCard'));
     renderInsights();
+    renderChecklist();
     applyAdaptiveOrder();
     maybeBloom();
     // Cards were just replaced, so the observer has nothing to watch.
@@ -1571,7 +1572,7 @@ const UI = (() => {
   const CARD_SLOTS = {
     orbit: '#orbitCard', rings: '#ringCard', stats: '#statBlocks',
     quick: '#quickAdd', list: '#homeList', today: '#todayFeed',
-    trends: '#trendsCard', insights: '#insightsCard'
+    trends: '#trendsCard', insights: '#insightsCard', checklist: '#checklistCard'
   };
 
   function applyAdaptiveOrder() {
@@ -2186,6 +2187,41 @@ const UI = (() => {
      Renders nothing at all when there is not enough data or no pattern
      clears its evidence floor — an app that always has something to
      say about your week is an app that is making things up. */
+  /* ═══════════ what is out of date ═══════════
+     Rendered from Checklist.rows(), which produces facts. Everything
+     the tone rules forbid is absent by construction: there is no
+     fraction to print, no streak to break, and the only tones in the
+     markup are neutral and amber. See js/checklist.js.
+
+     Rows are BUTTONS because every one of them has somewhere useful to
+     go — a row that reports a stale lab and cannot take you to the lab
+     screen is a complaint. */
+  function renderChecklist() {
+    const host = $('#checklistCard');
+    if (!host || typeof Checklist === 'undefined') return;
+
+    const rows = Checklist.rows();
+    const summary = Checklist.summary();
+
+    host.hidden = false;
+    host.innerHTML = `<div class="card m-paper">
+      <h2 class="h3">${esc(COPY.checklist.title)}</h2>
+      <p class="note">${esc(summary || COPY.checklist.allCurrent)}</p>
+      <ul class="chk">
+        ${rows.map(r => `<li class="chk__row chk__row--${esc(r.state)}">
+          <button type="button" class="chk__btn" data-nav="${esc(r.nav || 'home')}">
+            <span class="chk__mark" aria-hidden="true">${r.state === 'current' ? '✓' : '·'}</span>
+            <span class="chk__text">
+              <span class="chk__label">${esc(r.label)}</span>
+              <span class="chk__detail">${esc(r.detail)}</span>
+            </span>
+          </button>
+        </li>`).join('')}
+      </ul>
+      <p class="note note--src">${esc(COPY.checklist.foot)}</p>
+    </div>`;
+  }
+
   function renderInsights() {
     const host = $('#insightsCard');
     if (!host) return;

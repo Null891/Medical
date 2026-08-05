@@ -1048,3 +1048,66 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
      and somebody who disabled motion still needs to know it stalled. */
   .boot__slow { animation-duration: 1ms; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WHAT IS OUT OF DATE
+   ───────────────────────────────────────────────────────────────
+   There is no danger tone in this block, and that is deliberate rather
+   than an oversight. Red in this app means one thing — a potassium
+   result that needs a phone call — and spending it on a missing weight
+   would devalue it where it matters. Amber is the strongest tone here,
+   and only for staleness the reader can personally act on.
+
+   "None on file" is styled the same as "current", not as a fault: a
+   brand-new user has an empty record, which is a starting point, not a
+   failing. See js/checklist.js.
+   ═══════════════════════════════════════════════════════════════ */
+.chk { list-style: none; margin: var(--space-3) 0 var(--space-2); padding: 0; }
+
+.chk__row + .chk__row { border-top: 1px solid var(--color-hairline); }
+
+.chk__btn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  border-radius: var(--radius-field);
+}
+.chk__btn:hover { background: var(--color-surface-warm); }
+
+.chk__mark {
+  flex: 0 0 20px;
+  height: 20px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--color-track);
+  color: var(--color-text-secondary);
+}
+.chk__row--current .chk__mark { background: var(--color-tint-ok); color: var(--color-status-ok); }
+.chk__row--stale   .chk__mark { background: var(--color-tint-warn); color: var(--color-status-warn); }
+
+.chk__text { display: block; min-width: 0; }
+.chk__label { display: block; font-weight: 600; font-size: var(--type-body); }
+.chk__detail {
+  display: block;
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin-top: 1px;
+}
+
+/* The tone never reaches the text — a whole row rendered amber reads as
+   an accusation. The mark carries it, the words stay neutral. */
+.chk__row--stale .chk__label { color: var(--color-text-primary); }

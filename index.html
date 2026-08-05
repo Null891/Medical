@@ -362,6 +362,13 @@
         <!-- Arithmetic over the record, phrased as observation. Renders
              nothing when nothing clears its evidence floor. -->
         <div class="bento__half" id="insightsCard" hidden></div>
+
+        <!-- WHAT IS OUT OF DATE — facts about the record, never a
+             to-do list. No streak, no score, no percentage complete,
+             and nothing on it is ever red. See js/checklist.js for why
+             each of those would make it something this app has no
+             right to be. -->
+        <div class="bento__half" id="checklistCard" hidden></div>
       </div>
 
       <div class="wave" aria-hidden="true">
@@ -1116,6 +1123,7 @@
 <script src="js/scenes.js"></script>
 <script src="js/orbit.js"></script>
 <script src="js/insights.js"></script>
+<script src="js/checklist.js"></script>
 <script src="js/passport.js"></script>
 <script src="js/exporter.js"></script>
 <script src="js/ui.js"></script>

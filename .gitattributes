@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════
+# LINE ENDINGS ARE A DEPLOYMENT CONCERN HERE, not a style preference.
+#
+# index.html carries an inline JSON-LD block whose CSP hash is pinned in
+# vercel.json. A CSP hash covers the exact bytes the browser receives.
+# Git stores this repo with LF and Vercel builds on Linux, so the
+# deployed bytes are LF — but a Windows checkout is CRLF by default, and
+# a hash computed from that working copy matches locally and matches
+# nothing in production. That is not hypothetical: it shipped, and the
+# browser silently dropped the structured data on the live site while
+# every local check passed.
+#
+# Pinning the whole tree to LF means the working copy, the repo, and the
+# deployed file are byte-identical, so a hash computed anywhere is the
+# hash the browser will check.
+# ═══════════════════════════════════════════════════════════════
+
+* text=auto eol=lf
+
+# Binary, never touched.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff  binary
+*.woff2 binary
