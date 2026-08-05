@@ -9,7 +9,23 @@
      English merged with the selected table, so every module that reads
      COPY gets the right language without knowing translation exists. */
   Store.load();
+  /* English is inline, so this is instant and the app never waits on a
+     network round trip to draw. Somebody who chose another language
+     gets that first render in English and the real one a moment later
+     — on any visit after the first, from cache, in the same frame.
+
+     The alternative was blocking first paint on a 22 KB file for the
+     small share of users who need it, and shipping all three to
+     everyone else. Neither is a good trade for a screen somebody opens
+     in a supermarket aisle. */
   I18N.apply(I18N.current());
+  if (I18N.current() !== 'en' && !I18N.isLoaded(I18N.current())) {
+    I18N.load(I18N.current()).then(() => {
+      I18N.apply(I18N.current());
+      // Redraw whatever is open; if nothing is yet, boot will draw it.
+      try { UI.render(Store.settings().lastScreen || 'home', { silent: true }); } catch (e) { }
+    });
+  }
 
   if (Store.settings().devBannerHidden) {
     document.getElementById('devBanner').hidden = true;

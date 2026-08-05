@@ -2730,10 +2730,15 @@ const UI = (() => {
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
       if (el.dataset.lang) {
-        I18N.set(el.dataset.lang);
         /* Re-render the screen that is open rather than reloading. A
            full reload would lose a half-typed meal, and losing somebody's
-           work because they changed language is not a trade worth making. */
+           work because they changed language is not a trade worth making.
+
+           Renders twice now that tables are fetched on demand: once
+           immediately so the tap is never dead, and again when the file
+           lands. On a second visit the table is cached and both happen
+           in the same frame. */
+        I18N.set(el.dataset.lang, () => { renderSettings(); });
         renderSettings();
         toast(COPY.lang.changed);
         return;
@@ -3119,7 +3124,7 @@ const UI = (() => {
       const cov = I18N.coverage(l.code);
       return `<button type="button" class="chip-opt${on ? ' is-on' : ''}"
         role="radio" aria-checked="${on}" data-lang="${l.code}" lang="${l.code}">
-        ${esc(l.native)}${l.code === 'en' ? '' : ` <span class="note">${cov.pct}%</span>`}
+        ${esc(l.native)}${cov.known && l.code !== 'en' ? ` <span class="note">${cov.pct}%</span>` : ''}
       </button>`;
     }).join('');
     $('#langNote').textContent = cur === 'en' ? COPY.lang.englishNote : COPY.lang.machineNote;

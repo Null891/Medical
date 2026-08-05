@@ -124,6 +124,52 @@ check('api routes are marked no-store',
   ((vercel.headers || []).find(h => h.source === '/api/(.*)') || { headers: [] })
     .headers.some(h => h.key === 'Cache-Control' && h.value.includes('no-store')));
 
+/* ═══════════ CACHING ═══════════
+   Three policies, and their shape is dictated by the service worker.
+   The reasoning lives here rather than in vercel.json because JSON has
+   no comments, and a caching rule nobody can read the reason for is a
+   caching rule somebody will "simplify" later.
+
+     icons/     — one year, immutable. They are the only files here
+                  whose content is fixed by their name, so they are the
+                  only ones safe to pin. immutable additionally stops
+                  the revalidation request a browser would otherwise
+                  make on every single visit.
+
+     css/, js/  — must-revalidate, max-age=0. Deliberately NOT
+                  immutable: these filenames carry no content hash, so a
+                  long cache would strand somebody on an old build with
+                  no way back. A returning visitor sends one conditional
+                  request and gets a 304, which is cheap, while a
+                  shipped fix reaches them the same day.
+
+     sw.js      — never cached hard. It is the file whose entire job is
+                  to replace itself; a pinned copy would keep serving a
+                  stale app to somebody who has already reloaded twice.
+                  This is the worst caching bug a PWA can have and it is
+                  entirely self-inflicted. */
+console.log('\n═══ CACHING ═══');
+const rule = (src) => ((vercel.headers || []).find(h => h.source === src) || { headers: [] })
+  .headers.find(h => h.key === 'Cache-Control');
+
+const iconRule = rule('/icons/(.*)');
+check('icons are cached for a year', !!iconRule && /max-age=31536000/.test(iconRule.value),
+  iconRule ? iconRule.value : 'no rule');
+check('  ...and marked immutable', !!iconRule && /immutable/.test(iconRule.value),
+  'without it the browser revalidates every visit');
+
+const assetRule = rule('/(css|js)/(.*)');
+check('css and js revalidate', !!assetRule && /must-revalidate/.test(assetRule.value),
+  assetRule ? assetRule.value : 'no rule');
+check('  ...and are NOT immutable',
+  !!assetRule && !/immutable/.test(assetRule.value),
+  'these filenames carry no content hash — immutable would strand people on an old build');
+
+const swRule = rule('/sw.js');
+check('the service worker is never cached hard',
+  !!swRule && /max-age=0/.test(swRule.value) && !/immutable/.test(swRule.value),
+  'a pinned sw.js keeps serving a stale app to somebody who already reloaded');
+
 console.log(`\n═══ ${pass} passed, ${fail} failed ═══`);
 if (failures.length) console.log('FAILURES:\n  · ' + failures.join('\n  · '));
 process.exit(fail ? 1 : 0);

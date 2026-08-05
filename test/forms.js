@@ -63,7 +63,7 @@ function boot() {
   const st = doc.createElement('style');
   st.textContent = cssFiles.map(read).join('\n');
   doc.head.appendChild(st);
-  Array.from(html.matchAll(/<script src="([^"]+)"><\/script>/g)).map(m => m[1]).forEach(s => {
+  Array.from(html.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)).map(m => m[1]).forEach(s => {
     const el = doc.createElement('script');
     el.textContent = read(s);
     doc.body.appendChild(el);

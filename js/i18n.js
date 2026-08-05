@@ -120,10 +120,60 @@ const I18N = (() => {
     return merged;
   }
 
-  function set(code) {
+  /* ═══════════ loading a table on demand ═══════════
+     The three translation files are 47 KB, and every visitor was paying
+     for all three to read the app in one language — most of them
+     English, for whom the entire cost bought nothing at all.
+
+     So English is inline and instant, and the others arrive only when
+     somebody asks for one. The mechanism is a plain <script src> to a
+     same-origin file, which script-src 'self' permits; fetch-and-eval
+     would need 'unsafe-eval', and no payload saving is worth that
+     header.
+
+     FAILURE IS ENGLISH, NOT BROKEN. If the file never arrives — a dead
+     connection, a cache miss offline — apply() falls through to the
+     English table it already has, which is a working app in the wrong
+     language rather than a screen of undefined. The same per-key
+     fallback that handles a missing translation handles a missing
+     file. */
+  const loaded = { en: true };
+  const pending = {};
+
+  function load(code) {
+    const lang = byCode(code);
+    if (!lang.table) return Promise.resolve(null);          // English
+    if (loaded[lang.code]) return Promise.resolve(tableFor(lang.code));
+    if (pending[lang.code]) return pending[lang.code];
+    if (typeof document === 'undefined') return Promise.resolve(null);
+
+    pending[lang.code] = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'js/data/copy.' + lang.code + '.js';
+      s.async = true;
+      s.onload = () => { loaded[lang.code] = true; resolve(tableFor(lang.code)); };
+      s.onerror = () => { delete pending[lang.code]; resolve(null); };
+      document.head.appendChild(s);
+    });
+    return pending[lang.code];
+  }
+
+  const isLoaded = (code) => !!loaded[byCode(code).code];
+
+  /* Applies twice on purpose. The first call is synchronous and gives
+     the reader a usable screen immediately — English, or the chosen
+     language if it is already in memory. The second lands when the file
+     arrives. Anything that needs to redraw passes `onReady`. */
+  function set(code, onReady) {
     const lang = byCode(code);
     try { Store.setSetting('lang', lang.code); } catch (e) { /* pre-boot */ }
-    return apply(lang.code);
+    const first = apply(lang.code);
+    if (isLoaded(lang.code)) { if (onReady) onReady(first); return Promise.resolve(first); }
+    return load(lang.code).then(() => {
+      const merged = apply(lang.code);
+      if (onReady) onReady(merged);
+      return merged;
+    });
   }
 
   /* Speech recognition needs a BCP-47 tag, not our two-letter code.
@@ -138,11 +188,19 @@ const I18N = (() => {
      honestly: a language that is 60% translated says so rather than
      presenting itself as finished. */
   function coverage(code) {
-    const table = tableFor(code);
-    if (!table) return { code, keys: 0, total: countKeys(COPY_EN), pct: code === 'en' ? 100 : 0 };
     const total = countKeys(COPY_EN);
+    if (byCode(code).code === 'en') return { code, keys: total, total, pct: 100, known: true };
+
+    const table = tableFor(code);
+    /* `known: false` is not the same as 0%, and conflating them was a
+       real hazard once tables became lazy: a language whose file has
+       not been fetched yet would have advertised itself as 0%
+       translated, which is a false claim about the app made by the app.
+       We do not know until we have the file. The picker shows nothing
+       rather than a wrong number. */
+    if (!table) return { code, keys: 0, total, pct: null, known: false };
     const keys = countKeys(table);
-    return { code, keys, total, pct: Math.round((keys / total) * 100) };
+    return { code, keys, total, pct: Math.round((keys / total) * 100), known: true };
   }
 
   function countKeys(obj) {
@@ -155,5 +213,6 @@ const I18N = (() => {
     return n;
   }
 
-  return { DEFAULT, LANGUAGES, byCode, current, set, apply, merge, coverage, countKeys, speechTag, tableFor };
+  return { DEFAULT, LANGUAGES, byCode, current, set, apply, merge, coverage, countKeys,
+           speechTag, tableFor, load, isLoaded };
 })();

@@ -38,7 +38,7 @@ function check(label, ok, detail) {
 const html = read('index.html');
 const cssFiles = Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m => m[1]);
 const css = cssFiles.map(read).join('\n');
-const scripts = Array.from(html.matchAll(/<script src="([^"]+)"><\/script>/g)).map(m => m[1]);
+const scripts = Array.from(html.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)).map(m => m[1]);
 
 /* ═══════════════════════════════════════════════════════════════
    1 · NO HORIZONTAL OVERFLOW — source-level
@@ -627,6 +627,45 @@ console.log('\n═══ 4. STATUS SURVIVES GRAYSCALE ═══');
     check('every assertion in the ok/detail suites passes a boolean, not a value',
       bad.length === 0,
       'these can never fail: ' + bad.slice(0, 4).join('  |  '));
+  }
+
+  /* ═══ 10. SCRIPT LOADING ═══
+     The application scripts sit in <head> with defer so their downloads
+     run alongside the HTML parse instead of waiting for it. js/theme.js
+     is the one exception and must stay blocking — it applies the saved
+     theme before first paint, and deferring it puts the white flash
+     back for every dark-mode user on every single load. That is a
+     one-word mistake with a visible cost, so it gets a check. */
+  console.log('\n═══ 10. SCRIPT LOADING ═══');
+  {
+    const headEnd = html.indexOf('</head>');
+    const head = html.slice(0, headEnd);
+    const themeTag = (html.match(/<script src="js\/theme\.js"[^>]*>/) || [''])[0];
+    check('theme.js is in the head', head.includes('js/theme.js'),
+      'it must run before first paint');
+    check('  ...and is NOT deferred', !/defer|async/.test(themeTag), themeTag);
+
+    const appScripts = [...html.matchAll(/<script src="(js\/[^"]+)"([^>]*)>/g)]
+      .filter(m => m[1] !== 'js/theme.js');
+    const notDeferred = appScripts.filter(m => !/defer/.test(m[2])).map(m => m[1]);
+    check('every other script is deferred', notDeferred.length === 0,
+      notDeferred.join(', '));
+    check('  ...and they all load from the head',
+      appScripts.every(m => html.indexOf(m[0]) < headEnd),
+      'in the body, downloads cannot start until the HTML is parsed');
+
+    /* The language tables must NOT be here. 47 KB of translation for
+       languages the reader did not choose, on every visit. */
+    check('no translation table is loaded up front',
+      !/<script src="js\/data\/copy\.(es|zh|hi)\.js"/.test(html),
+      'these are fetched on demand by I18N.load()');
+    const i18nSrc = read('js/i18n.js');
+    check('  ...but there is a loader that fetches them',
+      /function load\(/.test(i18nSrc) && /createElement\('script'\)/.test(i18nSrc),
+      'without it, choosing a language would do nothing');
+    check('  ...and a failed fetch falls back rather than throwing',
+      /onerror/.test(i18nSrc),
+      'a missing file must leave the app in English, not broken');
   }
 }
 

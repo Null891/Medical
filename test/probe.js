@@ -19,7 +19,7 @@ window.fetch=()=>Promise.reject(new Error('Failed to fetch'));
    own harness. */
 const indexHtml = fs.readFileSync(path.join(APP,'index.html'),'utf8');
 const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m=>m[1]);
-const scripts  = Array.from(indexHtml.matchAll(/<script src="([^"]+)"><\/script>/g)).map(m=>m[1]);
+const scripts  = Array.from(indexHtml.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)).map(m=>m[1]);
 if(scripts.length<5||!cssFiles.length) throw new Error('Could not parse the asset list out of index.html.');
 const style=doc.createElement('style');
 style.textContent=cssFiles.map(f=>fs.readFileSync(path.join(APP,f),'utf8')).join('\n');

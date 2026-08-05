@@ -47,7 +47,7 @@ const doc = window.document;
 
    Parsed from the markup in document order, so it cannot drift again. */
 const indexHtml = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
-const scripts = Array.from(indexHtml.matchAll(/<script src="([^"]+)"><\/script>/g))
+const scripts = Array.from(indexHtml.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g))
   .map(m => m[1]);
 const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g))
   .map(m => m[1]);
@@ -77,6 +77,40 @@ const css = cssFiles
 const styleEl = doc.createElement('style');
 styleEl.textContent = css;
 doc.head.appendChild(styleEl);
+
+/* ═══════════ scripts the app injects at runtime ═══════════
+   The three language tables are no longer in index.html — I18N.load()
+   appends a <script src> when somebody actually picks that language.
+   jsdom does not fetch subresources, so without this the tables would
+   never arrive and the language tests would report a real feature as
+   broken.
+
+   This is the browser's behaviour, emulated: watch <head> for an added
+   script with a src, read that file off disk, run it, then fire onload
+   exactly as a real load would. It deliberately does NOT pre-load the
+   tables — the test has to exercise the same asynchronous path a
+   person does, or it is testing something the app does not do. */
+const observer = new window.MutationObserver((records) => {
+  records.forEach(rec => {
+    Array.from(rec.addedNodes).forEach(node => {
+      if (!node.tagName || node.tagName !== 'SCRIPT') return;
+      const src = node.getAttribute('src');
+      if (!src || node.textContent) return;
+      let code = null;
+      try { code = fs.readFileSync(path.join(APP, src), 'utf8'); } catch (e) { }
+      // A missing file must reach onerror, not throw — the app treats
+      // that as "stay in English", and the test must be able to see it.
+      setTimeout(() => {
+        if (code === null) { node.dispatchEvent(new window.Event('error')); return; }
+        const runner = doc.createElement('script');
+        runner.textContent = code;
+        doc.body.appendChild(runner);
+        node.dispatchEvent(new window.Event('load'));
+      }, 0);
+    });
+  });
+});
+observer.observe(doc.head, { childList: true });
 
 for (const s of scripts) {
   const el = doc.createElement('script');
@@ -1446,6 +1480,18 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('  ...showing native names, not English ones',
       $('#langPicker [data-lang="zh"]').textContent.indexOf('中文') !== -1, true);
 
+    /* LAZY, and provably so. 47 KB of translation shipped to every
+       visitor to serve the one language they read; the tables now
+       arrive only when asked for. If this first assertion ever fails,
+       the tables have crept back into index.html and everyone is paying
+       for them again. */
+    check('no translation table is loaded before one is chosen',
+      ['es', 'zh', 'hi'].some(c => I.isLoaded(c)), false);
+    check('  ...so the picker claims no coverage it cannot know yet',
+      I.coverage('es').known, false);
+    check('  ...and shows no percentage rather than a wrong one',
+      /%/.test($('#langPicker [data-lang="es"]').textContent), false);
+
     /* The bug this catches is the one that nearly shipped: a top-level
        const is not a global property, so the tables were unreachable
        and every language silently fell back to English while the picker
@@ -1453,6 +1499,10 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     const englishConsent = window.COPY.consentButton;
     click('#langPicker [data-lang="es"]');
     await wait(20);
+    check('  ...the table arrives on demand', I.isLoaded('es'), true);
+    check('  ...and only the one asked for', I.isLoaded('hi'), false);
+    check('  ...with its real coverage, now that it is known',
+      I.coverage('es').known && I.coverage('es').pct > 0, true);
     check('switching to Spanish changes the copy', window.COPY.consentButton !== englishConsent, true);
     check('  ...to actual Spanish', /Entiendo/.test(window.COPY.consentButton), true);
     check('  ...and persists', S.settings().lang, 'es');
