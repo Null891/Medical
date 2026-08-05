@@ -132,7 +132,9 @@ const COPY_EN = {
     hasRealData:
       'This browser already has real data in it, so the demo will not load — it would overwrite what is here. ' +
       'Open the demo in a private window instead, or export a backup first from Settings.',
-    signedOut: 'Demo ended.'
+    banner: (who) => `Demo — this is ${who}'s example data, not a real patient's.`,
+    signOut: 'Leave demo',
+    signedOut: 'Demo ended and the example data cleared.'
   },
 
   /* ── Install ──

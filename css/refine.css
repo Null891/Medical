@@ -909,3 +909,15 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   color: #fff;
   font-weight: 550;
 }
+
+/* The demo banner. Accent-toned rather than warning-toned: being in a
+   demo is a fact, not a problem, and colouring it as a problem would
+   make a reviewer hunt for what is wrong. It carries its own exit,
+   because a session somebody cannot leave is not a demo. */
+.dev-banner--demo { background: var(--color-accent); color: #fff; }
+.dev-banner--demo .dev-banner__x {
+  font-size: var(--type-caption);
+  font-weight: 620;
+  min-width: 44px;
+  padding: 0 var(--space-2);
+}

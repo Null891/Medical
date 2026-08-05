@@ -87,6 +87,16 @@
   <span id="storageBannerText"></span>
 </div>
 
+<!-- ═══════════ DEMO SESSION ═══════════
+     Visible for the whole session, not just at the entrance. After the
+     chooser closed, nothing on screen said the data was fictional —
+     somebody handed the phone mid-walkthrough would have been looking
+     at Frank's week believing it was a real patient's. -->
+<div id="demoBanner" class="dev-banner dev-banner--demo" role="status" hidden>
+  <span id="demoBannerText"></span>
+  <button type="button" class="dev-banner__x" id="demoSignOut">Leave demo</button>
+</div>
+
 <!-- Connectivity. Nothing here needs the network except meal parsing,
      so this says what still works rather than just "you are offline". -->
 <div id="offlineBanner" class="dev-banner dev-banner--offline m-glass" role="status" hidden>

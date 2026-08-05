@@ -97,11 +97,22 @@ const Install = (() => {
      the URL so a refresh does not keep re-navigating somebody who has
      since moved on.
 
-     Allow-listed rather than passed through: `?go=` comes from outside
-     the app, and handing an arbitrary string to the router is how a
-     query parameter becomes a way to put the app in a state nobody
-     designed. */
-  const DEEP_LINKS = ['log', 'kitchen', 'label', 'passport', 'labs', 'home', 'more'];
+     Derived from the router's own screen list rather than typed here,
+     so the two cannot drift — a hand-maintained copy of a list is the
+     same drift class that left the test harnesses and the service
+     worker behind the app.
+
+     Still an allow-list: ?go= arrives from outside, and handing an
+     arbitrary string to the router is how a query parameter becomes a
+     way to put the app in a state nobody designed. Onboarding and the
+     depth-2 screens are excluded because they are places you are PUT,
+     not places you navigate to cold. */
+  const NOT_LINKABLE = ['onboarding', 'detail', 'learn'];
+
+  function deepLinks() {
+    const known = (typeof UI !== 'undefined' && UI.SCREENS) ? UI.SCREENS : [];
+    return known.filter(s => NOT_LINKABLE.indexOf(s) === -1);
+  }
 
   function requestedScreen() {
     if (typeof window === 'undefined') return null;
@@ -109,7 +120,7 @@ const Install = (() => {
     try {
       const params = new URLSearchParams(window.location.search || '');
       const go = params.get('go');
-      if (go && DEEP_LINKS.indexOf(go) !== -1) target = go;
+      if (go && deepLinks().indexOf(go) !== -1) target = go;
       if (go && window.history && window.history.replaceState) {
         params.delete('go');
         const q = params.toString();
@@ -120,5 +131,6 @@ const Install = (() => {
     return target;
   }
 
-  return { listen, prompt, state, isInstalled, isIOS, canPrompt, requestedScreen, DEEP_LINKS };
+  return { listen, prompt, state, isInstalled, isIOS, canPrompt, requestedScreen,
+           deepLinks, NOT_LINKABLE };
 })();

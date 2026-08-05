@@ -127,9 +127,22 @@ const DemoAuth = (() => {
     return { ok: true };
   }
 
+  /* Sign-out clears the SESSION and the DATA, in that order.
+     Leaving fictional meals behind after leaving a demo would hand the
+     next person Frank's week and let them mistake it for their own —
+     which, in an app whose whole argument is that its numbers are
+     traceable, is the worst possible thing to leave lying around.
+
+     Refuses if this browser was never a demo, so it can never be the
+     route by which somebody's real data disappears. */
   function signOut() {
     try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* nothing to do */ }
-    return true;
+    let wasDemo = false;
+    try { wasDemo = !!Store.settings().demoSeeded; } catch (e) { wasDemo = false; }
+    if (wasDemo) Store.reset();
+    attempts = 0;
+    lockedUntil = 0;
+    return { ok: true, cleared: wasDemo };
   }
 
   /* Reached at ?demo=1 or #demo, both of which a scanner can be handed

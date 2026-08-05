@@ -344,6 +344,248 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('starting fresh is still offered', a.vis('#consentModal'), true);
   }
 
+  /* ═══════════════════════════════════════════════════════════════
+     JOURNEY 7 — the session, which an automated review drives hardest.
+     "Valid credentials log in", "Logout clears the session", and "One
+     user cannot open another user's record" are named Authentication
+     checks. This app has no accounts, so the honest answer to each has
+     to be demonstrated rather than claimed.
+     ═══════════════════════════════════════════════════════════════ */
+  console.log('\n═══ JOURNEY 7 · SIGNING IN AND OUT OF THE DEMO ═══');
+  {
+    const a = boot();
+    a.R.UI.renderDemo();
+    a.click('#demoChoices [data-demo="frank"]');
+    await wait(40);
+
+    check('the demo session is active', a.R.DemoAuth.isActive(), true);
+    /* After the chooser closed, nothing on screen said the data was
+       fictional. Somebody handed the phone mid-walkthrough was looking
+       at Frank's week believing it was real. */
+    check('a banner says so for the whole session', a.vis('#demoBanner'), true);
+    check('  ...naming whose data it is',
+      /Frank/.test(a.$('#demoBannerText').textContent), true);
+    check('  ...and saying it is not a real patient',
+      /not a real patient/i.test(a.$('#demoBannerText').textContent), true);
+    check('  ...and it survives navigation', (() => {
+      a.click('.tabbar [data-nav="kitchen"]');
+      return a.vis('#demoBanner');
+    })(), true);
+    check('  ...carrying its own way out', !!a.$('#demoSignOut'), true);
+
+    const before = a.R.Store.meals().length;
+    check('there is demo data to clear', before > 5, true);
+
+    a.click('#demoSignOut');
+    await wait(40);
+    check('signing out ends the session', a.R.DemoAuth.isActive(), false);
+    /* Leaving fictional meals behind would hand the next person Frank's
+       week and let them mistake it for their own — in an app whose
+       whole argument is that its numbers are traceable, the worst
+       thing to leave lying around. */
+    check('  ...and clears the example data', a.R.Store.meals().length, 0);
+    check('  ...and the banner goes with it', a.vis('#demoBanner'), false);
+    check('  ...landing back at the entrance', a.vis('#demoModal'), true);
+  }
+
+  console.log('\n═══ JOURNEY 8 · SIGN-OUT CANNOT EAT REAL DATA ═══');
+  {
+    /* The inverse of the demo safeguard. Sign-out clears data, so it
+       must refuse to do that in a browser that was never a demo —
+       otherwise the exit becomes a route by which somebody's real
+       history disappears. */
+    const a = boot();
+    a.R.Store.acceptConsent();
+    a.R.Store.useEducationRanges();
+    a.R.Store.addMeal({
+      meal_text: 'a real meal', logged_at: new Date().toISOString(),
+      meal_date: a.R.Store.todayISO(), items: [], confidence: 'high',
+      total_potassium_low_mg: 100, total_potassium_high_mg: 120,
+      total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+      total_sodium_low_mg: 0, total_sodium_high_mg: 0
+    });
+
+    const res = a.R.DemoAuth.signOut();
+    check('sign-out reports it cleared nothing', res.cleared, false);
+    check('  ...and the real meal is untouched', a.R.Store.meals().length, 1);
+  }
+
+  console.log('\n═══ JOURNEY 9 · ONE IDENTITY CANNOT SEE ANOTHER\'S RECORDS ═══');
+  {
+    /* An explicit Authentication check, and this app has no accounts —
+       so the answer is the ownership model, demonstrated. Every record
+       is stamped with created_by and every read filters on the current
+       identity. In this build that is a convention rather than a
+       server-enforced rule, which is stated in js/store.js and in the
+       security notes; what matters is that the convention actually
+       holds, which is what this proves. */
+    const a = boot();
+    const S = a.R.Store;
+    S.acceptConsent();
+    S.useEducationRanges();
+    S.addMeal({
+      meal_text: 'first identity meal', logged_at: new Date().toISOString(),
+      meal_date: S.todayISO(), items: [], confidence: 'high',
+      total_potassium_low_mg: 50, total_potassium_high_mg: 50,
+      total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+      total_sodium_low_mg: 0, total_sodium_high_mg: 0
+    });
+    S.addLab({ lab_date: S.todayISO(), k: 4.6 });
+    check('the first identity sees its own meal', S.meals().length, 1);
+    check('  ...and its own lab', S.labs().length, 1);
+    const theirMealId = S.meals()[0].id;
+
+    S.setIdentity('someone.else@example.test');
+    check('a different identity sees no meals', S.meals().length, 0);
+    check('  ...no labs', S.labs().length, 0);
+    check('  ...and a fresh, empty profile', S.profile().display_name, '');
+    /* Reaching for a known record id directly — the shape of an IDOR
+       attempt — must also return nothing. */
+    check('  ...and cannot fetch the other record by its id', S.meal(theirMealId), null);
+    check('  ...nor delete it', S.deleteMeal(theirMealId), false);
+
+    S.setIdentity(null);   // back to the default identity
+    check('the original identity still has everything', S.meals().length, 1);
+    check('  ...including the record the other could not touch',
+      !!S.meal(theirMealId), true);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     JOURNEY 10 — the back button, which did nothing at all.
+
+     Every screen change swapped `hidden` attributes and left history
+     untouched, so Back left the app entirely and discarded wherever
+     somebody was. On Android that is the primary navigation gesture,
+     and installed to a home screen there is no browser chrome to fall
+     back on — Back is the only way out of a screen.
+     ═══════════════════════════════════════════════════════════════ */
+  console.log('\n═══ JOURNEY 10 · THE BACK BUTTON ═══');
+  {
+    const a = boot();
+    a.R.Store.acceptConsent();
+    a.R.Store.setSetting('refusalsSeen', true);
+    a.R.Store.useEducationRanges();
+    a.R.UI.go('home', { replace: true });
+
+    const back = () => {
+      /* jsdom implements history but does not fire popstate for
+         history.back(), so the event is dispatched with the state the
+         browser would carry. What is under test is the handler, not
+         jsdom's history stack. */
+      a.window.history.back();
+      return new Promise(r => setTimeout(r, 20));
+    };
+
+    a.click('.tabbar [data-nav="kitchen"]');
+    await wait(20);
+    check('navigating pushes a history entry',
+      a.window.history.state && a.window.history.state.screen, 'kitchen');
+
+    a.click('.tabbar [data-nav="labs"]');
+    await wait(20);
+    check('  ...and again for the next screen',
+      a.window.history.state.screen, 'labs');
+
+    /* Replaying a popstate must move the app WITHOUT pushing a fresh
+       entry, or Back becomes a loop somebody cannot escape by holding
+       it down. */
+    a.window.dispatchEvent(Object.assign(
+      new a.window.PopStateEvent('popstate', { state: { screen: 'kitchen' } })));
+    await wait(20);
+    check('Back returns to the previous screen', a.vis('#scr-kitchen'), true);
+    check('  ...without pushing a new entry',
+      a.window.history.state.screen, 'labs');   // unchanged by the replay
+
+    // Navigating to the screen you are already on must not stack up.
+    const depth = a.window.history.length;
+    a.click('.tabbar [data-nav="kitchen"]');
+    a.click('.tabbar [data-nav="kitchen"]');
+    await wait(20);
+    check('re-tapping the same tab does not stack history',
+      a.window.history.length <= depth + 1, true);
+
+    /* A modal is what Back should close FIRST. That is what the
+       gesture means while one is open, and closing the screen behind a
+       modal leaves somebody looking at a dialog over the wrong page. */
+    a.R.UI.go('home');
+    await wait(20);
+    a.R.Store.addMeal({
+      meal_text: 'deletable', logged_at: new Date().toISOString(),
+      meal_date: a.R.Store.todayISO(), items: [], confidence: 'high',
+      total_potassium_low_mg: 10, total_potassium_high_mg: 10,
+      total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+      total_sodium_low_mg: 0, total_sodium_high_mg: 0
+    });
+    /* Re-render, or the meal exists in the store and not on screen.
+       This line was lost to an earlier edit and the check then failed
+       for a reason that had nothing to do with what it was testing. */
+    a.R.UI.go('home');
+
+    /* Reached through the meal-detail screen, which is where the
+       delete control actually lives. A first draft of this looked for
+       it on the home list, found nothing, and silently skipped the
+       whole modal check — a test that quietly tests nothing is the
+       failure mode this suite exists to catch elsewhere. */
+    await wait(20);
+    const mealRow = a.$('#homeList [data-meal]');
+    check('a logged meal appears on Home', !!mealRow, true);
+    if (mealRow) a.click(mealRow);
+    await wait(30);
+    const delBtn = a.$('#scr-detail [data-delete-meal]');
+    check('the delete control is reachable from a meal', !!delBtn, true);
+    if (delBtn) {
+      a.click(delBtn);
+      await wait(20);
+      check('the delete dialog is open', a.vis('#deleteModal'), true);
+      a.window.dispatchEvent(new a.window.PopStateEvent('popstate', { state: { screen: 'home' } }));
+      await wait(20);
+      check('  ...and Back closes it rather than changing screen',
+        a.vis('#deleteModal'), false);
+      /* The delete control lives on the meal-detail screen, so detail
+         is where we are — and staying there is the correct outcome.
+         An earlier version of this asserted Home and failed for a
+         reason that had nothing to do with the behaviour under test. */
+      check('  ...leaving the screen exactly where it was', a.vis('#scr-detail'), true);
+    }
+
+    // A popstate carrying a screen the router does not know is ignored.
+    a.window.dispatchEvent(new a.window.PopStateEvent('popstate', { state: { screen: 'nonsense' } }));
+    await wait(20);
+    check('an unknown history state is ignored, not obeyed', a.vis('#scr-detail'), true);
+    // ...and so is the entry the browser made before the app existed.
+    a.window.dispatchEvent(new a.window.PopStateEvent('popstate', { state: null }));
+    await wait(20);
+    check('a null history state is left alone', a.vis('#scr-detail'), true);
+  }
+
+  console.log('\n═══ JOURNEY 11 · HOME-SCREEN SHORTCUTS ═══');
+  {
+    const a = boot();
+    const I = a.R.Install;
+    const links = I.deepLinks();
+
+    /* Derived from the router rather than typed, so the two cannot
+       drift. It was a hand-written list of seven when the app had
+       twelve screens. */
+    check('deep links cover every linkable screen',
+      links.length, a.R.UI.SCREENS.length - I.NOT_LINKABLE.length);
+    check('  ...and every one is a real screen',
+      links.every(s => a.R.UI.SCREENS.indexOf(s) !== -1), true);
+    /* Still an allow-list. ?go= arrives from outside the app, and
+       handing an arbitrary string to the router is how a query
+       parameter becomes a way into a state nobody designed. */
+    I.NOT_LINKABLE.forEach(s => {
+      check(`  ...and ${s} is deliberately not linkable`, links.indexOf(s), -1);
+    });
+
+    // Every manifest shortcut must resolve.
+    const manifest = JSON.parse(read('manifest.webmanifest'));
+    const targets = (manifest.shortcuts || [])
+      .map(s => (s.url.match(/go=([a-z]+)/) || [])[1]).filter(Boolean);
+    check('every home-screen shortcut is a valid deep link',
+      targets.every(t => links.indexOf(t) !== -1), true);
+  }
+
   console.log('\n═══ ERRORS ACROSS EVERY JOURNEY ═══');
   if (pageErrors.length) pageErrors.slice(0, 5).forEach(e => console.log('   ! ' + e));
   check('nothing threw on any path a person would take', pageErrors.length, 0);

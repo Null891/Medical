@@ -108,6 +108,7 @@ const UI = (() => {
     // for the label scanner, warmer for reading, clinical for labs.
     // Data only: no colour decision lives in JS.
     if (typeof Motion !== 'undefined') Motion.setScreen(name);
+    renderDemoBanner();
     // A quick-action menu left open across a screen change is a menu
     // floating over content it no longer relates to.
     const fabBtn = $('#fabToggle');
@@ -126,6 +127,31 @@ const UI = (() => {
      Called by Store the moment a write fails, and again when one
      succeeds after a failure. Persistent and undismissable: a dismiss
      button here would restore the exact silence this exists to break. */
+  /* The demo banner, visible for the whole session rather than only at
+     the entrance. Somebody handed the phone mid-walkthrough was
+     otherwise looking at Frank's week with nothing on screen saying it
+     was fiction. */
+  function renderDemoBanner() {
+    const el = $('#demoBanner');
+    if (!el || typeof DemoAuth === 'undefined') return;
+    if (!DemoAuth.isActive()) { el.hidden = true; return; }
+    const persona = Store.settings().demoPersona === 'maria' ? 'Maria' : 'Frank';
+    $('#demoBannerText').textContent = COPY.demo.banner(persona);
+    $('#demoSignOut').textContent = COPY.demo.signOut;
+    el.hidden = false;
+  }
+
+  function leaveDemo() {
+    const res = DemoAuth.signOut();
+    renderDemoBanner();
+    $('#app').hidden = true;
+    toast(COPY.demo.signedOut);
+    // Back to the entrance, which is where somebody leaving a demo
+    // expects to land — not into a half-empty app.
+    renderDemo();
+    return res;
+  }
+
   function renderStorageBanner(kind) {
     const el = $('#storageBanner');
     if (!el) return;
@@ -1835,6 +1861,7 @@ const UI = (() => {
     Store.acceptConsent();
     Store.setSetting('refusalsSeen', true);
     $('#app').hidden = false;
+    renderDemoBanner();
     go('home');
   }
 
@@ -2546,6 +2573,7 @@ const UI = (() => {
        somebody is told BEFORE they type a meal into a browser that will
        not keep it rather than after. */
     Store.onStorageFail(renderStorageBanner);
+    $('#demoSignOut').addEventListener('click', leaveDemo);
     if (!Store.storageWorks()) renderStorageBanner(Store.storageState());
     $('#consentAccept').addEventListener('click', acceptConsent);
 
@@ -3130,7 +3158,7 @@ const UI = (() => {
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
 
-  return { wire, go, render, wireHistory, renderStorageBanner, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
+  return { wire, go, render, wireHistory, SCREENS, renderStorageBanner, renderDemoBanner, leaveDemo, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
            renderReferences, renderKitchen, renderSettings, renderInstall,
            toast, esc, searchFoods };
 })();
