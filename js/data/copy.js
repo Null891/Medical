@@ -72,6 +72,41 @@ const COPY_EN = {
      never grade the person. "Getting old" is a fact about a date.
      "Overdue" would be a claim about somebody's care that this app
      cannot support — they may have a lab booked for Thursday. */
+  /* The collapsed scene picker. "Change" rather than "Edit" or a bare
+     chevron: it names the consequence, and it is the word somebody
+     scanning for a way out of the wrong scene is actually looking for. */
+  scenes: {
+    change: 'Change',
+    close: 'Done'
+  },
+
+  /* One message per route actually taken. Saying "downloaded" after a
+     share sends somebody hunting through their Files app for something
+     that is already in their messages. */
+  /* The one-time beat after the first saved meal. It states the
+     product argument at the only moment somebody has a reason to care
+     about it — and it states it as what just happened, not as a claim.
+     No congratulation: "well done" for logging a meal is the tone this
+     app spends its whole design avoiding. */
+  firstMeal: {
+    title: "That's the whole loop",
+    body:
+      'You typed words. RenalRoute pulled out the foods and their portions, then priced ' +
+      'them against published figures — not from a guess. The numbers come as ranges ' +
+      'because the honest ones do.',
+    foot:
+      'Anything it could not identify is logged and marked "Not counted" rather than ' +
+      'invented. You will only see this note once.'
+  },
+
+  share: {
+    shared: 'Sent',
+    copied: 'Copied — paste it wherever you need it',
+    downloaded: 'Downloaded',
+    cancelled: 'Nothing sent',
+    failed: "Couldn't create the file"
+  },
+
   checklist: {
     title: 'What is out of date',
     allCurrent: 'Nothing here is going stale.',

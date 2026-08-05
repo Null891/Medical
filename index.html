@@ -282,6 +282,19 @@
   </div>
 </div>
 
+<!-- ═══════════ PRINT MASTHEAD ═══════════
+     Invisible on screen, present on paper. A printout of a health app
+     that does not say whose it is, what it is, or when it was made is
+     a page of numbers somebody has to explain in a fifteen-minute
+     appointment. It also carries the disclaimer, because a sheet of
+     paper outlives the screen it came from and will be read by people
+     who never saw the app. Filled by UI.renderPrintHead(). -->
+<div class="printhead" id="printHead" aria-hidden="true">
+  <p class="printhead__title">RenalRoute — food diary</p>
+  <p class="printhead__meta" id="printHeadMeta"></p>
+  <p class="printhead__note">Estimates for education only — not medical advice. Ranges, not exact figures. Follow your care team's targets.</p>
+</div>
+
 <!-- ═══════════ APP SHELL ═══════════ -->
 <div class="app" id="app" hidden>
 
@@ -369,6 +382,11 @@
       </header>
 
       <div id="labModeBanners"></div>
+
+      <!-- Shown once, on the Home render after the very first saved
+           meal, and never again. The ripple shows that something
+           happened; this says what. See renderFirstMeal(). -->
+      <div id="firstMealCard" hidden></div>
 
       <!-- Where are you? Scenes answer "what am I doing", which is the
            question people actually have; tabs answer "which feature",
@@ -863,8 +881,9 @@
         <button type="button" class="btn btn--secondary btn--block" data-nav="passport" id="toPassportBtn">Open my health passport</button>
 
         <h3 class="h3 mt-2">Take it with you</h3>
-        <p class="note">A one-page summary is the thing to print or email before an appointment. The spreadsheet is every item you've logged, in case you want the raw numbers.</p>
+        <p class="note">"Bring your food diary" is a real instruction, and the honest answer to it is paper. Printing works from any screen — your week, today, or your passport — and the page carries your name, the date, and which targets the figures were measured against. The summary is one page for a clinician; the spreadsheet is every item you've logged.</p>
         <div class="dev-actions">
+          <button type="button" class="btn btn--secondary" id="printPageBtn">Print this page</button>
           <button type="button" class="btn btn--secondary" id="exportSummaryBtn">Summary for my care team</button>
           <button type="button" class="btn btn--ghost" id="exportCsvBtn">Download spreadsheet (CSV)</button>
         </div>
@@ -916,7 +935,10 @@
       <div id="passportLab"></div>
 
       <div class="card">
-        <button type="button" class="btn btn--secondary btn--block" id="passportCopy">Copy as text</button>
+        <!-- "Share" rather than "Copy as text": the label names what most
+             people are actually trying to do, and the helper falls back to
+             copy then download where sharing is unavailable. -->
+        <button type="button" class="btn btn--secondary btn--block" id="passportCopy">Share this passport</button>
         <button type="button" class="btn btn--secondary btn--block" id="passportPrint">Print this card</button>
         <p class="note mt-2">Printing gives you something for a wallet or a fridge door. It does not need the app to be working.</p>
       </div>

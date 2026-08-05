@@ -1106,6 +1106,32 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('scene picker rendered', $$('#scenePicker .scene').length, Sc.SCENES.length);
     check('exactly one scene selected', $$('#scenePicker .scene[aria-checked="true"]').length, 1);
 
+    /* DEMOTED. Five cards with blurbs held the top of Home for a
+       control used about once a week. Collapsed, it is one line naming
+       where the app thinks you are — which is the part that matters,
+       because it decides the hero button underneath. */
+    check('the options are collapsed by default', vis('#sceneOptions'), false);
+    check('  ...behind a summary naming the current scene',
+      $('.scenes-summary__where').textContent.trim(), Sc.current().name);
+    check('  ...that says it is an expander', $('[data-scenetoggle]').getAttribute('aria-expanded'), 'false');
+    check('  ...and is a real tap target',
+      /min-height:\s*44px/.test(window.getComputedStyle($('[data-scenetoggle]')).minHeight) ||
+      $('[data-scenetoggle]').className.includes('scenes-summary'), true);
+
+    click('[data-scenetoggle]'); await wait(20);
+    check('tapping it opens the options', vis('#sceneOptions'), true);
+    check('  ...and says so', $('[data-scenetoggle]').getAttribute('aria-expanded'), 'true');
+    check('  ...keeping focus on the control that was pressed',
+      doc.activeElement && doc.activeElement.dataset.scenetoggle, '1');
+
+    click('[data-scenetoggle]'); await wait(20);
+    check('tapping again closes them', vis('#sceneOptions'), false);
+
+    // Choosing one answers the question, so it closes behind you.
+    click('[data-scenetoggle]'); await wait(20);
+    click('#scenePicker .scene[data-scene="home"]'); await wait(20);
+    check('choosing a scene closes the picker', vis('#sceneOptions'), false);
+
     /* THE contract. A scene may reorder and re-emphasise; it may not
        move a target, a total, or a threshold. If this ever fails, the
        app has grown a second clinical model with no evidence behind
@@ -1668,6 +1694,115 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('  ...weeks past a fortnight', Chk.describeAge(21), '3 weeks');
     check('  ...months past two', Chk.describeAge(120), '4 months');
     check('  ...and stops counting past a year', Chk.describeAge(500), 'over a year');
+  }
+
+  /* ═══ 37. GETTING SOMETHING OUT OF THE APP ═══
+     Three rungs, and each one is exercised by removing the one above
+     it. The cancel case matters most: somebody who opens a share sheet
+     and picks nothing has made a decision, and handing them a download
+     they just declined to send would be the app overriding it. */
+  console.log('\n═══ 37. GETTING SOMETHING OUT OF THE APP ═══');
+  {
+    window.RenalRoute.Seed.run();
+    const realClipboard = window.navigator.clipboard;
+    let shared = null, copied = null, downloaded = null;
+
+    const withNav = (share, clip) => {
+      Object.defineProperty(window.navigator, 'share',
+        { value: share, configurable: true });
+      Object.defineProperty(window.navigator, 'clipboard',
+        { value: clip, configurable: true });
+    };
+
+    // Rung 1: the OS share sheet.
+    withNav((d) => { shared = d; return Promise.resolve(); },
+            { writeText: (t) => { copied = t; return Promise.resolve(); } });
+    window.RenalRoute.UI.go('settings'); await wait(20);
+    click('#exportSummaryBtn'); await wait(40);
+    check('the summary goes to the share sheet first', !!shared, true);
+    check('  ...carrying the real summary text',
+      shared && shared.text.indexOf('RENALROUTE') !== -1, true);
+    check('  ...and never touches the clipboard when sharing worked', copied, null);
+    check('  ...and says it was sent, not downloaded',
+      $('#toast').textContent, window.COPY.share.shared);
+
+    // Rung 2: no share sheet — desktop — so it copies.
+    shared = null; copied = null;
+    withNav(undefined, { writeText: (t) => { copied = t; return Promise.resolve(); } });
+    click('#exportSummaryBtn'); await wait(40);
+    check('with no share sheet it copies instead', !!copied, true);
+    check('  ...and says so', $('#toast').textContent, window.COPY.share.copied);
+
+    /* The cancel. An AbortError means the sheet opened and they chose
+       nothing — a decision, not a failure. */
+    shared = null; copied = null;
+    withNav(() => Promise.reject(Object.assign(new Error('x'), { name: 'AbortError' })),
+            { writeText: (t) => { copied = t; return Promise.resolve(); } });
+    click('#exportSummaryBtn'); await wait(40);
+    check('cancelling the share sheet copies nothing', copied, null);
+    check('  ...and does not force a download on them',
+      $('#toast').textContent, window.COPY.share.cancelled);
+
+    // The passport and the shopping list use the same ladder.
+    shared = null;
+    withNav((d) => { shared = d; return Promise.resolve(); }, undefined);
+    window.RenalRoute.UI.go('passport'); await wait(30);
+    click('#passportCopy'); await wait(40);
+    check('the passport shares too', !!shared, true);
+    check('  ...and the button says share, not copy',
+      /share/i.test($('#passportCopy').textContent), true);
+
+    Object.defineProperty(window.navigator, 'clipboard',
+      { value: realClipboard, configurable: true });
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true });
+  }
+
+  /* ═══ 38. THE FIRST MEAL, AND ONLY THE FIRST ═══
+     "Once and never again" is the entire constraint. A beat that
+     returns is an interruption, and one that returns on somebody's
+     fourth meal is an app that has forgotten who they are. */
+  console.log('\n═══ 38. THE FIRST MEAL, AND ONLY THE FIRST ═══');
+  {
+    const S = window.RenalRoute.Store;
+    S.reset();
+    S.acceptConsent();
+    S.useEducationRanges();
+    window.RenalRoute.UI.go('home'); await wait(30);
+    check('nothing extra before the first meal', vis('#firstMealCard'), false);
+
+    // Log one through the picker — no model needed, same code path.
+    window.RenalRoute.UI.go('log'); await wait(20);
+    click('#toPickerBtn'); await wait(20);
+    type('#pickerSearch', 'banana'); await wait(30);
+    click('#pickerResults [data-pick]'); await wait(20);
+    click('#pickerReview'); await wait(20);
+    click('#saveMealBtn'); await wait(60);
+
+    check('the first save earns one extra beat', vis('#firstMealCard'), true);
+    const t = $('#firstMealCard').textContent;
+    check('  ...naming what actually happened',
+      /priced them against published figures/.test(t), true);
+    check('  ...and that it will not repeat', /only see this note once/.test(t), true);
+    check('  ...carrying the real remaining figure, not an example',
+      /About |Between |Over by/.test(t), true);
+    // No praise. "Well done" for logging a meal is the tone this app avoids.
+    check('  ...and congratulates nobody',
+      /well done|great|nice work|congrat|🎉/i.test(t), false);
+
+    // Navigating away is dismissal — they have moved on.
+    window.RenalRoute.UI.go('labs'); await wait(20);
+    window.RenalRoute.UI.go('home'); await wait(30);
+    check('coming back to Home does not show it again', vis('#firstMealCard'), false);
+
+    // And a second meal never brings it back.
+    window.RenalRoute.UI.go('log'); await wait(20);
+    click('#toPickerBtn'); await wait(20);
+    type('#pickerSearch', 'rice'); await wait(30);
+    click('#pickerResults [data-pick]'); await wait(20);
+    click('#pickerReview'); await wait(20);
+    click('#saveMealBtn'); await wait(60);
+    check('the second meal gets no beat at all', vis('#firstMealCard'), false);
+    check('  ...and the flag is what remembers', S.settings().firstMealDone, true);
   }
 
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');

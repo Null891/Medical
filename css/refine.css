@@ -1111,3 +1111,99 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
 /* The tone never reaches the text — a whole row rendered amber reads as
    an accusation. The mark carries it, the words stay neutral. */
 .chk__row--stale .chk__label { color: var(--color-text-primary); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCENE PICKER, DEMOTED
+   ───────────────────────────────────────────────────────────────
+   Five cards with names and blurbs sat at the top of Home — the most
+   valuable space in the app — for a control most people touch when
+   their week changes, not when their meal does. What belongs there is
+   one line naming where the app thinks you are, because that is what
+   changes the button underneath it.
+   ═══════════════════════════════════════════════════════════════ */
+.scenes-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-2); }
+
+.scenes-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  background: none;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-capsule);
+  font: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.scenes-summary:hover { background: var(--color-surface-warm); }
+
+.scenes-summary__where {
+  font-size: var(--type-caption);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+/* Underlined rather than coloured: the accent belongs to actions that
+   change data, and this one changes a layout. */
+.scenes-summary__change {
+  font-size: var(--type-caption);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT — the whole app, not just the passport
+   ───────────────────────────────────────────────────────────────
+   "Bring your food diary" is a real instruction given in real clinics,
+   and the honest answer to it should be a sheet of paper rather than
+   "here, look at my phone". The base print rules in app.css already
+   strip most chrome from any screen; these add the parts that arrived
+   later, plus a masthead, because a page of milligram figures with no
+   name, date or disclaimer on it is a page somebody has to explain.
+   ═══════════════════════════════════════════════════════════════ */
+.printhead { display: none; }
+
+@media print {
+  .printhead {
+    display: block;
+    margin-bottom: 12pt;
+    padding-bottom: 6pt;
+    border-bottom: 1px solid #000;
+  }
+  .printhead__title { font-size: 14pt; font-weight: 700; margin: 0; }
+  .printhead__meta  { font-size: 10pt; margin: 2pt 0 0; }
+  .printhead__note  { font-size: 9pt;  margin: 4pt 0 0; }
+
+  /* Controls that arrived after the original print pass. Each is a
+     button that cannot be pressed on paper, so each is noise. */
+  .boot, .scenes-bar, .scenes, .scene-tip,
+  .chk__mark, .fab, .rail, #devControls,
+  .modal-scrim { display: none !important; }
+
+  /* The checklist is worth printing — "your newest lab is 4 months old"
+     is exactly the sort of thing a clinic wants to know — but as a list
+     of facts, not as a column of tappable rows. */
+  .chk__btn { display: block; padding: 2pt 0; }
+  .chk__label { font-weight: 600; }
+
+  /* Keep a card and its heading together; an orphaned "Today" at a page
+     break makes the second page unreadable on its own. */
+  .card, .chk__row { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+
+  /* Ranges must survive monochrome. Status is already icon + word
+     everywhere, so nothing here depends on colour, but the ring fills
+     are meaningless in grey — the figures beside them are not. */
+  .ring__svg, .orbit { max-width: 150px; }
+}
+
+/* The first-meal beat. Slightly warmer than the cards around it and
+   slightly larger in the line that matters, because it appears exactly
+   once — and then never competes for attention again. */
+.firstmeal__left {
+  font-size: var(--type-title);
+  font-weight: 640;
+  letter-spacing: -0.01em;
+  margin: var(--space-2) 0 var(--space-1);
+  color: var(--color-text-primary);
+}

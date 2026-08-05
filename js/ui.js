@@ -396,6 +396,77 @@ const UI = (() => {
     });
   }
 
+  /* Filled before every print, and only ever on paper. Names whose
+     diary it is, the date it was produced, and which targets the
+     figures were measured against — without those three a printed page
+     of milligrams is something a clinician has to interrogate rather
+     than read. */
+  function renderPrintHead() {
+    const el = $('#printHeadMeta');
+    if (!el) return;
+    const p = Store.profile();
+    const t = Store.targets();
+    const bits = [];
+    if (p.display_name) bits.push(p.display_name);
+    bits.push('Printed ' + new Date().toLocaleDateString('en-US',
+      { year: 'numeric', month: 'long', day: 'numeric' }));
+    if (Store.hasTargets()) {
+      const named = [
+        t.k ? `potassium ${Clinical.fmt(t.k)} mg` : null,
+        t.p ? `phosphorus ${Clinical.fmt(t.p)} mg` : null,
+        t.na ? `sodium ${Clinical.fmt(t.na)} mg` : null
+      ].filter(Boolean);
+      // Provenance travels with the numbers. A printed target with no
+      // source invites a clinician to assume the app set it.
+      const src = Store.profile().budget_source === 'care_team'
+        ? 'care-team targets' : 'general education ranges';
+      if (named.length) bits.push(`Daily ${src}: ${named.join(', ')}`);
+    } else {
+      bits.push('No daily targets set');
+    }
+    el.textContent = bits.join(' · ');
+  }
+
+  /* ═══════════ getting something out of the app ═══════════
+     Three routes, tried in order, and the order is the point.
+
+       SHARE — navigator.share opens the operating system's own sheet.
+         This is how people actually send things: into WhatsApp, into a
+         message to a daughter, into an email to a clinic. A download
+         puts a .txt file somewhere in a phone's storage that a lot of
+         people will never find again.
+       COPY — the desktop answer, where a share sheet mostly does not
+         exist and pasting into an email is the real workflow.
+       DOWNLOAD — always works, and is what the app did before.
+
+     WHAT THIS DOES AND DOES NOT DO WITH HEALTH DATA. The share sheet is
+     the operating system's, and the destination is chosen by the person
+     holding the phone — this app never picks one, never posts anywhere,
+     and has no network path for any of this. Nothing leaves the device
+     unless somebody taps a target in that sheet.
+
+     Returns which route was taken so the caller can say so honestly,
+     because "Summary downloaded" after a share is a small lie that
+     makes somebody go looking in their Files app. */
+  async function shareText(text, filename, title) {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: title, text: text });
+        return 'shared';
+      } catch (e) {
+        /* AbortError means they opened the sheet and chose nothing,
+           which is a decision, not a failure — falling through to a
+           download would hand them a file they just declined to send. */
+        if (e && e.name === 'AbortError') return 'cancelled';
+      }
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try { await navigator.clipboard.writeText(text); return 'copied'; }
+      catch (e) { /* clipboard is refused in plenty of contexts */ }
+    }
+    return Exporter.download(filename, text, 'text/plain') ? 'downloaded' : 'failed';
+  }
+
   /* ═══════════ one way to show a field error ═══════════
      Three forms had grown three slightly different versions of this,
      which is how a form ends up with an error that never clears, or one
@@ -661,6 +732,7 @@ const UI = (() => {
     if (typeof Motion !== 'undefined') Motion.livingChart($('#trendsCard'));
     renderInsights();
     renderChecklist();
+    renderFirstMeal();
     applyAdaptiveOrder();
     maybeBloom();
     // Cards were just replaced, so the observer has nothing to watch.
@@ -684,6 +756,39 @@ const UI = (() => {
      them would be inventing certainty this app spent its whole design
      refusing to invent. A day's arithmetic landed inside the lines —
      that is the entire claim, and the copy beside it says so. */
+  /* Transient. The card is shown on the Home render that follows the
+     first save and on no other — navigating away is dismissal, because
+     they have moved on and the moment has passed. */
+  let showFirstMeal = false;
+
+  function renderFirstMeal() {
+    const host = $('#firstMealCard');
+    if (!host) return;
+    if (!showFirstMeal) { host.hidden = true; host.innerHTML = ''; return; }
+    showFirstMeal = false;                       // this render only
+
+    /* Names what just happened, with the actual number from the meal
+       they just logged rather than an example. "The AI read your words;
+       the milligrams came from a published table" is the whole product
+       argument, and this is the one moment somebody has a reason to
+       care about it. */
+    const totals = Store.dayTotals();
+    const t = Store.targets();
+    const key = ['k', 'p', 'na'].find(k => t[k] && !Clinical.ringSuppressed(k));
+    const left = key
+      ? Clinical.remainingText(totals[key].low, totals[key].high, t[key])
+      : null;
+
+    host.hidden = false;
+    host.innerHTML = `<div class="card m-paper firstmeal">
+      <h2 class="h3">${esc(COPY.firstMeal.title)}</h2>
+      <p>${esc(COPY.firstMeal.body)}</p>
+      ${left ? `<p class="firstmeal__left">${esc(left)}${
+        key ? esc(' of ' + NUTRIENT_WORD[key]) : ''}.</p>` : ''}
+      <p class="note">${esc(COPY.firstMeal.foot)}</p>
+    </div>`;
+  }
+
   function maybeBloom() {
     if (typeof Motion === 'undefined') return;
     if (!Store.hasTargets()) return;
@@ -1427,6 +1532,21 @@ const UI = (() => {
       Motion.haptic('commit');
       Motion.chime(!!Store.settings().sound);
     }
+
+    /* THE FIRST ONE. Every save fires the ripple, but the first is the
+       only time somebody learns what this app actually does — text in,
+       a number out of a published table, a figure for what is left. The
+       ripple alone shows that something happened; it does not say what.
+
+       So the first save gets one extra beat, once, and never again. A
+       card rather than a modal: interrupting somebody in the second
+       after their first success is the wrong instinct, and this is
+       something to read, not something to acknowledge. The flag is
+       stored, so a reinstall is the only way back to it. */
+    if (!Store.settings().firstMealDone) {
+      Store.setSetting('firstMealDone', true);
+      showFirstMeal = true;
+    }
     go('home');
   }
 
@@ -1539,19 +1659,44 @@ const UI = (() => {
      Rendered as a radio group, not a menu: exactly one is true at a
      time, and the current one has to be visible without opening
      anything. */
+  /* Transient, deliberately not persisted. Which scene you are in is
+     worth remembering; whether the picker happened to be open two days
+     ago is not, and restoring it would hand the best space on the
+     screen back to a control used about once a week. */
+  let scenesOpen = false;
+
   function renderScenePicker() {
     const host = $('#scenePicker');
     if (!host) return;
     const cur = Scenes.current();
 
-    host.innerHTML = `<div class="scenes" role="radiogroup" aria-label="Where are you?">
-      ${Scenes.SCENES.map(s => `
-        <button type="button" class="scene${s.key === cur.key ? ' is-on' : ''}"
-          role="radio" aria-checked="${s.key === cur.key}" data-scene="${esc(s.key)}">
-          <span class="scene__name">${esc(s.name)}</span>
-          <span class="scene__blurb">${esc(s.blurb)}</span>
-        </button>`).join('')}
-    </div>
+    /* COLLAPSED BY DEFAULT. Five cards with names and blurbs occupied
+       the top of Home — the most valuable space in the app — for a
+       control most people touch when their week changes, not when their
+       meal does. What is actually needed there is one line saying where
+       the app thinks you are, because that is what changes the hero
+       button underneath it.
+
+       Still a radiogroup when open, so the keyboard and screen-reader
+       behaviour is unchanged; the summary is a plain expander with
+       aria-expanded, which is the honest description of what it does. */
+    host.innerHTML = `
+      <div class="scenes-bar">
+        <button type="button" class="scenes-summary" data-scenetoggle="1"
+          aria-expanded="${scenesOpen}" aria-controls="sceneOptions">
+          <span class="scenes-summary__where">${esc(cur.name)}</span>
+          <span class="scenes-summary__change">${esc(scenesOpen ? COPY.scenes.close : COPY.scenes.change)}</span>
+        </button>
+      </div>
+      <div class="scenes" id="sceneOptions" role="radiogroup"
+           aria-label="Where are you?"${scenesOpen ? '' : ' hidden'}>
+        ${Scenes.SCENES.map(s => `
+          <button type="button" class="scene${s.key === cur.key ? ' is-on' : ''}"
+            role="radio" aria-checked="${s.key === cur.key}" data-scene="${esc(s.key)}">
+            <span class="scene__name">${esc(s.name)}</span>
+            <span class="scene__blurb">${esc(s.blurb)}</span>
+          </button>`).join('')}
+      </div>
     ${cur.tip ? `<div class="card m-paper scene-tip"><p class="note">${esc(cur.tip)}</p></div>` : ''}`;
 
     /* The primary action follows the scene. In a shop the thing you
@@ -1719,11 +1864,13 @@ const UI = (() => {
               v.servings === 1 ? '' : ` <span class="note">(${v.servings} servings)</span>`}</li>`).join('')}
           </ul>
         </section>`).join('') +
-        `<button type="button" class="btn btn--secondary btn--block" id="shopCopy">Copy the list as text</button>`;
+        `<button type="button" class="btn btn--secondary btn--block" id="shopCopy">Share this list</button>`;
       $('#shopCopy').addEventListener('click', async () => {
-        const text = Plan.groceryText();
-        try { await navigator.clipboard.writeText(text); toast('Shopping list copied'); }
-        catch (e) { Exporter.download('renalroute-shopping-list.txt', text, 'text/plain'); toast('List downloaded'); }
+        // A shopping list is the most send-able thing in the app: it
+        // usually needs to reach whoever is doing the shopping.
+        const via = await shareText(Plan.groceryText(),
+          'renalroute-shopping-list.txt', 'Shopping list');
+        toast(COPY.share[via] || COPY.share.failed);
       });
       return;
     }
@@ -2724,7 +2871,7 @@ const UI = (() => {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
         '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
-        '[data-del-lab],[data-repeat],[data-leach]');
+        '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
@@ -2796,22 +2943,26 @@ const UI = (() => {
         }
         return;
       }
+      if (el.dataset.scenetoggle) {
+        scenesOpen = !scenesOpen;
+        renderScenePicker();
+        // Focus follows the control that was just pressed, which the
+        // re-render replaced. Without this a keyboard user is dropped
+        // back at the top of the document on every toggle.
+        const again = $('[data-scenetoggle]');
+        if (again) { try { again.focus(); } catch (e) { } }
+        return;
+      }
       if (el.dataset.scene) {
         const s = Scenes.set(el.dataset.scene);
+        // Choosing one answers the question the picker asked, so it
+        // closes behind you rather than sitting open over the rings.
+        scenesOpen = false;
         renderHome();
         // Landing you where the scene is for. Picking "At the store"
         // and then having to find the label checker yourself would be
         // the scene doing nothing but changing a label.
         if (s.opens && s.opens !== 'home') go(s.opens);
-        return;
-      }
-      if (el.dataset.scene) {
-        const sc = Scenes.set(el.dataset.scene);
-        renderHome();
-        /* Land where the scene is for. Picking "At the store" and then
-           having to find the label checker yourself would be the scene
-           changing a label and nothing else. */
-        if (sc.opens && sc.opens !== 'home') go(sc.opens);
         return;
       }
       if (el.dataset.meal) {
@@ -3055,9 +3206,15 @@ const UI = (() => {
       Store.reset(); location.reload();
     });
 
-    $('#exportSummaryBtn').addEventListener('click', () => {
+    $('#printPageBtn').addEventListener('click', () => {
+      renderPrintHead();
+      try { window.print(); } catch (err) { toast('Printing unavailable here'); }
+    });
+    $('#exportSummaryBtn').addEventListener('click', async () => {
       if (!Store.meals().length) { toast('Nothing logged yet to summarise'); return; }
-      toast(Exporter.downloadSummary() ? 'Summary downloaded' : "Couldn't create the file");
+      const via = await shareText(Exporter.summaryText(), 'renalroute-summary.txt',
+        'RenalRoute food summary');
+      toast(COPY.share[via] || COPY.share.failed);
     });
     $('#exportCsvBtn').addEventListener('click', () => {
       if (!Store.meals().length) { toast('Nothing logged yet to export'); return; }
@@ -3283,21 +3440,26 @@ const UI = (() => {
       saved(Store.storageState() === null);
     });
     $('#passportCopy').addEventListener('click', async () => {
-      const text = Passport.asText();
-      try {
-        await navigator.clipboard.writeText(text);
-        toast('Passport copied');
-      } catch (err) {
-        // No clipboard permission is not a dead end: hand them the file.
-        Exporter.download('renalroute-passport.txt', text, 'text/plain');
-        toast('Passport downloaded');
-      }
+      /* Share first, because the passport is the thing people most want
+         to hand to somebody else — a partner, a daughter, the clinic.
+         Copy and download remain, in that order, so no platform is a
+         dead end. */
+      const via = await shareText(Passport.asText(), 'renalroute-passport.txt',
+        'My health passport');
+      toast(COPY.share[via] || COPY.share.failed);
     });
     $('#passportPrint').addEventListener('click', () => {
       // The print stylesheet already strips chrome; the screen prints
       // as the card it is. Paper in a wallet outlives every app.
       try { window.print(); } catch (err) { toast('Printing unavailable here'); }
     });
+
+    /* beforeprint rather than only on the button, so Ctrl+P and the
+       browser menu produce the same page. A masthead that appears only
+       when you use the app's own button is a masthead most printouts
+       will not have. */
+    window.addEventListener('beforeprint', renderPrintHead);
+    renderPrintHead();
     $('#learnBack').addEventListener('click', () => go(lastScreen));
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
