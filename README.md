@@ -158,12 +158,45 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 
 ```powershell
 cd test
-npm install     # once — pulls jsdom
-node verify.js  # 80 unit assertions
-node e2e.js     # 209 end-to-end assertions in a real DOM
-node probe.js   # 10 edge-case assertions (empty, no-target, hostile input)
-node headers.js #  24 deployment-header assertions
+npm install     # once — pulls jsdom and axe-core
+npm test        # all nine suites, 1,314 assertions
 ```
+
+| Suite | Assertions | What it is for |
+|---|---:|---|
+| `verify.js`  | 275 | Unit: clinical bands, resolution, ranges, translation tables |
+| `e2e.js`     | 513 | The app driven in a real DOM, by real clicks, end to end |
+| `probe.js`   |  12 | Edge cases: empty, no-target, hostile input |
+| `headers.js` |  29 | Deployment headers, CSP, caching policy |
+| `wiring.js`  | 174 | Dead controls: a button that exists and does nothing |
+| `sweep.js`   | 101 | The manual QA list, automated — plus lints on the harness itself |
+| `journey.js` | 113 | Four journeys a real person walks, in order |
+| `forms.js`   |  80 | Every form submitted empty, oversized, and hostile |
+| `a11y.js`    |  17 | axe-core across 14 screens, WCAG 2.1 A + AA |
+
+`package.json` lives in `test/` on purpose. A `package.json` at the repo root would make Vercel treat this static site as a Node project and try to build it.
+
+### What is genuinely NOT covered, and why
+
+These need a real browser with layout, which jsdom is not. They are listed
+here rather than quietly dropped, because a checklist that claims coverage
+it does not have is worse than a short honest one — and this project has
+already shipped four bugs that were invisible locally.
+
+- [ ] **Rendered contrast.** `sweep.js` computes ratios arithmetically from
+      the tokens, which caught an amber that had never met AA despite a
+      comment claiming 6.5:1. It cannot see what a real compositor draws.
+- [ ] **Tap-target geometry.** Declared sizes are checked; rendered ones are
+      not. 320 / 375 / 768 / 1024 / 1440.
+- [ ] **Tab order against visual order.** Presence of focus is checked;
+      whether the sequence matches what the eye follows is not.
+- [ ] **200% browser zoom** on every screen — no clipping, no overlap.
+- [ ] **Devanagari and CJK at the two larger text sizes.** Line-height was
+      set per script but never seen rendered.
+- [ ] **Camera, dictation and barcode on a real device.** jsdom has no
+      `getUserMedia`, no `SpeechRecognition`, no `BarcodeDetector`.
+- [ ] **Whether the rings read correctly to somebody seeing them cold.**
+      The one thing on this list no test of any kind can answer.
 
 `package.json` lives in `test/` on purpose. A `package.json` at the repo root would make Vercel treat this static site as a Node project and try to build it.
 
