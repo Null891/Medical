@@ -482,8 +482,35 @@ const UI = (() => {
     const meals = `${totals.mealCount} meal${totals.mealCount === 1 ? '' : 's'} logged`;
     if (!Store.hasTargets()) return `${meals}. ${COPY.today.noTargets}`;
 
-    // Report the worst standing across the three, since that is the one
-    // that would change a decision.
+    /* THE SENTENCE THAT MATTERS. Somebody opening this mid-afternoon
+       wants one thing — "about 900 to 1,100 mg of potassium left" — and
+       it existed only inside a ring column, competing with fifteen
+       other elements for a glance that lasts a second.
+
+       Which nutrient it names is decided by whichever is CLOSEST to its
+       limit among the ones the care team actually restricted, because
+       that is the one that would change a decision. Watched nutrients
+       win outright; if nothing was picked, all three are eligible.
+
+       Clinical.remainingText() already produces the exact phrasing,
+       ranges and all, so this promotes an existing sentence rather
+       than writing a second one that could disagree with the rings. */
+    const watched = Store.settings().watched;
+    const eligible = ['k', 'p', 'na']
+      .filter(k => t[k] && !Clinical.ringSuppressed(k))
+      .filter(k => !(Array.isArray(watched) && watched.length) || watched.indexOf(k) !== -1);
+
+    if (eligible.length) {
+      const tightest = eligible.reduce((a, b) =>
+        (totals[b].high / t[b]) > (totals[a].high / t[a]) ? b : a);
+      const name = { k: 'potassium', p: 'phosphorus', na: 'sodium' }[tightest];
+      const remaining = Clinical.remainingText(
+        totals[tightest].low, totals[tightest].high, t[tightest]);
+      // "About 600–1,100 mg left" → "About 600–1,100 mg of potassium left"
+      return remaining.replace(/\bmg\b/, `mg of ${name}`) + `. ${meals}.`;
+    }
+
+    // Nothing live to report against: fall back to the standing summary.
     const worst = ['k', 'p', 'na']
       .filter(k => t[k])
       .map(k => Clinical.ringStatus(totals[k].high, t[k]).key);
@@ -1481,9 +1508,9 @@ const UI = (() => {
      learned. A health app whose layout moves for reasons the user
      cannot see is a health app people stop trusting. */
   const CARD_SLOTS = {
-    rings: '#ringCard', stats: '#statBlocks', quick: '#quickAdd',
-    list: '#homeList', today: '#todayFeed', trends: '#trendsCard',
-    insights: '#insightsCard'
+    orbit: '#orbitCard', rings: '#ringCard', stats: '#statBlocks',
+    quick: '#quickAdd', list: '#homeList', today: '#todayFeed',
+    trends: '#trendsCard', insights: '#insightsCard'
   };
 
   function applyAdaptiveOrder() {
@@ -3160,5 +3187,10 @@ const UI = (() => {
 
   return { wire, go, render, wireHistory, SCREENS, renderStorageBanner, renderDemoBanner, leaveDemo, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
            renderReferences, renderKitchen, renderSettings, renderInstall,
+           /* Exported so tests count the dashboard's cards from the app's own
+              slot map rather than a literal. A hand-typed count is the same
+              drift class that left three test harnesses loading an asset list
+              the app had outgrown. */
+           CARD_SLOTS,
            toast, esc, searchFoods };
 })();

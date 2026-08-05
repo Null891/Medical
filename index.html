@@ -35,6 +35,34 @@
 <meta name="twitter:title" content="RenalRoute — what's left today">
 <meta name="twitter:description" content="A kidney-diet companion that shows what you have room for, as honest ranges. No account, and nothing leaves your device.">
 <meta name="twitter:image" content="https://chronic-california.vercel.app/icons/icon-512.png">
+
+<!-- Structured data. Inline JSON-LD is script content, so a strict
+     script-src blocks it — the correct fix is a HASH, not
+     'unsafe-inline'. The hash of exactly this block is in vercel.json,
+     and test/sweep.js recomputes it from this file and fails if the
+     two disagree, so editing one character here cannot silently
+     switch the block off.
+
+     isAccessibleForFree and the absence of any medical claim are both
+     deliberate: this describes an educational tool, and structured
+     data is read by machines that will happily repeat whatever a
+     health app claims about itself. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "RenalRoute",
+  "url": "https://chronic-california.vercel.app/",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Any modern web browser",
+  "browserRequirements": "Requires JavaScript",
+  "description": "An educational potassium, phosphorus and sodium tracker for people living with chronic kidney disease, stages G3b and G4. Shows what you have left today, as honest ranges rather than single numbers.",
+  "inLanguage": ["en", "es", "zh", "hi"],
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "disclaimer": "Educational wellness tool, not a medical device. Does not diagnose, treat, cure or prevent any disease."
+}
+</script>
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FBF7F2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17150F" media="(prefers-color-scheme: dark)">
@@ -261,9 +289,21 @@
       <!-- Bento: one column on a phone, deliberately uneven on a wide
            screen. The rings take four of six columns because they are
            the answer to the question the app exists to ask. -->
+      <!-- ONE hero, not two. The rings and the orbit show the same
+           data, and sitting side by side at equal weight they were
+           redundant rather than additive — a reader's eye had nowhere
+           to land. Each now does the job it is actually good at:
+
+             ORBIT leads. Distance reads without instruction; "close to
+             the middle means nearly out of room" needs no teaching,
+             whereas the ring's unfilled arc does.
+
+             RINGS follow, as the readout: ranges, status words,
+             provenance, the partial-data chip. Precise, and
+             conventional enough to be trusted. -->
       <div class="bento">
-        <div class="bento__hero" id="ringCard"></div>
-        <div class="bento__side" id="orbitCard"></div>
+        <div class="bento__hero" id="orbitCard"></div>
+        <div class="bento__side" id="ringCard"></div>
         <div class="bento__side" id="statBlocks"></div>
 
         <div class="bento__action">

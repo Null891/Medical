@@ -492,6 +492,26 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   // No invented verdict: this app must never grade a person's day.
   check('  ...and never a score out of 100', /\b\d{1,3}\s*\/\s*100|score/i.test(dl), false);
   check('  ...nor the word excellent', /excellent/i.test(dl), false);
+  /* G2 — the sentence somebody actually opens the app for. It must lead
+     with how much room is left and name the nutrient, at the top of the
+     screen, without a tap. */
+  check('  ...it leads with the room left, not a summary', /^About |^Between |^Over by/.test(dl), true);
+  check('  ...names which nutrient it means',
+    /potassium|phosphorus|sodium/.test(dl), true);
+  check('  ...as a range, never a single confident number',
+    /\d[\d,]*–[\d,]+ mg/.test(dl), true);
+  /* And it must agree with the ring it is summarising — two numbers for
+     one fact that disagree is worse than one number. */
+  {
+    const nutrient = (dl.match(/potassium|phosphorus|sodium/) || [])[0];
+    const key = { potassium: 'k', phosphorus: 'p', sodium: 'na' }[nutrient];
+    const t = window.RenalRoute.Store.targets();
+    const tot = window.RenalRoute.Store.dayTotals();
+    const fromModel = window.RenalRoute.Clinical.remainingText(
+      tot[key].low, tot[key].high, t[key]);
+    check('  ...and agrees with the ring it summarises',
+      dl.startsWith(fromModel.split(' mg')[0]), true);
+  }
   check('today feed appears once there are 2+ events', vis('#todayFeed'), true);
   check('  ...listing events in time order',
     $$('#todayFeed .feed__item').length >= 2, true);
@@ -1072,10 +1092,17 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('  ...and points somewhere real', $('#scr-home .btn--hero').dataset.nav, 'label');
 
     // Adaptive order must never DROP a card — losing a feature because
-    // of the time of day would be a bug, not a layout.
+    // of the time of day would be a bug, not a layout. The expected count
+    // comes from the app's own slot map, so adding a card to the dashboard
+    // tightens this test instead of breaking it.
+    const slotCount = Object.keys(window.RenalRoute.UI.CARD_SLOTS).length;
     Object.keys(Sc.ORDERS).forEach(part => {
       const set = new Set(Sc.ORDERS[part]);
-      check(`${part} order keeps all seven cards`, set.size, 7);
+      check(`${part} order keeps every dashboard card`, set.size, slotCount);
+    });
+    Object.keys(Sc.ORDERS).forEach(part => {
+      const unknown = Sc.ORDERS[part].filter(c => !window.RenalRoute.UI.CARD_SLOTS[c]);
+      check(`  ...and ${part} names no card that has no slot`, unknown.length, 0);
     });
     Sc.SCENES.forEach(s => {
       const missing = s.cards.filter(c => !Sc.ORDERS.midday.includes(c));

@@ -921,3 +921,45 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   min-width: 44px;
   padding: 0 var(--space-2);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ONE HERO
+   ───────────────────────────────────────────────────────────────
+   The rings and the orbit show the same data. Side by side at equal
+   weight they were redundant rather than additive, and a reader's eye
+   had nowhere to land — a composition problem I introduced by treating
+   two readings of one thing as two features.
+
+   The orbit leads because distance reads without instruction. "Close
+   to the middle means nearly out of room" needs no teaching; the
+   ring's unfilled arc does, and always did.
+
+   The rings follow as the readout, and step down a full tier rather
+   than a nudge — a hierarchy separated by two pixels is not one.
+   ═══════════════════════════════════════════════════════════════ */
+#orbitCard > .card { padding: var(--space-5) var(--space-4); }
+#orbitCard .orbit { max-width: 340px; }
+
+/* The readout, deliberately quieter than it was as a hero. Its
+   numbers stay exact and its status words stay visible — what changes
+   is scale, not information. */
+#ringCard > .card { padding: var(--space-4); }
+#ringCard .ring__svg { max-width: 84px; }
+#ringCard .ring__left { font-size: var(--type-title); }
+
+@media (min-width: 1180px) {
+  /* Hero and readout, not two heroes. The orbit takes the wider cell
+     and the rings sit beside it as the column you read second. */
+  #orbitCard > .card { padding: var(--space-6) var(--space-5); }
+  #orbitCard .orbit { max-width: 380px; }
+  #ringCard .ring__svg { max-width: 74px; }
+  #ringCard .ring__left { font-size: var(--type-body); font-weight: 640; }
+}
+
+/* At phone width the orbit is the first thing on screen, so it gets
+   the room. Below 380px it steps back rather than crowding the
+   greeting off the top. */
+@media (max-width: 379px) {
+  #orbitCard .orbit { max-width: 260px; }
+  #orbitCard > .card { padding: var(--space-4) var(--space-3); }
+}

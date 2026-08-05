@@ -172,6 +172,47 @@ console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ══�
   check('script-src is still locked to self',
     /script-src 'self'/.test(read('vercel.json')),
     'never add unsafe-inline to satisfy a scanner');
+  check('  ...and never gains unsafe-inline or unsafe-eval',
+    !/unsafe-inline|unsafe-eval/.test(read('vercel.json')),
+    'a hash is the correct mechanism for inline content; unsafe-inline is not');
+
+  /* The JSON-LD hash must match the block byte for byte, or the
+     structured data is silently dropped by the browser and nobody
+     notices — the block still LOOKS present in the markup. Recomputed
+     here so editing one character in the schema fails loudly and
+     prints the hash to paste. */
+  {
+    const crypto = require('crypto');
+    const m = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    check('structured data is present', !!m, 'JSON-LD block missing');
+    if (m) {
+      const want = 'sha256-' + crypto.createHash('sha256').update(m[1], 'utf8').digest('base64');
+      check('  ...and its CSP hash matches the block exactly',
+        read('vercel.json').indexOf(want) !== -1,
+        `CSP needs '${want}' — the block changed and the hash did not`);
+      let parsed = null;
+      try { parsed = JSON.parse(m[1]); } catch (e) { /* reported below */ }
+      check('  ...and it is valid JSON', !!parsed, 'the schema block does not parse');
+      if (parsed) {
+        check('  ...describing a health application',
+          parsed.applicationCategory, 'HealthApplication');
+        /* Structured data is read by machines that will repeat whatever
+           a health app claims about itself, so it carries the same
+           disclaimer the app does and makes no medical claim. */
+        check('  ...carrying the not-a-medical-device line',
+          /not a medical device/i.test(parsed.disclaimer || ''), '');
+        /* NOTE the signature: this file uses check(label, ok, detail),
+           while verify.js and journey.js use (label, actual, expected).
+           Passing `false` as the third argument here reads as a detail
+           string, not an expectation, so the assertion inverted and
+           failed on correct copy. Third time I have tripped on this
+           across the suite — the negation belongs in the expression. */
+        check('  ...and claiming no medical capability',
+          !/\btreats?\b|\bdiagnos|\bcures?\b/i.test(parsed.description || ''),
+          'structured data must not describe a medical capability');
+      }
+    }
+  }
   check('  ...and axe-core runs in our own suite instead',
     fs.existsSync(path.join(ROOT, 'test/a11y.js')), '');
 }
