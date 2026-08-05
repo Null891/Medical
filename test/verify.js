@@ -227,6 +227,46 @@ check('  ...claimed removal is smaller than published removal',
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
 
+console.log('\n═══ CALENDAR DAYS ARE LOCAL, NEVER UTC ═══');
+
+/* A real bug, found by a test that only failed once the machine running
+   it crossed midnight UTC. Today's feed compared a UTC timestamp string
+   against a LOCAL calendar date by slicing the first ten characters off
+   entered_at. West of UTC that means every lab entered after the local
+   evening cutoff carries tomorrow's date and silently disappears from
+   today; east of UTC the same thing happens in the early morning.
+
+   Nobody would ever report this as a bug. They would just quietly
+   notice the app sometimes forgets things they did. */
+{
+  const local = Store.todayISO();
+
+  // A timestamp taken right now must land on today's local date,
+  // whatever the offset between local time and UTC happens to be.
+  check('now converts to the local calendar day',
+    Store.todayISO(new Date().toISOString()), local);
+
+  // The two ends of the local day are the cases that break. Both must
+  // report the same local date even though one of them is very likely a
+  // different UTC date.
+  const startOfDay = new Date(); startOfDay.setHours(0, 5, 0, 0);
+  const endOfDay = new Date();   endOfDay.setHours(23, 55, 0, 0);
+  check('one minute after local midnight is still today',
+    Store.todayISO(startOfDay.toISOString()), local);
+  check('five minutes before local midnight is still today',
+    Store.todayISO(endOfDay.toISOString()), local);
+
+  // And the naive version has to actually disagree somewhere, or this
+  // test is checking nothing.
+  const naive = (iso) => String(iso).slice(0, 10);
+  const disagrees =
+    naive(startOfDay.toISOString()) !== Store.todayISO(startOfDay.toISOString()) ||
+    naive(endOfDay.toISOString())   !== Store.todayISO(endOfDay.toISOString()) ||
+    new Date().getTimezoneOffset() === 0;
+  check('  ...and the naive UTC slice is genuinely different (or offset is 0)',
+    disagrees, true);
+}
+
 console.log('\n═══ PHOTO PORTIONS — a band, and it leans the safe way ═══');
 
 /* Estimating milligrams from a photograph is only defensible because

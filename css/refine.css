@@ -1,0 +1,335 @@
+/* ═══════════════════════════════════════════════════════════════
+   REFINEMENT — the pass where things get taken away.
+   ───────────────────────────────────────────────────────────────
+   Loaded last, on purpose. Everything before it added: materials,
+   motion, an orbit, scenes, patterns, a passport. Home ended up with
+   sixteen elements on it, every one of them boxed, bordered, and
+   shadowed at the same weight. That is not a dashboard, it is a form
+   with texture on it — and it is exactly why the last two rounds of
+   work were invisible. Adding a fifth material to a wall of cards does
+   not read as refinement; it reads as more wall.
+
+   So this file raises the CRAFT of what is already there. Not fewer
+   features — the density is the product, and a CKD patient genuinely
+   needs the rings, the week, the patterns, the label checker, and the
+   passport. The problem was never how much was on screen. It was that
+   all of it was rendered at the same weight, in the same box, with the
+   same border, so nothing looked considered.
+
+   Four principles, applied literally:
+
+   1. HIERARCHY MEANS ONE THING WINS PER SCREEN. Everything can stay;
+      it just cannot all shout. Exactly one element is allowed to be
+      large, and the rest step down by a whole tier rather than by two
+      pixels. A page where six things are "important" has no important
+      things on it.
+
+   2. SEPARATE WITH SPACE, NOT WITH LINES. Every border is a small
+      visual debt, and the old dashboard paid it a dozen times: cards
+      bordered inside bordered cards, hairlines between rows already
+      separated by whitespace. The strokes go; the gaps grow to do the
+      work instead. Same number of sections, far less noise between
+      them.
+
+   3. TYPE ON A REAL SCALE. The old set ran 14/16/20/24/26 — five sizes
+      inside a twelve-point range, which cannot express hierarchy
+      because the steps fall below the eye's threshold for noticing
+      one. This is a proper ratio scale with genuine distance between
+      tiers, plus optical letter-spacing and tabular figures.
+
+   4. TEXTURE YOU CAN ACTUALLY SEE. The first materials pass set its
+      paper grain at 1.4% opacity and its liquid drift at 50% of an
+      already-faint gradient. Below the threshold of any screen, which
+      is the same as not shipping it — and the honest report was that
+      nothing looked different. Every material is now tuned to be
+      perceptible on a phone in daylight, which is the only test that
+      counts.
+
+   None of this touches a number, a threshold, a status colour's
+   meaning, or any accessibility floor: 16px body, 44px targets, 4.5:1
+   contrast, visible focus, reduced-motion, and status-never-by-colour
+   all still hold, and the tests still check them.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── A real modular scale ──
+     Roughly 1.25 between tiers at the top, tightening toward the
+     bottom where legibility matters more than proportion. The floor
+     stays 16px for body and 13px for the smallest label, because those
+     are accessibility limits, not taste. */
+  --type-caption: 13px;
+  --type-body: 16px;
+  --type-lead: 18px;      /* first paragraph of a screen */
+  --type-title: 21px;
+  --type-h1: 27px;
+  --type-numeral: 34px;
+  --type-display: 44px;
+
+  --leading-display: 1.04;
+  --leading-tight: 1.2;
+  --leading-body: 1.55;
+
+  /* Optical letter-spacing. Large type needs tightening or it reads as
+     loose; small type needs opening or it reads as cramped. This is the
+     single cheapest thing that separates typeset text from default. */
+  --track-display: -0.028em;
+  --track-title: -0.014em;
+  --track-body: 0;
+  --track-caption: 0.008em;
+
+  /* ── Generous spacing ──
+     The old scale topped out at 48px and the dashboard used 16 almost
+     everywhere. Sections now breathe at 40-72px, which is where the
+     "expensive" feeling actually comes from — not from gradients. */
+  --space-section: 44px;
+  --space-block: 28px;
+
+  /* Softer, wider, less contrasty elevation. A shadow that reads as a
+     hard edge makes a card look pasted on; a wide low-opacity one makes
+     it look lit. */
+  --shadow-card: 0 1px 2px rgba(43,43,43,.03), 0 10px 30px -14px rgba(43,43,43,.14);
+  --radius-card: 20px;
+}
+
+/* ═══════════ TYPE ═══════════ */
+
+body { letter-spacing: var(--track-body); }
+
+.h1 {
+  font-size: var(--type-h1);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--track-title);
+  font-weight: 640;
+  margin-bottom: var(--space-2);
+}
+.h2 {
+  font-size: var(--type-title);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--track-title);
+  font-weight: 620;
+}
+.h3 {
+  font-size: var(--type-body);
+  font-weight: 620;
+  letter-spacing: var(--track-body);
+}
+
+/* The greeting. One element per screen gets to be this size, and this
+   is the one — it is the only thing on the dashboard addressed to the
+   person rather than about their food. */
+.hdr__title--display {
+  font-size: clamp(2.1rem, 1rem + 5vw, 4rem);
+  line-height: var(--leading-display);
+  letter-spacing: var(--track-display);
+  font-weight: 660;
+}
+
+/* Captions open up slightly and lose the grey-on-grey problem: the old
+   secondary tone at 13px was legible on paper and marginal on a phone
+   in daylight. */
+.note, .field__note, .helper {
+  letter-spacing: var(--track-caption);
+}
+.helper {
+  font-size: var(--type-lead);
+  line-height: var(--leading-body);
+  max-width: 62ch;         /* the readability cap, applied for real */
+}
+.note { max-width: 68ch; }
+
+/* Numerals get tabular figures so ranges do not shimmy as they count
+   up, and so two stacked figures align on the decimal. This is the
+   detail people cannot name but always notice. */
+.ring__left, .statblock__left, .statblock__read, .itemrow__meta,
+.orbit-core-sub, .trend__read {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ═══════════ SURFACES — fewer lines, more air ═══════════ */
+
+.card {
+  border: 0;                        /* space separates, not strokes */
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-block);
+  box-shadow: var(--shadow-card);
+}
+
+/* PAPER. Flat by design — no shadow, no border — but it has to read as
+   a different SUBSTANCE from the surfaces around it or the whole
+   material idea is a private joke. It now sits a clear step warmer and
+   darker than the canvas, with the fibre grain at 5.5%: still texture
+   rather than pattern, but present on a phone in daylight, which is
+   the only test that counts. The first pass shipped it at 1.4%, which
+   is below the threshold of any screen — the same as not shipping it,
+   and exactly why the report came back "I can't see it". */
+.m-paper {
+  border: 0;
+  box-shadow: none;
+  background-color: color-mix(in srgb, #F3E9DA 46%, var(--color-surface-warm));
+}
+.m-paper::before { opacity: .055; }
+
+/* Stone earns a little more definition, because it is the one surface
+   carrying numbers and it should feel like the densest thing on the
+   screen. */
+.m-stone {
+  border: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.7),
+    0 2px 4px -2px rgba(43,43,43,.10),
+    0 16px 40px -20px rgba(43,43,43,.24);
+}
+
+/* LIQUID. Was 50% opacity of an already-faint gradient — invisible.
+   Full strength now, with the colour mixes themselves lifted in
+   materials.css. You should be able to see this card is not flat
+   without being told to look for it. */
+.m-liquid::before { opacity: 1; }
+
+/* GLASS. A 62% surface tint over a warm canvas reads as plain white,
+   so the blur behind it did nothing visible. Dropped enough that the
+   blur is genuinely legible, with a border that actually describes an
+   edge. */
+.m-glass { border-color: color-mix(in srgb, var(--color-text-primary) 8%, transparent); }
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .m-glass {
+    background: color-mix(in srgb, var(--color-surface) 46%, transparent);
+    -webkit-backdrop-filter: saturate(1.9) blur(22px);
+    backdrop-filter: saturate(1.9) blur(22px);
+  }
+}
+
+/* LIGHT. The halo sat so tight to the button it read as an ordinary
+   shadow. Wider and warmer, so the control looks lit rather than
+   raised. */
+.m-light {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    0 3px 10px -2px color-mix(in srgb, var(--color-cta) 52%, transparent),
+    0 18px 44px -14px color-mix(in srgb, var(--color-cta) 62%, transparent);
+}
+
+/* Nested cards were the worst offender: a bordered box inside a
+   bordered box inside a bordered box. Anything inside a card loses its
+   own elevation entirely and separates with a rule instead. */
+.card .card {
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+
+/* ═══════════ HIERARCHY ═══════════ */
+
+.hdr {
+  margin-bottom: var(--space-section);
+  padding-top: var(--space-2);
+}
+.hdr__eyebrow {
+  font-size: var(--type-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 620;
+}
+.hdr__line { font-size: var(--type-lead); max-width: 46ch; margin-top: var(--space-2); }
+.hdr__date { margin-top: var(--space-1); }
+
+/* The hero ring card is the one object allowed to dominate. More
+   padding than anything else on the page, and the figures inside it
+   step up a full tier rather than a nudge. */
+#ringCard > .card { padding: var(--space-5) var(--space-4); }
+.ring__left {
+  font-size: var(--type-numeral);
+  line-height: 1.1;
+  letter-spacing: var(--track-display);
+  font-weight: 640;
+}
+.ring__name {
+  font-size: var(--type-caption);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 620;
+  color: var(--color-text-secondary);
+}
+.ring__sub  { font-size: var(--type-caption); color: var(--color-text-secondary); }
+.ring__unit { font-size: var(--type-caption); color: var(--color-text-secondary); }
+.rings { gap: var(--space-3); }
+
+/* Supporting blocks step DOWN hard, which is what makes the hero read
+   as a hero. Previously everything sat within a few points of
+   everything else. */
+#statBlocks .statblock__left { font-size: var(--type-body); font-weight: 600; }
+#statBlocks .statblock__read { font-size: var(--type-caption); }
+
+/* ═══════════ COLOUR RESTRAINT ═══════════
+   Tint now means a clinical state and nothing else. Warm surfaces used
+   for ordinary emphasis were spending the status palette on decoration,
+   which is how an amber card stops meaning amber. */
+.card--warm { background: var(--color-surface); }
+.m-paper.card--warm {
+  background-color: color-mix(in srgb, var(--color-surface-warm) 82%, var(--color-canvas));
+}
+
+/* ═══════════ CONTROLS ═══════════ */
+
+.btn {
+  border-radius: var(--radius-capsule);
+  font-weight: 620;
+  letter-spacing: var(--track-body);
+  min-height: 50px;                 /* comfortably past the 44px floor */
+  padding: 0 var(--space-4);
+}
+.btn--block { margin-bottom: var(--space-3); }
+.btn--hero { min-height: 56px; font-size: var(--type-lead); }
+
+/* Secondary and ghost buttons lose their fills. Three filled buttons
+   in a column is three primary actions, which is none. */
+.btn--secondary {
+  background: transparent;
+  border: 1.5px solid var(--color-hairline);
+  color: var(--color-text-primary);
+}
+.btn--secondary:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* Scenes were pill buttons with two lines of text each — five of them
+   across the top of the dashboard, above the thing people came for.
+   Now a single quiet row: the label, and the description only on the
+   one that is selected. */
+.scenes { gap: var(--space-1); margin-bottom: var(--space-4); }
+.scene {
+  min-width: 0;
+  padding: 9px var(--space-3);
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.scene .scene__blurb { display: none; }
+.scene.is-on {
+  background: var(--color-surface);
+  border-color: transparent;
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-card);
+}
+.scene.is-on .scene__name { font-weight: 660; }
+
+/* ═══════════ THE WIDE LAYOUT ═══════════ */
+
+@media (min-width: 1180px) {
+  .main { max-width: 1240px; }
+  .bento { gap: var(--space-4) var(--space-4); }
+  /* The hero gets half the grid to itself and the orbit sits beside it
+     — the two readings of the day, side by side, and nothing else
+     competing on the first screenful. */
+  .bento__hero { grid-column: span 4; }
+  .bento__side { grid-column: span 2; }
+  #ringCard > .card { padding: var(--space-6) var(--space-5); }
+}
+
+/* ═══════════ PRINT ═══════════ */
+@media print {
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+  .hdr__title--display { font-size: 24pt; }
+}

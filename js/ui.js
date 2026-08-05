@@ -295,7 +295,19 @@ const UI = (() => {
 
     const meals = Store.meals(Store.todayISO())
       .slice().sort((a, b) => a.logged_at < b.logged_at ? -1 : 1);
-    const labs = Store.labs().filter(l => l.entered_at && l.entered_at.slice(0, 10) === Store.todayISO());
+    /* Convert the timestamp to a LOCAL calendar date before comparing.
+       This used to slice the first ten characters off entered_at, which
+       is a UTC string — so for anyone west of UTC, every lab entered
+       after their local evening cutoff carried tomorrow's UTC date and
+       silently vanished from today's feed. East of UTC the same bug
+       fires in the early morning. It only surfaced because the machine
+       running the tests crossed midnight UTC.
+
+       Store.todayISO() already does the offset conversion and accepts a
+       date, so the fix is to use it on both sides rather than comparing
+       a UTC string to a local one. */
+    const labs = Store.labs().filter(l =>
+      l.entered_at && Store.todayISO(l.entered_at) === Store.todayISO());
 
     const events = [
       ...meals.map(m => ({

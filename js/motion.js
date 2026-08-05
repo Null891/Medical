@@ -462,42 +462,26 @@ const Motion = (() => {
     }, { passive: true });
   }
 
-  /* ═══════════ ONE EASTER EGG ═══════════
-     Seven taps on the brand mark prints the anchor table's own quality
-     report to the console.
+  /* ═══════════ NO EASTER EGG ═══════════
+     There was one here: seven taps on the brand mark printed the
+     anchor table's quality report to the console. It has been removed
+     rather than kept, and the reasoning is worth leaving behind.
 
-     It is a joke that only lands for somebody who opens dev tools, and
-     what it reveals is the least flattering thing about the build:
-     how many values are still unverified. An easter egg that showed
-     something impressive would be advertising; this one is closer to
-     an admission, which is more in character. */
-  function easterEgg() {
-    if (typeof document === 'undefined') return;
-    const mark = document.querySelector('.rail__mark, .rail__brand');
-    if (!mark) return;
-    let taps = 0, timer = null;
-    mark.addEventListener('click', () => {
-      taps++;
-      clearTimeout(timer);
-      timer = setTimeout(() => { taps = 0; }, 1200);
-      if (taps < 7) return;
-      taps = 0;
-      try {
-        const s = window.RenalRoute && window.RenalRoute.stats;
-        if (!s) return;
-        console.info('%cRenalRoute — what we still do not know',
-          'font-weight:700;font-size:13px');
-        console.table({
-          'anchor rows': s.total,
-          'missing potassium': s.missingK,
-          'missing phosphorus': s.missingP,
-          'missing sodium': s.missingNa,
-          'categories with no swaps': s.thinCategories.length
-        });
-        console.info('Every value is unverified test data. That is the joke.');
-      } catch (e) { /* an easter egg may never break anything */ }
-    });
-  }
+     The audience for this build is a board-certified renal dietitian
+     and an MD. A hidden joke in a clinical tool is, at best, neutral
+     with that room — and it carries a real downside: a stray run of
+     taps during a live demo fires something unexplained on screen, and
+     "why did that happen" is not a question worth any amount of
+     charm. Hidden behaviour in software people might make health
+     decisions around is a bad instinct even when the payload is
+     harmless.
+
+     The CONTENT was the good part. How many anchor values are still
+     unverified is the most credible thing this build can say about
+     itself, and burying it in a console gag was exactly backwards. It
+     is now a visible, permanent panel in Settings — see the coverage
+     card in js/ui.js. Same information, stated openly, where a
+     clinician can actually find it. */
 
   function init() {
     spotlight();
@@ -506,7 +490,6 @@ const Motion = (() => {
     magnetic();
     parallax();
     daylight();
-    easterEgg();
     // Re-check the light every ten minutes; a session can outlive dusk.
     if (typeof setInterval !== 'undefined') setInterval(() => daylight(), 600000);
   }
@@ -514,7 +497,7 @@ const Motion = (() => {
   return {
     ripple, ringsAcknowledge, bloom, morph,
     loaderHtml, livingChart, setScreen, init,
-    haptic, chime, daylight, magnetic, parallax, easterEgg,
+    haptic, chime, daylight, magnetic, parallax,
     HAPTIC, MAGNET_MAX, FACTS, reduced
   };
 })();

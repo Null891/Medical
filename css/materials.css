@@ -74,8 +74,8 @@
 .m-stone {
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--color-surface) 100%, white 0%) 0%,
-      color-mix(in srgb, var(--color-surface) 97%, var(--color-canvas) 3%) 100%);
+      #FFFFFF 0%,
+      color-mix(in srgb, var(--color-surface) 88%, var(--color-canvas)) 100%);
   border: 1px solid var(--color-hairline);
   border-radius: 14px;
   box-shadow:
@@ -144,10 +144,10 @@
   pointer-events: none;
   opacity: .5;
   background:
-    radial-gradient(38% 42% at 20% 30%,
-      color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 70%),
-    radial-gradient(34% 38% at 78% 66%,
-      color-mix(in srgb, var(--color-status-ok) 13%, transparent), transparent 70%);
+    radial-gradient(42% 46% at 20% 30%,
+      color-mix(in srgb, var(--color-accent) 30%, transparent), transparent 72%),
+    radial-gradient(38% 42% at 78% 66%,
+      color-mix(in srgb, var(--color-status-ok) 24%, transparent), transparent 72%);
   animation: liquidDrift 40s ease-in-out infinite alternate;
 }
 @keyframes liquidDrift {
@@ -700,8 +700,14 @@
 
 /* The bodies counter-rotate inside their arm so their labels stay
    upright — a rotating "Na" is a legibility cost paid for nothing. */
-.orbit-arm  { transform-origin: 50% 50%; animation: orbitSpin linear infinite; }
-.orbit-spin { transform-origin: 50% 50%; animation: orbitCounter linear infinite; }
+/* transform-box is explicit, and it has to be. A percentage
+   transform-origin on an SVG <g> resolves against that group's own
+   bounding box unless told otherwise — and each arm's bounding box is
+   the small circle at its top, not the orbit. Left to the default, every
+   body would spin on its own axis and nothing would ever orbit anything.
+   view-box pins the origin to the centre of the drawing. */
+.orbit-arm  { transform-box: view-box; transform-origin: 50% 50%; animation: orbitSpin linear infinite; }
+.orbit-spin { transform-box: view-box; transform-origin: 50% 50%; animation: orbitCounter linear infinite; }
 .orbit-arm--k,  .orbit-arm--k  .orbit-spin { animation-duration: 54s; }
 .orbit-arm--p,  .orbit-arm--p  .orbit-spin { animation-duration: 68s; }
 .orbit-arm--na, .orbit-arm--na .orbit-spin { animation-duration: 82s; }
