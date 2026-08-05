@@ -92,6 +92,32 @@ const Clinical = (() => {
   const isLowPotassiumServing = (kHigh) =>
     kHigh !== null && kHigh !== undefined && kHigh <= AKF_LOW_K_MG;
 
+  /* ═══════════ who this is built for ═══════════
+     Mentor feedback, verbatim: "focus on a stage", "certain particular
+     use case", "different person different thing". All three are the
+     same note. An app that serves G3a through G5 equally serves nobody
+     in particular, and it shows in the copy — everything had to be
+     hedged for a range of people whose diets barely overlap.
+
+     G3b and G4 together are the coherent group: diagnosed, already
+     given dietary restrictions by a care team, not yet on dialysis.
+     That is the band where potassium and phosphorus genuinely bite,
+     where a renal dietitian is usually already involved, and where the
+     daily arithmetic this app exists to do is actually the problem.
+
+     Focus is a matter of who the EDUCATION is written for. It never
+     gates, never blocks, and never changes a number: an off-band user
+     gets one honest sentence and a fully working app. Narrowing the
+     audience is a copy decision; narrowing the tool would be a
+     different and much worse thing. */
+  const FOCUS_STAGES = ['G3b', 'G4'];
+  const FOCUS_EGFR = { low: 15, high: 44 };
+  const FOCUS_LABEL = 'CKD stages G3b and G4';
+
+  const inFocus = (stage) => FOCUS_STAGES.indexOf(String(stage)) !== -1;
+  const egfrInFocus = (v) =>
+    v !== null && v !== undefined && v >= FOCUS_EGFR.low && v <= FOCUS_EGFR.high;
+
   /* ═══════════ photo portions — a range, never a weight ═══════════
      Estimating milligrams from a photograph was refused for a long
      time, and the refusal was half right. The unsafe part is asking a
@@ -310,6 +336,7 @@ const Clinical = (() => {
     RING_AMBER_AT, BIG_ITEM_AT,
     leach, LEACH_RETAIN_LOW, LEACH_RETAIN_HIGH,
     PHOTO_BANDS, photoBand,
+    FOCUS_STAGES, FOCUS_EGFR, FOCUS_LABEL, inFocus, egfrInFocus,
     AKF_LOW_K_MG, isLowPotassiumServing,
     validateTarget, validateLab,
     potassiumMode, phosphorusMode,

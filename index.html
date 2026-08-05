@@ -70,49 +70,68 @@
 
     <!-- ───────── ONBOARDING ───────── -->
     <section class="screen" id="scr-onboarding" hidden>
-      <!-- ONE screen, not three.
-           A three-step wizard for two optional fields and one real
-           decision is three chances to abandon. The labs step is gone
-           entirely: labs never gated anything, so asking for a blood
-           result before someone has logged a single meal only ever cost
-           us people. It lives on the Labs tab, where it belongs. -->
-      <div class="onb">
-        <h1 class="h1">Set up RenalRoute</h1>
-        <p class="helper">Two questions, both optional except one choice about your targets. You can change any of it later.</p>
+      <!-- ONE screen, four questions, and every answer visibly changes
+           the app. The previous version asked name / stage / targets and
+           only the targets did anything — which made the other two a
+           survey, and a survey before someone has seen any value is the
+           cheapest place in a product to lose people.
 
+           Now: stage sets which education you get, the restriction
+           question changes what the dashboard emphasises, targets work
+           exactly as before, and "what's hardest" picks the opening
+           scene. Each step confirms what it just changed, out loud. -->
+      <div class="onb">
+        <p class="onb__focus" id="onbFocus"></p>
+        <h1 class="h1">Set up RenalRoute</h1>
+        <p class="helper">Four quick questions. Every one of them changes something you will see — nothing here is a form for its own sake.</p>
+
+        <!-- 1 · STAGE, first, because it decides who the copy is for. -->
+        <fieldset class="onb__step">
+          <legend class="h3">1 · Which stage are you?</legend>
+          <div class="chipset" role="radiogroup" aria-label="CKD stage" id="onbStageSet"></div>
+          <p class="note" id="onbStageEcho" role="status"></p>
+        </fieldset>
+
+        <!-- 2 · WHAT THE CARE TEAM ACTUALLY RESTRICTED.
+             This is the "different person different thing" fix. Rings
+             for nutrients nobody restricted are de-emphasised, never
+             removed — the numbers keep counting, they just stop
+             shouting. -->
+        <fieldset class="onb__step">
+          <legend class="h3">2 · What did your care team ask you to watch?</legend>
+          <p class="note">Pick any that apply. This changes which rings lead on your dashboard — nothing stops being counted either way.</p>
+          <div class="chipset" id="onbFocusNutrients"></div>
+          <p class="note" id="onbNutrientEcho" role="status"></p>
+        </fieldset>
+
+        <!-- 3 · TARGETS. Unchanged three-path provenance. -->
+        <fieldset class="onb__step">
+          <legend class="h3">3 · Your daily targets</legend>
+          <p class="note">KDOQI guidelines don't set one-size-fits-all numbers for potassium or phosphorus — targets are personal, set with your care team.</p>
+          <div id="onbTargetFields"></div>
+          <p class="note" id="onbTargetCaption" hidden></p>
+          <button type="button" class="btn btn--primary btn--block" id="onbSaveCareTeam" disabled>Save my care team's targets</button>
+          <button type="button" class="btn btn--secondary btn--block" id="onbUseEducation">I don't have targets — use general education ranges</button>
+          <button type="button" class="linkbtn linkbtn--block" id="onbSkipTargets">Skip — track without targets</button>
+          <button type="button" class="linkbtn" data-learn="protein">Why only these three nutrients?</button>
+        </fieldset>
+
+        <!-- 4 · WHAT'S HARDEST — picks the opening scene. -->
+        <fieldset class="onb__step">
+          <legend class="h3">4 · What's hardest right now?</legend>
+          <p class="note">Sets what the app opens on. You can switch any time from the top of the dashboard.</p>
+          <div class="chipset" role="radiogroup" aria-label="What is hardest" id="onbHardest"></div>
+          <p class="note" id="onbHardestEcho" role="status"></p>
+        </fieldset>
+
+        <!-- Name last: it is the only genuinely cosmetic field, so it
+             stops being the first thing anybody is asked for. -->
         <label class="field">
           <span class="field__label">What should we call you? (optional)</span>
           <input type="text" id="onbName" maxlength="40" autocomplete="given-name" placeholder="">
           <span class="field__note">A first name or nickname is plenty — this only personalizes your greeting.</span>
           <span class="field__err" id="onbNameErr" role="alert" hidden></span>
         </label>
-
-        <label class="field">
-          <span class="field__label">CKD stage (optional)</span>
-          <div class="select-wrap">
-            <select id="onbStage">
-              <option value="not_sure">Prefer not to say</option>
-              <option value="G3a">G3a</option><option value="G3b">G3b</option>
-              <option value="G4">G4</option><option value="G5">G5</option>
-            </select>
-            <svg class="select-wrap__chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none"
-                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 9l6 6 6-6"/>
-            </svg>
-          </div>
-          <span class="field__note">Used for education only — it never changes your targets.</span>
-        </label>
-
-        <hr class="onb__rule">
-
-        <h2 class="h2">Your daily targets</h2>
-        <p class="helper">KDOQI guidelines don't set one-size-fits-all numbers for potassium or phosphorus — targets are personal, set with your care team.</p>
-        <div id="onbTargetFields"></div>
-        <p class="note" id="onbTargetCaption" hidden></p>
-        <button type="button" class="btn btn--primary btn--block" id="onbSaveCareTeam" disabled>Save my care team's targets</button>
-        <button type="button" class="btn btn--secondary btn--block" id="onbUseEducation">I don't have targets — use general education ranges</button>
-        <button type="button" class="linkbtn linkbtn--block" id="onbSkipTargets">Skip — track without targets</button>
-        <button type="button" class="linkbtn" data-learn="protein">Why only these three nutrients?</button>
 
         <p class="note mt-2">Have recent lab results? You can add them any time from the Labs tab — RenalRoute works fully without them.</p>
       </div>

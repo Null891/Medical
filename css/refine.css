@@ -333,3 +333,66 @@ body { letter-spacing: var(--track-body); }
   .card { box-shadow: none !important; border: 1px solid #ddd !important; }
   .hdr__title--display { font-size: 24pt; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PERSONALISATION — what the care team actually restricted
+   ───────────────────────────────────────────────────────────────
+   A nutrient nobody restricted steps back. It is NOT removed and NOT
+   hidden: the ring still draws, the range still counts, the status
+   colour still fires if it goes over. It simply stops competing, so
+   the one or two things a person was actually told to watch can lead.
+
+   Opacity only, and never below 0.72 — a de-emphasised ring must stay
+   comfortably readable, because "you weren't told to watch this" is
+   not the same as "this doesn't matter", and a phosphorus number can
+   still be the thing that matters on a given day.
+   ═══════════════════════════════════════════════════════════════ */
+.ring--muted { opacity: .72; }
+.ring--muted .ring__left { font-size: var(--type-title); font-weight: 600; }
+@media (prefers-contrast: more), (forced-colors: active) { .ring--muted { opacity: 1; } }
+:root[data-contrast="high"] .ring--muted { opacity: 1; }
+
+/* ═══════════ ONBOARDING ═══════════ */
+.onb__focus {
+  font-size: var(--type-caption);
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: var(--space-2);
+}
+.onb__step {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-section);
+}
+.onb__step legend { padding: 0; margin-bottom: var(--space-2); }
+
+.chipset { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
+.chip-opt {
+  min-height: 44px;
+  padding: 10px var(--space-3);
+  border: 1.5px solid var(--color-hairline);
+  border-radius: var(--radius-capsule);
+  background: var(--color-surface);
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-out),
+              background var(--motion-fast) var(--ease-out);
+}
+.chip-opt:hover { border-color: var(--color-accent); }
+/* Selected pairs a fill, a border and a weight change — never colour
+   alone, the same rule every status indicator in this app follows. */
+.chip-opt.is-on {
+  background: var(--color-tint-accent);
+  border-color: var(--color-accent);
+  font-weight: 680;
+}
+@media (prefers-reduced-motion: reduce) { .chip-opt { transition: none; } }
+
+/* The echo under each question. It is the whole point of the rebuild,
+   so it gets a real live-region treatment rather than a grey footnote. */
+#onbStageEcho, #onbNutrientEcho, #onbHardestEcho {
+  min-height: 2.4em;
+  color: var(--color-text-primary);
+}

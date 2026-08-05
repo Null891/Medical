@@ -124,6 +124,20 @@ const Rings = (() => {
   }
 
   /* ── One ring column ── */
+  /* Which nutrients the care team actually restricted. Rings for the
+     rest are DE-EMPHASISED, never removed: the numbers keep counting in
+     full and the status colours still fire, they simply stop competing
+     for attention on a screen where three equal rings implied three
+     equal problems.
+
+     Empty means everything leads, which is the correct default for
+     somebody who has not been told or is not sure. */
+  function watched() {
+    const w = Store.settings().watched;
+    return (Array.isArray(w) && w.length) ? w : null;
+  }
+  const leads = (key) => { const w = watched(); return !w || w.indexOf(key) !== -1; };
+
   function ringCell(r) {
     /* Suppressed (low-potassium mode): no fill, no colour, no
        over-budget line. The ring is the loudest restriction signal in
@@ -139,7 +153,7 @@ const Rings = (() => {
     }
 
     const s = r.status;
-    return `<div class="ring">
+    return `<div class="ring${leads(r.key) ? '' : ' ring--muted'}">
       ${ringSvg(r)}
       <div class="ring__name">${r.name}</div>
       <div class="ring__sub">left today</div>

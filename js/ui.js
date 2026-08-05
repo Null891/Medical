@@ -149,8 +149,98 @@ const UI = (() => {
 
   /* One screen. Nothing is pre-filled — the target fields render empty
      and stay empty until the user makes an explicit choice. */
+  /* ═══════════ onboarding ═══════════
+     Four questions, and each one is answerable in a tap. The rule this
+     rebuild follows: no question may exist unless its answer visibly
+     changes the app, and the change is stated back immediately.
+
+     The old version asked for a name first and a stage second, and
+     neither did anything. Asking someone for information before you
+     have shown them anything, and then not using it, is how a setup
+     screen teaches people that the rest of the app is also busywork. */
+
+  const NUTRIENT_CHOICES = [
+    { key: 'k',  label: 'Potassium' },
+    { key: 'p',  label: 'Phosphorus' },
+    { key: 'na', label: 'Sodium' }
+  ];
+
+  const HARDEST = [
+    { key: 'restaurant', label: 'Eating out',   scene: 'restaurant' },
+    { key: 'home',       label: 'Cooking',      scene: 'home' },
+    { key: 'store',      label: 'Shopping',     scene: 'store' },
+    { key: 'label',      label: 'Reading labels', scene: 'store' }
+  ];
+
+  function chip(group, value, label, on) {
+    return `<button type="button" class="chip-opt${on ? ' is-on' : ''}"
+      role="radio" aria-checked="${on}" data-onb="${group}" data-val="${esc(value)}">${esc(label)}</button>`;
+  }
+
   function renderOnboarding() {
+    const p = Store.profile();
+
+    /* Who this is for, said before anything is asked. Mentor feedback
+       was that the app served everyone and therefore nobody. */
+    $('#onbFocus').textContent = COPY.focusLine;
+
+    const stages = ['G3b', 'G4', 'G3a', 'G5', 'not_sure'];
+    const stageLabel = (s) => s === 'not_sure' ? 'Not sure' : s;
+    $('#onbStageSet').innerHTML = stages
+      .map(s => chip('stage', s, stageLabel(s), p.ckd_stage === s)).join('');
+    echoStage(p.ckd_stage);
+
+    const watched = Store.settings().watched || [];
+    $('#onbFocusNutrients').innerHTML = NUTRIENT_CHOICES
+      .map(n => `<button type="button" class="chip-opt${watched.includes(n.key) ? ' is-on' : ''}"
+        aria-pressed="${watched.includes(n.key)}" data-onb="nutrient" data-val="${n.key}">${n.label}</button>`)
+      .join('');
+    echoNutrients(watched);
+
+    const hardest = Store.settings().hardest || '';
+    $('#onbHardest').innerHTML = HARDEST
+      .map(h => chip('hardest', h.key, h.label, hardest === h.key)).join('');
+    echoHardest(hardest);
+
+    /* The name field mirrors what is STORED, rather than whatever is
+       left in the DOM. Every other control on this screen is rebuilt
+       from state on each render; this one was not, so after "delete all
+       my data" the input still held the old name and the next setup
+       silently saved it back. Somebody who wiped their data to hand the
+       phone to a relative would have handed over the previous name. */
+    $('#onbName').value = p.display_name || '';
+    $('#onbNameErr').hidden = true;
+
     renderTargetFields('#onbTargetFields', {});
+  }
+
+  /* Every echo below exists so a tap has a visible consequence on the
+     same screen. Without them these are still four questions that
+     appear to do nothing until much later. */
+  function echoStage(stage) {
+    const el = $('#onbStageEcho');
+    if (!stage || stage === 'not_sure') {
+      el.textContent = COPY.onb.stageUnknown;
+      return;
+    }
+    el.textContent = Clinical.inFocus(stage)
+      ? COPY.onb.stageInFocus(stage)
+      : COPY.onb.stageOutOfFocus(stage);
+  }
+
+  function echoNutrients(list) {
+    const el = $('#onbNutrientEcho');
+    if (!list || !list.length) { el.textContent = COPY.onb.nutrientNone; return; }
+    const names = NUTRIENT_CHOICES.filter(n => list.includes(n.key)).map(n => n.label);
+    el.textContent = list.length === NUTRIENT_CHOICES.length
+      ? COPY.onb.nutrientAll
+      : COPY.onb.nutrientSome(names.join(' and '));
+  }
+
+  function echoHardest(key) {
+    const el = $('#onbHardestEcho');
+    const h = HARDEST.find(x => x.key === key);
+    el.textContent = h ? COPY.onb.hardestEcho(h.label.toLowerCase()) : COPY.onb.hardestNone;
   }
 
   /* Name and stage are captured wherever the user leaves them, because
@@ -165,7 +255,14 @@ const UI = (() => {
       return false;
     }
     $('#onbNameErr').hidden = true;
-    Store.updateProfile({ display_name: name, ckd_stage: $('#onbStage').value });
+    /* Stage comes from the chip set now. Reading it here — at the moment
+       a target button is pressed — is what keeps every question on this
+       screen genuinely optional rather than a hidden prerequisite. */
+    const chosen = $('#onbStageSet .chip-opt.is-on');
+    Store.updateProfile({
+      display_name: name,
+      ckd_stage: chosen ? chosen.dataset.val : 'not_sure'
+    });
     return true;
   }
 
@@ -1771,12 +1868,45 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
+      if (el.dataset.onb) {
+        const group = el.dataset.onb, val = el.dataset.val;
+        if (group === 'stage') {
+          $$('#onbStageSet .chip-opt').forEach(b => {
+            const on = b === el;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-checked', String(on));
+          });
+          echoStage(val);
+        } else if (group === 'nutrient') {
+          // Multi-select: a care team can restrict any combination, and
+          // "all three" is a real and common answer.
+          const cur = Store.settings().watched || [];
+          const next = cur.includes(val) ? cur.filter(k => k !== val) : cur.concat(val);
+          Store.setSetting('watched', next);
+          el.classList.toggle('is-on', next.includes(val));
+          el.setAttribute('aria-pressed', String(next.includes(val)));
+          echoNutrients(next);
+        } else if (group === 'hardest') {
+          $$('#onbHardest .chip-opt').forEach(b => {
+            const on = b === el;
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-checked', String(on));
+          });
+          Store.setSetting('hardest', val);
+          const h = HARDEST.find(x => x.key === val);
+          // The answer picks the opening scene, so the first Home screen
+          // already leans toward whatever they just called hardest.
+          if (h) Scenes.set(h.scene);
+          echoHardest(val);
+        }
+        return;
+      }
       if (el.dataset.scene) {
         const s = Scenes.set(el.dataset.scene);
         renderHome();

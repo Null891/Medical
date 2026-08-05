@@ -1158,6 +1158,88 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     });
   }
 
+  console.log('\n═══ 30. ONBOARDING: EVERY ANSWER CHANGES SOMETHING ═══');
+  {
+    const S = window.RenalRoute.Store;
+    const C = window.RenalRoute.Clinical;
+
+    S.reset(); S.load(); S.acceptConsent();
+    window.RenalRoute.UI.go('onboarding');
+    window.RenalRoute.UI.renderOnboarding();
+
+    // Who it is for, stated before anything is asked for.
+    check('focus band named before the first question',
+      $('#onbFocus').textContent.includes('G3b'), true);
+    check('  ...and names G4 too', $('#onbFocus').textContent.includes('G4'), true);
+
+    /* THE RULE this rebuild is held to: no question exists unless its
+       answer visibly changes the app. Each of the four is checked for a
+       consequence, not just for being present. */
+
+    // 1 · Stage — changes the education framing, and says which way.
+    click('#onbStageSet [data-val="G4"]');
+    check('in-band stage confirms it is the target group',
+      /exactly who this is built for/i.test($('#onbStageEcho').textContent), true);
+    click('#onbStageSet [data-val="G3a"]');
+    check('out-of-band stage says so honestly',
+      /built around G3b and G4/i.test($('#onbStageEcho').textContent), true);
+    check('  ...and never blocks or gates',
+      $$('#onbStageSet .chip-opt[disabled]').length, 0);
+    check('  ...focus band is G3b and G4', C.FOCUS_STAGES.join(), 'G3b,G4');
+    check('  ...G4 is in focus', C.inFocus('G4'), true);
+    check('  ...G3a is not', C.inFocus('G3a'), false);
+    check('  ...and eGFR 38 falls in the band', C.egfrInFocus(38), true);
+
+    // 2 · Restricted nutrients — the "different person" fix. Must
+    //     de-emphasise, never hide, and never stop counting.
+    click('#onbFocusNutrients [data-val="k"]');
+    check('picking potassium is stored', (S.settings().watched || []).join(), 'k');
+    check('  ...and echoed by name',
+      /Potassium will lead/i.test($('#onbNutrientEcho').textContent), true);
+
+    S.useEducationRanges();
+    S.addMeal({
+      meal_text: 'ring emphasis test', logged_at: new Date().toISOString(),
+      meal_date: S.todayISO(), items: [], confidence: 'high',
+      total_potassium_low_mg: 100, total_potassium_high_mg: 120,
+      total_phosphorus_low_mg: 50, total_phosphorus_high_mg: 60,
+      total_sodium_low_mg: 80, total_sodium_high_mg: 90
+    });
+    window.RenalRoute.UI.go('home');
+    check('all three rings still render', $$('#ringCard .ring').length, 3);
+    check('  ...two of them step back', $$('#ringCard .ring--muted').length, 2);
+    check('  ...the watched one leads', $$('#ringCard .ring:not(.ring--muted)').length, 1);
+    /* The part that matters: de-emphasis is never a data change. A
+       phosphorus figure can still be the thing that matters on a given
+       day, so it keeps counting in full. */
+    const totalsBefore = JSON.stringify(S.dayTotals());
+    S.setSetting('watched', ['na']);
+    window.RenalRoute.UI.go('home');
+    check('changing what leads changes NO total', JSON.stringify(S.dayTotals()), totalsBefore);
+    check('  ...and every ring still carries its figure',
+      $$('#ringCard .ring__left').length, 3);
+
+    // Empty selection means everything leads — the right default for
+    // somebody who was never told or is not sure.
+    S.setSetting('watched', []);
+    window.RenalRoute.UI.go('home');
+    check('no selection means all three lead', $$('#ringCard .ring--muted').length, 0);
+
+    // 4 · What's hardest — picks the opening scene.
+    window.RenalRoute.UI.go('onboarding');
+    window.RenalRoute.UI.renderOnboarding();
+    click('#onbHardest [data-val="store"]');
+    check('hardest choice sets the scene', window.RenalRoute.Scenes.current().key, 'store');
+    check('  ...and says what it did',
+      /open/i.test($('#onbHardestEcho').textContent), true);
+
+    // Name is last and still entirely optional.
+    click('#onbUseEducation');
+    await wait(20);
+    check('setup completes with no name typed', S.profile().display_name, '');
+    check('  ...and lands on a working dashboard', vis('#scr-home'), true);
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

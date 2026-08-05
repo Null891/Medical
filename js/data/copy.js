@@ -28,6 +28,39 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── Who this is for ──
+     Said before anything is asked for. An app that hedges for stages
+     G3a through G5 equally reads as written for nobody, which was the
+     mentor note; naming the band is what lets every other sentence in
+     the app stop hedging. It never gates and never changes a number. */
+  focusLine:
+    'Built for CKD stages G3b and G4 — diagnosed, given diet restrictions, not on dialysis.',
+  focusOffBand:
+    'RenalRoute is built around stages G3b and G4. Everything still works for you — the education is just written with that group in mind.',
+
+  /* ── Onboarding echoes ──
+     Every one of these exists so that a tap has a visible consequence
+     on the same screen. Four questions that appear to do nothing until
+     much later is a survey, and a survey before anyone has seen value
+     is the cheapest place in a product to lose people. */
+  onb: {
+    stageUnknown:
+      "That's fine — you can add it later, or never. It only decides which education you see.",
+    stageInFocus: (s) =>
+      `${s} is exactly who this is built for. The guidance you'll see is written for your stage.`,
+    stageOutOfFocus: (s) =>
+      `Noted — ${s}. RenalRoute is built around G3b and G4, so some education will read as written for them. Everything still works, and no number changes.`,
+    nutrientNone:
+      "Nothing picked, so all three rings lead equally. That's the right setting if you're not sure.",
+    nutrientAll:
+      'All three lead on your dashboard — the usual setup when a care team is watching everything.',
+    nutrientSome: (names) =>
+      `${names} will lead on your dashboard. The others keep counting in full — they just stop competing for your attention.`,
+    hardestNone: 'Pick one and the app will open ready for it.',
+    hardestEcho: (label) =>
+      `The app will open set up for ${label}. You can switch that any time from the top of the dashboard.`
+  },
+
   /* ── Targets & provenance (G.1) ── */
   targetsKPNote:
     'These are common starting points, not prescriptions — set yours with your care team. ' +
