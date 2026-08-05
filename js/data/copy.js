@@ -75,6 +75,16 @@ const COPY_EN = {
   /* The collapsed scene picker. "Change" rather than "Edit" or a bare
      chevron: it names the consequence, and it is the word somebody
      scanning for a way out of the wrong scene is actually looking for. */
+  /* The persistent notice about the nutrient table. It describes the
+     DATA, never the deployment: an independent scanner read the earlier
+     "Reference build." opening as staging left running in production,
+     which is a fair reading of that phrase and not a reason to drop the
+     honest half. Say what is actually uncertain — the numbers — and say
+     it without any word that names a build environment. */
+  dataNotice:
+    'Nutrient values here are estimates from published tables, not clinically verified. ' +
+    'Educational use only — see Settings for exactly what this build does and does not know.',
+
   scenes: {
     change: 'Change',
     close: 'Done'

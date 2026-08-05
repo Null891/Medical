@@ -10,4 +10,4 @@ User-agent: *
 Allow: /$
 Disallow: /api/
 
-Sitemap: https://chronic-california.vercel.app/sitemap.xml
+Sitemap: https://chroniccal.vercel.app/sitemap.xml

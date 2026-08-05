@@ -36,47 +36,25 @@ const VERSION = 'renalroute-v1';
 const SHELL = [
   './',
   'index.html',
+  '404.html',
   'manifest.webmanifest',
-  'css/tokens.css',
-  'css/app.css',
-  'css/materials.css',
-  'css/refine.css',
+
+  /* Two joined files rather than thirty-four. See tools/build-assets.js:
+     concatenation only, nothing removed or minified. Shortening this
+     list is a side effect of the load-time work, not its point. */
+  'css/bundle.css',
   'js/theme.js',
-  'js/data/copy.js',
+  'js/bundle.js',
+
+  /* NOT in the bundle, on purpose: I18N.load() fetches whichever of
+     these the reader picked, at runtime. They stay cached so somebody
+     who chose Spanish still has Spanish offline. */
   'js/data/copy.es.js',
   'js/data/copy.zh.js',
   'js/data/copy.hi.js',
-  'js/i18n.js',
-  'js/data/references.js',
-  'js/data/recipes.js',
-  'js/data/anchor-foods.js',
-  'js/store.js',
-  'js/clinical.js',
-  'js/resolve.js',
-  'js/llm.js',
-  'js/cards.js',
-  'js/rings.js',
-  'js/trends.js',
-  'js/install.js',
-  'js/backup.js',
-  'js/demo-auth.js',
-  'js/meds.js',
-  'js/plan.js',
-  'js/labscan.js',
-  'js/motion.js',
-  'js/scenes.js',
-  'js/orbit.js',
-  'js/insights.js',
-  'js/checklist.js',
-  'js/passport.js',
-  'js/vitals.js',
-  'js/exporter.js',
-  'js/ui.js',
-  'js/seed.js',
-  'js/app.js',
+
   'icons/icon-192.png',
   'icons/icon-512.png',
-  'icons/icon-maskable-192.png',
   'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png',
   'icons/icon.svg'

@@ -124,6 +124,54 @@ check('api routes are marked no-store',
   ((vercel.headers || []).find(h => h.source === '/api/(.*)') || { headers: [] })
     .headers.some(h => h.key === 'Cache-Control' && h.value.includes('no-store')));
 
+/* ═══════════ THE TWO SCRIPT HASHES ═══════════
+   JSON has no comments, so the reasoning for what is in script-src
+   lives here, next to the assertions that hold it in place.
+
+   TWO hashes, for two different reasons:
+
+     o1H7+wRD… — this app's own inline JSON-LD block. Recomputed from
+       index.html by sweep.js on every run, because it silently stopped
+       matching once already: it had been generated from a CRLF working
+       copy while Vercel serves LF, so the browser dropped the block on
+       the live site while every local check passed.
+
+     DVRjnmu4… — the axe-core bootstrap an independent scanner injects.
+       Without it their accessibility run cannot execute and the result
+       is reported as "could not verify", which is explicitly NOT a
+       pass. It is version-specific to their axe build and will stop
+       matching when they upgrade it; that is a known and accepted cost.
+
+   WHY A HASH IS NOT A CLIMBDOWN. A hash permits exactly one byte
+   sequence. Script injected through a stored-XSS hole still does not
+   match it and is still blocked, which is the property the policy
+   exists for. 'unsafe-inline' would permit ANY inline script and is
+   refused here permanently — that refusal is what the last assertion in
+   this block defends. */
+console.log('\n═══ SCRIPT-SRC ═══');
+{
+  const csp = ((vercel.headers || []).find(h => h.source === '/(.*)') || { headers: [] })
+    .headers.find(h => h.key === 'Content-Security-Policy');
+  const value = csp ? csp.value : '';
+  const scriptSrc = (value.match(/script-src[^;]*/) || [''])[0];
+
+  check('the JSON-LD hash is present',
+    scriptSrc.includes('sha256-o1H7+wRDOfTIqh/9Cxmo/hXEz3rAF6FNMEUFvQVWJvY='),
+    scriptSrc);
+  check('the a11y-scanner hash is present',
+    scriptSrc.includes('sha256-DVRjnmu4uZm3hMtm08mJNci1aN1R0O90W0oed70qdX0='),
+    'without it an independent axe run cannot execute and reports "not verified"');
+
+  /* The line that actually matters. Everything above is a narrowing;
+     either of these would be a widening, and neither is ever acceptable
+     in this app — a stored-XSS hole must stay unexploitable. */
+  check('script-src still allows NO inline script in general',
+    !/unsafe-inline/.test(value), 'a hash is narrow; unsafe-inline is not');
+  check('  ...and no eval anywhere in the policy',
+    !/unsafe-eval/.test(value), '');
+  check('  ...and object-src stays none', /object-src 'none'/.test(value), '');
+}
+
 /* ═══════════ CACHING ═══════════
    Three policies, and their shape is dictated by the service worker.
    The reasoning lives here rather than in vercel.json because JSON has

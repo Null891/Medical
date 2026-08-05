@@ -121,6 +121,154 @@ console.log('\n═══ 0. THE APP CAN ACTUALLY BE INSTALLED ═══');
   check('  ...but never the API', !shellBlock.includes('/api/'), true);
 }
 
+console.log('\n═══ 0. THE BUNDLES MATCH THEIR SOURCES ═══');
+
+/* This is the assertion that makes joining the assets safe at all.
+   index.html now loads css/bundle.css and js/bundle.js instead of
+   thirty-four separate files, so the sources in css/ and js/ are edited
+   but no longer SHIPPED. Without this check, editing a source and
+   forgetting to regenerate would mean every other suite tests one thing
+   while visitors get another — the exact drift that has already cost
+   this project three separate incidents.
+
+   The comparison rebuilds in memory using the generator's own join
+   function, rather than reimplementing it here. A test that
+   reimplements the logic it is checking only proves the two copies
+   agree with each other. */
+{
+  const builder = require(path.join(ROOT, 'tools/build-assets.js'));
+  const src = builder.sources();
+
+  check('the generator has a source list',
+    src.css.length > 0 && src.js.length > 0,
+    `css ${src.css.length}, js ${src.js.length}`);
+
+  /* The completeness half. The ORDER in build-assets.js is hand-written
+     because order is load-bearing and there is nowhere left to derive it
+     from — index.html now names the bundle, not the sources. So the risk
+     is not a wrong order (which breaks loudly) but a NEW FILE nobody
+     added to the list, which would simply never ship. This walks the
+     directories and catches exactly that. */
+  const missed = builder.unlisted();
+  check('  ...covering every css/ and js/ file on disk',
+    missed.length === 0,
+    'not bundled and not deliberately excluded: ' + missed.join(', '));
+
+  const expectCss = builder.joinFiles(src.css, 'CSS');
+  const expectJs = builder.joinFiles(src.js, 'JS');
+  const actualCss = read(builder.CSS_BUNDLE);
+  const actualJs = read(builder.JS_BUNDLE);
+
+  check('css/bundle.css is exactly its sources joined',
+    actualCss === expectCss,
+    'STALE — run: node tools/build-assets.js');
+  check('js/bundle.js is exactly its sources joined',
+    actualJs === expectJs,
+    'STALE — run: node tools/build-assets.js');
+
+  /* Concatenation, not transformation. If these byte counts ever drift
+     apart, something is minifying or rewriting, and the claim that
+     behaviour is unchanged stops being true. */
+  const rawCss = src.css.reduce((n, p) => n + Buffer.byteLength(read(p)), 0);
+  const rawJs = src.js.reduce((n, p) => n + Buffer.byteLength(read(p)), 0);
+  check('  ...and nothing was minified out of the CSS',
+    Buffer.byteLength(actualCss) >= rawCss, `${Buffer.byteLength(actualCss)} < ${rawCss}`);
+  check('  ...nor out of the JS',
+    Buffer.byteLength(actualJs) >= rawJs, `${Buffer.byteLength(actualJs)} < ${rawJs}`);
+
+  // theme.js must stay out: it is blocking in <head> by design.
+  check('  ...and js/theme.js is not swallowed into the bundle',
+    src.js.indexOf('js/theme.js') === -1 && /<script src="js\/theme\.js"><\/script>/.test(html),
+    'it must stay a separate blocking script or the dark-mode flash returns');
+
+  // The lazily-fetched language tables must stay separate files.
+  check('  ...and the language tables stay separate',
+    src.js.every(p => !/copy\.(es|zh|hi)\.js/.test(p)),
+    'I18N.load() fetches these at runtime — bundling them undoes that');
+
+  /* The whole point, as a number. Counts SUBRESOURCES the document
+     blocks on — one stylesheet plus theme.js plus the bundle — not the
+     document itself. Was 34 (4 CSS + 30 JS). */
+  const before = src.css.length + src.js.length + 1;   // +1 for theme.js
+  const now = [...html.matchAll(/<link rel="stylesheet"|<script src=/g)].length;
+  check(`  ...leaving 3 blocking subresources, down from ${before}`,
+    now === 3, `index.html references ${now}: expected one stylesheet and two scripts`);
+}
+
+console.log('\n═══ 0-404. A MISTYPED URL IS NOT A DEAD END ═══');
+
+/* An independent scan navigated to a nonexistent route and got the
+   host's raw NOT_FOUND: no branding, no explanation, and no way back.
+   Vercel serves 404.html automatically on a static deployment. */
+{
+  const nf = fs.existsSync(path.join(ROOT, '404.html')) ? read('404.html') : '';
+  check('a 404 page exists', nf.length > 0, 'visitors get the raw host error page');
+
+  // The reason the page exists at all.
+  check('  ...with a route back into the app', /href="\/"/.test(nf),
+    'a branded dead end is still a dead end');
+
+  /* It must not trip the very policy the rest of the app is careful
+     about. A 404 page that violates CSP is a worse failure than the
+     one it replaces. */
+  check('  ...and no inline style attribute', !/\sstyle="/.test(nf), '');
+  check('  ...and no inline script', !/<script(?![^>]*\ssrc=)/.test(nf), '');
+
+  // Same-origin only: no CDN, no font host, nothing external.
+  const external = [...nf.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map(m => m[1]);
+  check('  ...and loads nothing from another origin', external.length === 0,
+    external.join(', '));
+
+  // It reuses the app's stylesheet rather than growing its own.
+  check('  ...reusing the app stylesheet', /href="css\/bundle\.css"/.test(nf), '');
+  check('  ...and applying the theme before paint',
+    /src="js\/theme\.js"/.test(nf), 'otherwise dark-mode users get a white flash');
+
+  // Tone: it says what happened without blaming the reader or alarming them.
+  check('  ...saying nothing logged is affected',
+    /untouched|not affected|nothing you have logged/i.test(nf), '');
+  check('  ...and never calling the request invalid or forbidden',
+    !/\b(invalid|forbidden|illegal|error 404)\b/i.test(nf), '');
+}
+
+console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT ═══');
+
+/* An independent pro scan raised a HIGH on the old wording — "Reference
+   build. Anchor nutrient values are unverified test data." — reading it
+   as a staging deployment left running in production. That is a fair
+   reading of "reference build", and the fix was to drop the phrases that
+   name an ENVIRONMENT while keeping the claim about the NUMBERS, which
+   is true and which the coverage panel backs up.
+
+   Both halves are checked, because either one alone is a way to get this
+   wrong: reintroducing "staging" would bring the finding back, and
+   deleting the honesty would trade a true statement for a score. */
+{
+  const notice = (read('js/data/copy.js').match(/dataNotice:\s*([\s\S]*?)',\n\n/) || [''])[0];
+  check('the data notice exists in COPY', notice.length > 0,
+    'it must live in COPY so it translates, not hard-coded in markup');
+
+  const ENV_WORDS = /reference build|test data|staging|draft|dev build|prototype|not for production/i;
+  check('  ...and names no build environment', !ENV_WORDS.test(notice),
+    'a scanner reads these as staging-in-production; describe the data instead');
+
+  // The honest half must survive. Deleting it would be the worse failure.
+  check('  ...but still says the values are unverified',
+    /not clinically verified|unverified/i.test(notice),
+    'the anchor table genuinely is unverified — saying so is not optional');
+  check('  ...and still says educational use only',
+    /educational/i.test(notice), '');
+
+  // And it must actually reach the screen.
+  check('  ...and the markup has a slot for it',
+    /id="devBannerText"/.test(html), '');
+  check('  ...that app.js fills from COPY',
+    /devBannerText'\)\.textContent = COPY\.dataNotice/.test(read('js/app.js')), '');
+  check('  ...and no build-environment wording is left in the markup',
+    !ENV_WORDS.test(html.slice(html.indexOf('id="devBanner"'), html.indexOf('id="devBanner"') + 400)),
+    'the banner region still carries an environment word');
+}
+
 console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ═══');
 
 /* The free deep scan scored 95/100 and flagged seven things. Each is a

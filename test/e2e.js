@@ -51,8 +51,18 @@ const scripts = Array.from(indexHtml.matchAll(/<script src="([^"]+)"(?: defer)?>
   .map(m => m[1]);
 const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g))
   .map(m => m[1]);
-if (scripts.length < 5 || !cssFiles.length) {
-  throw new Error('Could not parse the asset list out of index.html — the harness would be testing nothing.');
+/* The guard is on SUBSTANCE, not on file count. index.html used to list
+   thirty-odd scripts; it now lists js/theme.js and the joined
+   js/bundle.js, so a count threshold would fire on a correct build. What
+   still has to be true is that the harness is loading a real app —
+   several hundred KB of it — rather than an empty or stale bundle. */
+const loadedBytes = scripts.concat(cssFiles)
+  .reduce((n, f) => n + fs.statSync(path.join(APP, f)).size, 0);
+if (!scripts.length || !cssFiles.length || loadedBytes < 200 * 1024) {
+  throw new Error(
+    `Refusing to run: parsed ${scripts.length} scripts and ${cssFiles.length} stylesheets ` +
+    `totalling ${(loadedBytes / 1024).toFixed(0)} KB out of index.html. That is not the app — ` +
+    `if the bundles are stale or empty, run: node tools/build-assets.js`);
 }
 
 // Provide a fetch stub so LLM.probe() doesn't explode.

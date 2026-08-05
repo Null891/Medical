@@ -5,7 +5,7 @@
      A sitemap that overstates itself is worse than a short one. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://chronic-california.vercel.app/</loc>
+    <loc>https://chroniccal.vercel.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

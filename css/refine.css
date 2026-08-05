@@ -1207,3 +1207,18 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   margin: var(--space-2) 0 var(--space-1);
   color: var(--color-text-primary);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   404
+   ───────────────────────────────────────────────────────────────
+   Reuses the boot screen's layout and mark rather than defining a
+   second set of rules to keep in sync. Two differences only: the mark
+   does not spin (nothing is loading — this page is the final state),
+   and there is a route home, which is the entire point of the page.
+   ═══════════════════════════════════════════════════════════════ */
+.boot__mark--still { animation: none !important; }
+
+.notfound__actions { margin: var(--space-4) 0 0; }
+.notfound__actions .btn { display: inline-flex; text-decoration: none; }
+
+.notfound__note { margin-top: var(--space-4); }

@@ -27,6 +27,10 @@
     });
   }
 
+  /* Filled from COPY rather than sitting in the markup, so it
+     translates with everything else. Written after I18N.apply() above,
+     which binds the global COPY. */
+  document.getElementById('devBannerText').textContent = COPY.dataNotice;
   if (Store.settings().devBannerHidden) {
     document.getElementById('devBanner').hidden = true;
   }

@@ -20,7 +20,14 @@ window.fetch=()=>Promise.reject(new Error('Failed to fetch'));
 const indexHtml = fs.readFileSync(path.join(APP,'index.html'),'utf8');
 const cssFiles = Array.from(indexHtml.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m=>m[1]);
 const scripts  = Array.from(indexHtml.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)).map(m=>m[1]);
-if(scripts.length<5||!cssFiles.length) throw new Error('Could not parse the asset list out of index.html.');
+/* Guard on substance, not file count: index.html lists two scripts now
+   (theme + the joined bundle), so a count threshold would fire on a
+   correct build. What must hold is that this is really the app. */
+const probeBytes = scripts.concat(cssFiles)
+  .reduce((n,f)=>n+fs.statSync(path.join(APP,f)).size,0);
+if(!scripts.length||!cssFiles.length||probeBytes<200*1024)
+  throw new Error(`Refusing to run: ${(probeBytes/1024).toFixed(0)} KB parsed out of index.html — `+
+    `if the bundles are stale, run: node tools/build-assets.js`);
 const style=doc.createElement('style');
 style.textContent=cssFiles.map(f=>fs.readFileSync(path.join(APP,f),'utf8')).join('\n');
 doc.head.appendChild(style);

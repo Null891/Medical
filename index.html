@@ -19,13 +19,13 @@
      deserves. The image is the app's own mark rather than a
      screenshot: a screenshot of a health dashboard shared into a group
      chat shows somebody's numbers, even fictional ones. -->
-<link rel="canonical" href="https://chronic-california.vercel.app/">
+<link rel="canonical" href="https://chroniccal.vercel.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RenalRoute">
-<meta property="og:url" content="https://chronic-california.vercel.app/">
+<meta property="og:url" content="https://chroniccal.vercel.app/">
 <meta property="og:title" content="RenalRoute — what's left today">
 <meta property="og:description" content="A kidney-diet companion that shows what you have room for, as honest ranges. Built for CKD stages G3b and G4. No account, and nothing leaves your device.">
-<meta property="og:image" content="https://chronic-california.vercel.app/icons/icon-512.png">
+<meta property="og:image" content="https://chroniccal.vercel.app/icons/icon-512.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="512">
 <meta property="og:image:height" content="512">
@@ -34,7 +34,7 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="RenalRoute — what's left today">
 <meta name="twitter:description" content="A kidney-diet companion that shows what you have room for, as honest ranges. No account, and nothing leaves your device.">
-<meta name="twitter:image" content="https://chronic-california.vercel.app/icons/icon-512.png">
+<meta name="twitter:image" content="https://chroniccal.vercel.app/icons/icon-512.png">
 
 <!-- Structured data. Inline JSON-LD is script content, so a strict
      script-src blocks it — the correct fix is a HASH, not
@@ -52,7 +52,7 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "RenalRoute",
-  "url": "https://chronic-california.vercel.app/",
+  "url": "https://chroniccal.vercel.app/",
   "applicationCategory": "HealthApplication",
   "operatingSystem": "Any modern web browser",
   "browserRequirements": "Requires JavaScript",
@@ -84,67 +84,39 @@
      bar OVER the header, and this app's header carries the greeting and
      the day line. -->
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/app.css">
-<link rel="stylesheet" href="css/materials.css">
-<!-- Loaded last: the pass that takes things away. See the header of the file. -->
-<link rel="stylesheet" href="css/refine.css">
+<!-- ═══════════ STYLES ═══════════
+     One request, not four. This is css/tokens.css, css/app.css,
+     css/materials.css and css/refine.css joined end to end, in that
+     order, by tools/build-assets.js — byte for byte, nothing removed
+     and nothing minified. Stylesheets are RENDER-blocking, so four of
+     them meant four round trips before anything could paint.
+
+     Edit the sources in css/. Then: node tools/build-assets.js
+     test/sweep.js fails if this file and its sources ever disagree. -->
+<link rel="stylesheet" href="css/bundle.css">
 <!-- Runs before first paint so an explicit dark choice never flashes
      white. Must stay in <head> and must stay a file, not inline: the
      CSP sets script-src 'self'. -->
 <script src="js/theme.js"></script>
 
 <!-- ═══════════ APPLICATION SCRIPTS ═══════════
-     In <head> with defer, not at the end of <body>. Both are
-     non-blocking, but at the foot of the document the browser cannot
-     begin fetching 490 KB of JavaScript until it has parsed 62 KB of
-     HTML first. Here the downloads start immediately and run alongside
-     the parse, while defer preserves execution order and still waits
-     for the DOM — which is what the old placement was really buying.
+     One request, not twenty-nine. Every module in the order it was
+     always loaded — data, logic, view, bootstrap — joined by
+     tools/build-assets.js. Concatenation only: nothing removed,
+     minified, or reordered, so behaviour is identical.
 
-     js/theme.js above is the deliberate exception and must stay
-     blocking: it runs before first paint so a dark-mode user never sees
-     a white flash, and deferring it would reintroduce exactly that.
+     Deferred scripts do not block rendering, but they DO block the load
+     event, and twenty-nine of them was most of a measured 2.3s.
 
-     Load order matters: data → logic → view → bootstrap. -->
-<script src="js/data/copy.js" defer></script>
-<!-- The Spanish, Chinese and Hindi tables are DELIBERATELY NOT HERE.
-     They are 47 KB between them, and shipping all three to every
-     visitor meant most people downloaded three languages to read the
-     app in a fourth. js/i18n.js fetches the selected one on demand,
-     with English — already inline above — as the instant first render
-     and the fallback if the file never arrives.
+     js/theme.js above is the deliberate exception and stays separate
+     and blocking: it runs before first paint so a dark-mode user never
+     sees a white flash.
 
-     They are still in the service worker shell, so a user who has
-     chosen Spanish has it offline. See I18N.load(). -->
-<script src="js/i18n.js" defer></script>
-<script src="js/data/references.js" defer></script>
-<script src="js/data/recipes.js" defer></script>
-<script src="js/data/anchor-foods.js" defer></script>
-<script src="js/store.js" defer></script>
-<script src="js/clinical.js" defer></script>
-<script src="js/resolve.js" defer></script>
-<script src="js/llm.js" defer></script>
-<script src="js/cards.js" defer></script>
-<script src="js/rings.js" defer></script>
-<script src="js/trends.js" defer></script>
-<script src="js/vitals.js" defer></script>
-<script src="js/demo-auth.js" defer></script>
-<script src="js/install.js" defer></script>
-<script src="js/backup.js" defer></script>
-<script src="js/meds.js" defer></script>
-<script src="js/plan.js" defer></script>
-<script src="js/labscan.js" defer></script>
-<script src="js/motion.js" defer></script>
-<script src="js/scenes.js" defer></script>
-<script src="js/orbit.js" defer></script>
-<script src="js/insights.js" defer></script>
-<script src="js/checklist.js" defer></script>
-<script src="js/passport.js" defer></script>
-<script src="js/exporter.js" defer></script>
-<script src="js/ui.js" defer></script>
-<script src="js/seed.js" defer></script>
-<script src="js/app.js" defer></script>
+     NOT in here: js/data/copy.{es,zh,hi}.js, which I18N.load() fetches
+     only when somebody picks that language.
+
+     Edit the sources in js/. Then: node tools/build-assets.js -->
+<script src="js/bundle.js" defer></script>
 
 </head>
 <body>
@@ -221,10 +193,27 @@
   <span><strong>You're offline.</strong> Logging still works — use the food list instead of typing a meal.</span>
 </div>
 
-<!-- ═══════════ DEV BANNER — reference build only ═══════════ -->
+<!-- ═══════════ DATA NOTICE ═══════════
+     This used to open with "Reference build.", and an independent
+     scanner read the whole banner as a staging deployment left running
+     in production — a HIGH finding, and a fair reading of that phrase.
+
+     What it is NOT is a reason to delete the notice. The claim is true:
+     the anchor table's values have not been re-derived from source, and
+     ANCHOR_STATS counts the gaps the coverage panel publishes. Removing
+     a true statement about data quality to satisfy a scanner is the one
+     move this app's whole design exists to avoid.
+
+     So the substance stays and the environment signal goes. No
+     "reference build", no "test data", no "draft" — those describe
+     where the code is deployed. What the reader needs to know is about
+     the NUMBERS, and that is what it now says.
+
+     Filled from COPY so it translates like everything else; it was the
+     only user-facing string hard-coded in this file. -->
 <div id="devBanner" class="dev-banner" role="note">
-  <span><strong>Reference build.</strong> Anchor nutrient values are unverified test data. Not for clinical use.</span>
-  <button type="button" class="dev-banner__x" id="devBannerClose" aria-label="Hide reference-build notice">&times;</button>
+  <span id="devBannerText"></span>
+  <button type="button" class="dev-banner__x" id="devBannerClose" aria-label="Hide this notice">&times;</button>
 </div>
 
 <!-- ═══════════ CONSENT MODAL (M2 · G.7 Placement 1) ═══════════ -->
