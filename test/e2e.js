@@ -118,7 +118,28 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('consent modal dismissed', vis('#consentModal'), false);
   check('app shell now visible', vis('#app'), true);
   check('consent timestamp stored', !!window.RenalRoute.Store.profile().consent_accepted_at, true);
-  check('landed on onboarding', vis('#scr-onboarding'), true);
+
+  /* The refusals beat sits between consent and setup. Consent is a
+     legal necessity nobody reads; this is the first thing anybody
+     actually reads, so it is where the app says what it is — in three
+     claims a reader can go and check, not three adjectives. */
+  check('the three refusals are shown before setup', vis('#refusalsModal'), true);
+  check('  ...all three are present', $$('#refusalsBody .refusal').length, 3);
+  const refusalText = $('#refusalsBody').textContent;
+  check('  ...it refuses to invent a number', /invent a number/i.test(refusalText), true);
+  check('  ...it refuses to give a score', /health score/i.test(refusalText), true);
+  check('  ...it refuses to interpret labs', /what your labs mean/i.test(refusalText), true);
+  /* Every claim must be checkable, so none of them may be an
+     unfalsifiable adjective. This is the difference between a trust
+     screen and a marketing screen. */
+  check('  ...and makes no unfalsifiable claim',
+    /take .{0,20}seriously|world.?class|state.of.the.art|trusted by/i.test(refusalText), false);
+
+  click('#refusalsGo');
+  await wait(20);
+  check('dismissing lands on onboarding', vis('#scr-onboarding'), true);
+  check('  ...and it never shows twice',
+    !!window.RenalRoute.Store.settings().refusalsSeen, true);
 
   console.log('\n═══ 3. ONBOARDING — one screen, nothing pre-filled ═══');
   check('name and targets are on the SAME screen', vis('#onbName') && vis('#onbTargetFields'), true);
@@ -1238,6 +1259,71 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     await wait(20);
     check('setup completes with no name typed', S.profile().display_name, '');
     check('  ...and lands on a working dashboard', vis('#scr-home'), true);
+  }
+
+  console.log('\n═══ 31. REFERENCES: CHECKABLE, INCLUDING THE UNFLATTERING ═══');
+  {
+    window.RenalRoute.UI.go('references');
+    check('references screen opens', vis('#scr-references'), true);
+    check('every reference rendered', $$('#scr-references .ref').length, window.RenalRoute.references.length);
+    check('  ...and there are enough to be worth reading',
+      window.RenalRoute.references.length >= 12, true);
+
+    /* The load-bearing rule for this screen: a reference nothing
+       depends on is decoration. Every entry has to say where in the
+       app it is actually used. */
+    const missingUse = window.RenalRoute.references.filter(r => !r.used || r.used.length < 20);
+    check('every reference says where it is used', missingUse.length, 0);
+    check('  ...and "Used for" is rendered',
+      $('#scr-references').textContent.includes('Used for'), true);
+
+    /* The unflattering half is the point. A list of only what supports
+       you is a brochure; a list that names what you have not verified
+       is a reference. */
+    check('some references are marked unverified',
+      window.RenalRoute.referenceStats.unverified > 0, true);
+    check('  ...and the count is stated up front',
+      $('#refsUnverified').textContent.includes(String(window.RenalRoute.referenceStats.unverified)), true);
+    check('  ...with an unverified chip on screen',
+      $$('#scr-references .chip--muted').length, window.RenalRoute.referenceStats.unverified);
+    check('the anchor table itself is declared unverified',
+      window.RenalRoute.references.some(r => /FoodData Central/.test(r.title) && !r.verified), true);
+
+    /* The three positions the whole product rests on must be here, or
+       the screen is not doing its job. */
+    const titles = window.RenalRoute.references.map(r => r.title).join(' | ');
+    check('KDOQI is cited', /KDOQI/.test(titles), true);
+    check('KDIGO is cited', /KDIGO/.test(titles), true);
+    check('the AKF 150 mg threshold is cited', /American Kidney Fund/.test(titles), true);
+    check('the model-accuracy limits are cited',
+      window.RenalRoute.references.some(r => /accuracy|error/i.test(r.title)), true);
+
+    // Reachable from Settings in one tap, or nobody will ever see it.
+    window.RenalRoute.UI.go('settings');
+    check('reachable from Settings', !!$('#toRefsBtn'), true);
+  }
+
+  console.log('\n═══ 32. PROVENANCE IS VISIBLE WITHOUT A CLICK ═══');
+  {
+    const S = window.RenalRoute.Store;
+    S.meals().forEach(m => S.deleteMeal(m.id));
+    window.RenalRoute.UI.go('log');
+    click('#toPickerBtn');
+    await wait(20);
+    type('#pickerSearch', 'baked potato with skin');
+    await wait(20);
+    const first = $('#pickerResults [data-pick]');
+    if (first) {
+      click(first);
+      click('#pickerReview');
+      await wait(30);
+      check('source line is visible without opening anything',
+        $$('#reviewItems .srcline').length > 0, true);
+      check('  ...and names the source',
+        /AKF|USDA/.test($('#reviewItems .srcline').textContent), true);
+      check('  ...and is NOT inside a collapsed details',
+        !!$('#reviewItems .srcline').closest('details'), false);
+    }
   }
 
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');

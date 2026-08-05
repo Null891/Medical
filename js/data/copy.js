@@ -28,6 +28,55 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── The three refusals ──
+     Shown once, immediately after consent, before the app is used.
+
+     This is the answer to "what makes them trust us", and the shape of
+     the answer matters more than its content: every line is something
+     the reader can CHECK against the app within a minute of using it.
+     "We take your privacy seriously" is unfalsifiable and therefore
+     worthless. "We will not put a number on a meal we could not
+     identify" is testable — type "leftover casserole" and watch.
+
+     Each refusal also pre-frames a moment that would otherwise read as
+     the app failing. Someone who has been told the app refuses to guess
+     sees a "Not counted" chip as design; someone who has not sees a
+     bug. Same pixels, opposite conclusion. */
+  refusals: {
+    title: "Three things RenalRoute won't do",
+    lede: 'Most nutrition apps are confident about everything. This one is deliberately not, and here is exactly where.',
+    items: [
+      {
+        h: "It won't invent a number",
+        p: 'Type in something it cannot identify — leftover casserole, a dish with no recipe — and it asks one question. If you cannot answer, it logs the meal and marks it "not counted" rather than guessing. Your totals stay honest about what they do not include.'
+      },
+      {
+        h: "It won't give you a health score",
+        p: 'No grade, no streak, no number out of ten. Every figure here is an estimate that can be wrong by a wide margin, and grading a person\'s day on estimates that wide would be inventing a certainty nobody has.'
+      },
+      {
+        h: "It won't tell you what your labs mean",
+        p: 'Enter a potassium result and the app changes its tone, not its verdict. Above 6.0 it stops coaching entirely and tells you to contact your care team. Interpreting a blood test is their job, and an app that pretends otherwise is the problem, not the product.'
+      }
+    ],
+    footer: 'Everything above is checkable. Try the first one now if you like.',
+    button: 'Got it — start'
+  },
+
+  /* ── References ── */
+  references: {
+    title: 'Where our numbers come from',
+    lede:
+      'Every position this app takes, and the source behind it. Nutrition apps rarely publish this, ' +
+      'which is exactly why it is worth publishing — a number you cannot trace is a number you cannot check.',
+    unverifiedNote: (n) =>
+      `${n} of these are marked unverified: they are transcribed from a source pack and have not yet been ` +
+      `re-derived by this team. Saying so is the point — an app that lists only what flatters it is not a reference, it is a brochure.`,
+    usedLabel: 'Used for',
+    verifiedChip: 'Verified',
+    unverifiedChip: 'Not yet re-derived'
+  },
+
   /* ── Who this is for ──
      Said before anything is asked for. An app that hedges for stages
      G3a through G5 equally reads as written for nobody, which was the

@@ -49,6 +49,19 @@
   </div>
 </div>
 
+<!-- ═══════════ THE THREE REFUSALS ═══════════
+     Shown once, straight after consent. Answers "why should I trust
+     this" with three claims the reader can check inside a minute, and
+     pre-frames every "Not counted" chip they will later see as design
+     rather than as the app failing. -->
+<div id="refusalsModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="refusalsTitle" hidden>
+  <div class="modal modal--tall">
+    <h1 class="modal__title" id="refusalsTitle"></h1>
+    <div class="modal__body" id="refusalsBody"></div>
+    <button type="button" class="btn btn--primary btn--block" id="refusalsGo"></button>
+  </div>
+</div>
+
 <!-- ═══════════ DELETE CONFIRM MODAL (M4) ═══════════ -->
 <div id="deleteModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" hidden>
   <div class="modal modal--sm">
@@ -406,6 +419,10 @@
         <h2 class="h2">Your data</h2>
         <p class="note">Everything you log stays on this device, in this browser. Nothing is uploaded, and there is no account. Clearing your browser data removes it too.</p>
 
+        <h3 class="h3 mt-2">Where our numbers come from</h3>
+        <p class="note">Every position this app takes and the source behind it — including the ones we have not re-derived yet. Nutrition apps rarely publish this, which is why it is worth publishing.</p>
+        <button type="button" class="btn btn--secondary btn--block" data-nav="references" id="toRefsBtn">Open references</button>
+
         <h3 class="h3 mt-2">Health passport</h3>
         <p class="note">A card for an ambulance, a new doctor, or a pharmacy in another city — conditions, medicines, allergies, and who to call. It works offline and it prints.</p>
         <button type="button" class="btn btn--secondary btn--block" data-nav="passport" id="toPassportBtn">Open my health passport</button>
@@ -468,6 +485,17 @@
         <button type="button" class="btn btn--secondary btn--block" id="passportPrint">Print this card</button>
         <p class="note mt-2">Printing gives you something for a wallet or a fridge door. It does not need the app to be working.</p>
       </div>
+    </section>
+
+    <!-- ───────── REFERENCES ─────────
+         "More research and make them trust us." A list somebody can
+         check, including the entries that are unflattering. -->
+    <section class="screen" id="scr-references" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="refsBack">← Back</button>
+      <h1 class="h1" id="refsTitle"></h1>
+      <p class="helper" id="refsLede"></p>
+      <div class="card m-paper"><p class="note" id="refsUnverified"></p></div>
+      <div id="refsList"></div>
     </section>
 
     <section class="screen" id="scr-label" hidden>
@@ -586,6 +614,7 @@
 
 <!-- Load order matters: data → logic → view → bootstrap -->
 <script src="js/data/copy.js"></script>
+<script src="js/data/references.js"></script>
 <script src="js/data/anchor-foods.js"></script>
 <script src="js/store.js"></script>
 <script src="js/clinical.js"></script>

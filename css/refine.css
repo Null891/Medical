@@ -396,3 +396,53 @@ body { letter-spacing: var(--track-body); }
   min-height: 2.4em;
   color: var(--color-text-primary);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE THREE REFUSALS
+   ───────────────────────────────────────────────────────────────
+   A taller modal than the consent gate, because unlike consent this
+   one is meant to be read. Numbered, so it reads as three specific
+   claims rather than a paragraph of reassurance.
+   ═══════════════════════════════════════════════════════════════ */
+.modal--tall { max-height: 88vh; overflow-y: auto; }
+.modal__lede { font-size: var(--type-lead); margin-bottom: var(--space-4); }
+
+.refusal { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); }
+.refusal__n {
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--color-tint-accent);
+  color: var(--color-accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.refusal .h3 { margin-bottom: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REFERENCES
+   ───────────────────────────────────────────────────────────────
+   Each entry leads with its claim, then its status chip, then what it
+   is used for. "Used for" is what separates a reference list from a
+   bibliography: it says the source is load-bearing rather than
+   decorative, and it is checkable against the app.
+   ═══════════════════════════════════════════════════════════════ */
+.ref { padding: var(--space-3) 0; border-top: 1px solid var(--color-hairline); }
+.ref:first-of-type { border-top: 0; padding-top: var(--space-2); }
+.ref .h3 { margin-bottom: var(--space-1); }
+.ref .chip { margin-bottom: var(--space-2); }
+.ref__used { margin-top: var(--space-2); color: var(--color-text-secondary); }
+
+/* The source line, now always visible under a matched food. Small and
+   quiet, but present without a click: "every number traces to a named
+   source" is this app's strongest claim and it was hidden behind a
+   disclosure triangle. */
+.srcline {
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--track-caption);
+  margin-top: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-hairline);
+}

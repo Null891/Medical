@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references'];
 
   function go(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
@@ -43,8 +43,10 @@ const UI = (() => {
     if (name !== 'label') stopScan();
     if (name === 'label') renderLabel();
     if (name === 'passport') renderPassport();
+    if (name === 'references') renderReferences();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
-    if (name !== 'learn' && name !== 'detail' && name !== 'label' && name !== 'passport') {
+    if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
+        name !== 'passport' && name !== 'references') {
       lastScreen = name;
       // Remember where someone was. Reopening an app mid-task and being
       // dumped back at the start is a small tax paid every single time;
@@ -140,6 +142,12 @@ const UI = (() => {
     if (!ok) { $('#consentErr').hidden = false; return; }
     $('#consentModal').hidden = true;
     $('#app').hidden = false;
+    /* The refusals beat sits between consent and setup, and only once.
+       Consent is a legal necessity nobody reads; this is the first
+       thing anybody actually reads, so it is where the app gets to say
+       what it is — and it says it in three claims the reader can go
+       and check rather than three adjectives. */
+    if (!Store.settings().refusalsSeen) { renderRefusals(); return; }
     go('onboarding');
     renderOnboarding();
   }
@@ -1079,14 +1087,26 @@ const UI = (() => {
          are estimates" was a claim the interface asked people to take on
          faith while sitting on the specifics. Collapsed by default,
          because provenance should be available without being in the way. */
+      /* Provenance is now stated INLINE, not hidden behind a
+         disclosure. It used to sit inside a collapsed <details>, which
+         meant the app's single strongest credibility claim — every
+         number traces to a named source — was invisible unless
+         somebody thought to go looking for it.
+
+         The source line is one short sentence and it always shows.
+         What stays collapsed is only the longer detail: which specific
+         nutrients on this row are still unverified, and any per-row
+         caveat. That is the right split — the claim is free, the
+         footnotes are on request. */
       const provenance = row ? (() => {
         const gaps = (row.verify || []).map(v => NUTRIENT_WORD[v] || v);
-        return `<details class="srcnote">
-          <summary>Where this number comes from</summary>
-          <p class="note">${esc(COPY.source.cited(row.food_name, row.serving_text, row.source))}</p>
-          ${gaps.length ? `<p class="note">${esc(COPY.source.unverified(gaps.join(', ')))}</p>` : ''}
-          ${row.note ? `<p class="note">${esc(row.note)}</p>` : ''}
-        </details>`;
+        const detail = gaps.length || row.note;
+        return `<p class="srcline">${esc(COPY.source.cited(row.food_name, row.serving_text, row.source))}</p>` +
+          (detail ? `<details class="srcnote">
+            <summary>What we haven't checked on this food</summary>
+            ${gaps.length ? `<p class="note">${esc(COPY.source.unverified(gaps.join(', ')))}</p>` : ''}
+            ${row.note ? `<p class="note">${esc(row.note)}</p>` : ''}
+          </details>` : '');
       })() : '';
       const cooking = (row && row.leachable)
         ? `<div class="cookrow">
@@ -1341,6 +1361,71 @@ const UI = (() => {
       el.classList.remove(...Array.from(el.classList).filter(c => c.startsWith('ord-')));
       el.classList.add('ord-' + i);
     });
+  }
+
+  /* ═══════════ the three refusals ═══════════
+     Shown once, right after consent. The whole design of this screen is
+     that every claim on it is CHECKABLE within a minute of using the
+     app — "we take accuracy seriously" is unfalsifiable and therefore
+     worth nothing, while "it will not put a number on a meal it could
+     not identify" can be tested by typing two words.
+
+     It also pre-frames the moments that would otherwise read as the app
+     breaking. A "Not counted" chip means something completely different
+     to somebody who was told the app refuses to guess. */
+  function renderRefusals() {
+    const r = COPY.refusals;
+    $('#refusalsTitle').textContent = r.title;
+    $('#refusalsGo').textContent = r.button;
+    $('#refusalsBody').innerHTML =
+      `<p class="modal__lede">${esc(r.lede)}</p>` +
+      r.items.map((it, i) => `<div class="refusal">
+        <span class="refusal__n" aria-hidden="true">${i + 1}</span>
+        <div>
+          <h2 class="h3">${esc(it.h)}</h2>
+          <p class="note">${esc(it.p)}</p>
+        </div>
+      </div>`).join('') +
+      `<p class="note mt-2">${esc(r.footer)}</p>`;
+    $('#refusalsModal').hidden = false;
+    $('#refusalsGo').focus();
+  }
+
+  function dismissRefusals() {
+    Store.setSetting('refusalsSeen', true);
+    $('#refusalsModal').hidden = true;
+    // Straight into setup, or home for somebody who already has targets.
+    if (Store.profile().budget_source === 'none' && !Store.meals().length) {
+      go('onboarding'); renderOnboarding();
+    } else {
+      go('home');
+    }
+  }
+
+  /* ═══════════ references ═══════════
+     Every position the app takes, with its source and where it is
+     load-bearing — including the entries marked unverified, which are
+     the ones that make the rest of the list worth reading. */
+  function renderReferences() {
+    $('#refsTitle').textContent = COPY.references.title;
+    $('#refsLede').textContent = COPY.references.lede;
+    $('#refsUnverified').textContent =
+      COPY.references.unverifiedNote(REFERENCE_STATS.unverified);
+
+    $('#refsList').innerHTML = Object.keys(REFERENCE_GROUPS).map(group => `
+      <section class="card">
+        <h2 class="h2">${esc(group)}</h2>
+        ${REFERENCE_GROUPS[group].map(r => `
+          <article class="ref">
+            <h3 class="h3">${esc(r.title)}</h3>
+            <span class="chip ${r.verified ? 'chip--ok' : 'chip--muted'}">
+              <span aria-hidden="true">${r.verified ? '✓' : '?'}</span>
+              ${esc(r.verified ? COPY.references.verifiedChip : COPY.references.unverifiedChip)}
+            </span>
+            <p class="note">${esc(r.body)}</p>
+            <p class="note ref__used"><strong>${esc(COPY.references.usedLabel)}:</strong> ${esc(r.used)}</p>
+          </article>`).join('')}
+      </section>`).join('');
   }
 
   /* ═══════════ health passport ═══════════
@@ -2290,6 +2375,8 @@ const UI = (() => {
        edits rarely; making them find a Save button afterwards is how
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
+    $('#refsBack').addEventListener('click', () => go(lastScreen));
+    $('#refusalsGo').addEventListener('click', dismissRefusals);
     $('#passportFields').addEventListener('input', (e) => {
       const key = e.target && e.target.dataset && e.target.dataset.pp;
       if (key) Passport.set(key, e.target.value);
@@ -2314,5 +2401,6 @@ const UI = (() => {
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
 
-  return { wire, go, renderConsent, renderOnboarding, renderHome, toast, esc, searchFoods };
+  return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals,
+           renderReferences, toast, esc, searchFoods };
 })();

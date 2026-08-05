@@ -70,6 +70,8 @@
        to be. Every other module here is required; this one is not. */
     Motion: (typeof Motion !== 'undefined') ? Motion : null,
     anchors: ANCHOR_FOODS,
+    references: REFERENCES,
+    referenceStats: REFERENCE_STATS,
     stats: ANCHOR_STATS,
     version: '1.0.0-reference'
   };
