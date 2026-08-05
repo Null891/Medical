@@ -22,14 +22,15 @@ const sandbox = {
 vm.createContext(sandbox);
 
 ['js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js',
- 'js/clinical.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js'].forEach(f => {
+ 'js/clinical.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js',
+ 'js/data/recipes.js', 'js/plan.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, Cards, LabScan, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+const { Store, Clinical, Resolve, Cards, LabScan, Plan, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -226,6 +227,143 @@ check('  ...claimed removal is smaller than published removal',
   (926 - L.high) / 926 < 0.50, true);
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
+
+console.log('\n═══ RECIPES CARRY NO NUMBERS OF THEIR OWN ═══');
+
+/* The single most important property of the recipe set, and the one
+   that distinguishes it from every hand-typed nutrition page: not one
+   nutrient figure is written in js/data/recipes.js. Every value is
+   computed from anchor rows through the same resolver a typed meal
+   uses.
+
+   If this ever stops being true, a recipe becomes a second place a
+   number can be wrong — and, worse, a place where it can be wrong
+   WITHOUT the range, the citation, or the unverified list that every
+   other number in the app carries. */
+{
+  /* Checked as FIELD ASSIGNMENTS, not as words. The first version of
+     this matched the strings "potassium" and "sodium" anywhere in the
+     file and duly failed on recipe prose that mentions them in plain
+     English — a test that fails on its own documentation is a test
+     nobody keeps. What must not exist here is a nutrient VALUE. */
+  const src = read('js/data/recipes.js');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '');   // strip the reasoning
+  const NUTRIENT_FIELD = /\b(k|p|na|potassium|phosphorus|sodium)(_low|_high)?(_mg)?\s*:\s*-?\d/i;
+  check('no nutrient value is assigned in a recipe', NUTRIENT_FIELD.test(code), false);
+  check('  ...and no low/high figure is declared', /\b(low|high)\s*:\s*\d/i.test(code), false);
+
+  // Every ingredient must reference a row that actually exists, or the
+  // recipe silently prices low — the dangerous direction.
+  const ids = new Set(ANCHOR_FOODS.map(f => f.id));
+  const bad = [];
+  RECIPES.forEach(r => r.items.forEach(i => { if (!ids.has(i.id)) bad.push(r.id + ':' + i.id); }));
+  check('every ingredient resolves to a real anchor row', bad.join(',') || 'none', 'none');
+  check('  ...and there are enough recipes to be useful', RECIPES.length >= 12, true);
+
+  // Composition must equal the sum of its parts, exactly.
+  const p = Plan.priced(RECIPES.find(r => r.id === 'egg_toast'));
+  const manualK = p.items.reduce((s, i) => s + (i.potassium_high_mg || 0), 0);
+  check('recipe total equals the sum of its anchor rows', p.k.high, manualK);
+  /* Ranges survive composition. Salmon's PHOSPHORUS genuinely varies by
+     species (215–253 in the table); its potassium is simply unknown.
+     The first draft of this test checked potassium and failed — which
+     is exactly the confusion the range display exists to prevent: "no
+     value" and "a spread of values" look identical if you only ever
+     print one number. */
+  const salmonDish = Plan.priced(RECIPES.find(r => r.id === 'tuna_style_salmon_rice'));
+  check('  ...and a genuine source disagreement survives as a range',
+    salmonDish.p.low < salmonDish.p.high, true);
+  check('  ...while an unknown value stays absent rather than becoming zero',
+    ANCHOR_FOODS.find(f => f.id === 'salmon').k_low, null);
+
+  /* LEACHING MUST NEVER BE DOUBLE-COUNTED — the one genuine bug this
+     recipe set introduced. The boiled-potato row is already a boiled
+     value (515 mg against 926 baked with skin), so a recipe asking to
+     leach it on top would count the same reduction twice, in the
+     direction that under-states potassium.
+
+     A draft of the boiled-potato recipe did exactly that. It was caught
+     only because potato_boiled is not marked leachable and
+     Plan.itemsFor() checks the flag before applying anything — the data
+     refused the double-count. Enforced here rather than trusted. */
+  const illegalLeach = [];
+  RECIPES.forEach(r => r.items.forEach(i => {
+    if (!i.leach) return;
+    const row = ANCHOR_FOODS.find(f => f.id === i.id);
+    if (!row || !row.leachable) illegalLeach.push(r.id + ':' + i.id);
+  }));
+  check('no recipe leaches a row the table says cannot be leached',
+    illegalLeach.join(',') || 'none', 'none');
+
+  const boiled = Plan.priced(RECIPES.find(r => r.id === 'boiled_potato_plate'));
+  const potatoItem = boiled.items.find(i => i.matched_anchor_id === 'potato_boiled');
+  const boiledRow = ANCHOR_FOODS.find(f => f.id === 'potato_boiled');
+  check('the boiled potato counts at its table value, not lower',
+    potatoItem.potassium_high_mg, boiledRow.k_high);
+  check('  ...which is already well below the baked-with-skin figure',
+    boiledRow.k_high < ANCHOR_FOODS.find(f => f.id === 'potato_baked_skin').k_high, true);
+
+  /* No recipe may claim safety. Whether a meal suits somebody depends
+     on their labs, their targets, and their care team — none of which a
+     recipe knows. */
+  const prose = RECIPES.map(r => [r.name, r.blurb, r.note || ''].join(' ')).join(' | ');
+  check('no recipe calls itself kidney-safe', /kidney.?safe|safe for (your )?kidney/i.test(prose), false);
+  check('  ...or healthy, or approved', /\bhealthy\b|\bapproved\b|\bdoctor.recommended\b/i.test(prose), false);
+}
+
+console.log('\n═══ WHAT FITS IS ARITHMETIC, NOT A VERDICT ═══');
+{
+  Store.reset(); Store.load();
+  Store.useEducationRanges();          // K 2500 / P 900 / Na 2000
+
+  const empty = Plan.suggestions(4);
+  check('with a full budget, something fits', empty.fitting.length > 0, true);
+  check('  ...and fits are judged on the HIGH end',
+    empty.fitting.every(p => p.k.high <= 2500), true);
+
+  // Fill the day so nothing can fit, and check the app says so rather
+  // than offering something that does not.
+  Store.addMeal({
+    meal_text: 'fill', logged_at: new Date().toISOString(), meal_date: Store.todayISO(),
+    items: [], confidence: 'high',
+    total_potassium_low_mg: 2490, total_potassium_high_mg: 2490,
+    total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+    total_sodium_low_mg: 0, total_sodium_high_mg: 0
+  });
+  const full = Plan.suggestions(4);
+  check('with 10 mg left, nothing is offered', full.fitting.length, 0);
+  check('  ...and near misses are shown instead', full.overBy.length > 0, true);
+  check('  ...each with how far over it is', full.overBy.every(x => x.over > 0), true);
+
+  // A day with no targets cannot rule anything out.
+  Store.reset(); Store.load();
+  check('no targets means no suggestions, not wrong ones', Plan.suggestions(4).ready, false);
+}
+
+console.log('\n═══ THE THREE-DAY PLAN STAYS INSIDE THE TARGETS ═══');
+{
+  Store.reset(); Store.load();
+  Store.useEducationRanges();
+  const plan = Plan.threeDay();
+  check('a plan is produced', !!plan, true);
+  check('  ...covering three days', plan.days.length, 3);
+
+  plan.days.forEach((d, i) => {
+    check(`day ${i + 1} potassium high end is inside the target`, d.totals.k <= plan.targets.k, true);
+    check(`day ${i + 1} phosphorus high end is inside the target`, d.totals.p <= plan.targets.p, true);
+    check(`day ${i + 1} sodium high end is inside the target`, d.totals.na <= plan.targets.na, true);
+    const names = d.meals.map(m => m.priced.recipe.id);
+    check(`day ${i + 1} repeats no meal`, names.length, new Set(names).size);
+  });
+
+  const g = Plan.grocery();
+  check('the shopping list has entries', g.count > 0, true);
+  const text = Plan.groceryText();
+  check('  ...exports as plain text', text.indexOf('SHOPPING LIST') !== -1, true);
+  check('  ...and carries the estimate caveat with it',
+    /estimated ranges/i.test(text), true);
+  Store.reset(); Store.load();
+}
 
 console.log('\n═══ LAB SCAN — THE GATE IS ON THE BOUNDARY ═══');
 

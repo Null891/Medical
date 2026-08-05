@@ -484,3 +484,56 @@ body { letter-spacing: var(--track-body); }
 .scanrow--gate .btn { margin-top: var(--space-2); }
 .scanrow--bad { border-left: 3px solid var(--color-status-danger); padding-left: var(--space-3); }
 .scanrow__ok { color: var(--color-status-ok); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════════
+   KITCHEN
+   ═══════════════════════════════════════════════════════════════ */
+.tabs { display: flex; gap: var(--space-1); overflow-x: auto; margin-bottom: var(--space-4); }
+.tabs__btn {
+  flex: 0 0 auto; min-height: 44px; padding: 10px var(--space-3);
+  border: 0; border-radius: var(--radius-capsule);
+  background: transparent; color: var(--color-text-secondary);
+  font-weight: 550; cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-out);
+}
+.tabs__btn:hover { background: var(--color-tint-accent); }
+.tabs__btn.is-on {
+  background: var(--color-surface); color: var(--color-text-primary);
+  font-weight: 680; box-shadow: var(--shadow-card);
+}
+@media (prefers-reduced-motion: reduce) { .tabs__btn { transition: none; } }
+
+.recipe__nums {
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  letter-spacing: var(--track-title);
+  margin: var(--space-2) 0;
+}
+.recipe__over { color: var(--color-status-warn); font-weight: 600; }
+.recipe__list, .recipe__steps { margin: var(--space-2) 0; padding-left: var(--space-4); }
+.recipe__list li { list-style: disc; margin-bottom: 4px; }
+.recipe__steps li { list-style: decimal; margin-bottom: var(--space-2); }
+
+.planrow {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-hairline);
+}
+.planrow:first-of-type { border-top: 0; }
+.planrow__slot {
+  font-size: var(--type-caption); text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--color-text-secondary); font-weight: 620;
+}
+.planrow__name { font-weight: 600; }
+.planrow__nums {
+  grid-column: 2; font-size: var(--type-caption);
+  color: var(--color-text-secondary); font-variant-numeric: tabular-nums;
+}
+
+.shoplist li {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-hairline);
+}
+.shoplist li:first-child { border-top: 0; }

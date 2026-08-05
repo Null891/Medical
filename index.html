@@ -177,6 +177,7 @@
 
         <div class="bento__action">
           <button type="button" class="btn btn--primary btn--block btn--hero m-light" data-nav="log">Log a meal</button>
+          <button type="button" class="btn btn--secondary btn--block" data-nav="kitchen">What can dinner be?</button>
         </div>
 
         <!-- Meals you actually repeat, one tap, zero AI calls. -->
@@ -507,6 +508,28 @@
     <!-- ───────── REFERENCES ─────────
          "More research and make them trust us." A list somebody can
          check, including the entries that are unflattering. -->
+    <!-- ───────── KITCHEN ─────────
+         "What can dinner be?" — the product thesis, finally executable.
+         Every recipe is priced by running its anchor rows through the
+         same resolver a typed meal uses, so ranges and provenance are
+         inherited rather than re-typed. Zero model calls. -->
+    <section class="screen" id="scr-kitchen" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="kitchenBack">← Back</button>
+      <header class="hdr">
+        <p class="hdr__eyebrow">Kitchen</p>
+        <h1 class="hdr__title hdr__title--display">What can dinner be?</h1>
+      </header>
+
+      <div class="tabs" role="tablist" aria-label="Kitchen sections">
+        <button type="button" class="tabs__btn is-on" role="tab" aria-selected="true" data-kitchen="fit">Fits today</button>
+        <button type="button" class="tabs__btn" role="tab" aria-selected="false" data-kitchen="all">All recipes</button>
+        <button type="button" class="tabs__btn" role="tab" aria-selected="false" data-kitchen="plan">3-day plan</button>
+        <button type="button" class="tabs__btn" role="tab" aria-selected="false" data-kitchen="shop">Shopping list</button>
+      </div>
+
+      <div id="kitchenBody"></div>
+    </section>
+
     <section class="screen" id="scr-references" hidden>
       <button type="button" class="linkbtn linkbtn--back" id="refsBack">← Back</button>
       <h1 class="h1" id="refsTitle"></h1>
@@ -610,6 +633,9 @@
                stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           Log a meal
         </button>
+        <button type="button" class="rail__action" data-nav="kitchen">
+          <span>What can dinner be?</span>
+        </button>
         <button type="button" class="rail__action" data-nav="label">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -632,6 +658,7 @@
 <!-- Load order matters: data → logic → view → bootstrap -->
 <script src="js/data/copy.js"></script>
 <script src="js/data/references.js"></script>
+<script src="js/data/recipes.js"></script>
 <script src="js/data/anchor-foods.js"></script>
 <script src="js/store.js"></script>
 <script src="js/clinical.js"></script>
@@ -640,6 +667,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/plan.js"></script>
 <script src="js/labscan.js"></script>
 <script src="js/motion.js"></script>
 <script src="js/scenes.js"></script>

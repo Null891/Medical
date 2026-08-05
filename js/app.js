@@ -62,7 +62,7 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
-    Insights, Passport, Scenes, Orbit,
+    Insights, Passport, Scenes, Orbit, Plan, LabScan,
     /* Guarded, unlike its neighbours. Object shorthand would be a BARE
        reference, and a bare reference to a module that failed to load
        is a ReferenceError that takes the whole boot down — which is
@@ -71,6 +71,7 @@
     Motion: (typeof Motion !== 'undefined') ? Motion : null,
     anchors: ANCHOR_FOODS,
     references: REFERENCES,
+    recipes: RECIPES,
     referenceStats: REFERENCE_STATS,
     stats: ANCHOR_STATS,
     version: '1.0.0-reference'

@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen'];
 
   function go(name, opts) {
     SCREENS.forEach(s => { const el = $('#scr-' + s); if (el) el.hidden = (s !== name); });
@@ -44,9 +44,10 @@ const UI = (() => {
     if (name === 'label') renderLabel();
     if (name === 'passport') renderPassport();
     if (name === 'references') renderReferences();
+    if (name === 'kitchen') renderKitchen();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
-        name !== 'passport' && name !== 'references') {
+        name !== 'passport' && name !== 'references' && name !== 'kitchen') {
       lastScreen = name;
       // Remember where someone was. Reopening an app mid-task and being
       // dumped back at the start is a small tax paid every single time;
@@ -1363,6 +1364,150 @@ const UI = (() => {
     });
   }
 
+  /* ═══════════ kitchen ═══════════
+     Recipes priced through the real resolver, so every card shows a
+     range and carries the same provenance a logged meal does. Nothing
+     here calls a model and nothing here is ranked by a score. */
+  let kitchenTab = 'fit';
+
+  function rangeLine(p) {
+    const f = Clinical.fmt;
+    const one = (band, label) => (band.low === null || band.low === undefined)
+      ? `${label} —`
+      : `${label} ${f(band.low)}${band.low === band.high ? '' : '–' + f(band.high)}`;
+    return `${one(p.k, 'K')} · ${one(p.p, 'P')} · ${one(p.na, 'Na')} mg`;
+  }
+
+  function recipeCard(p, extra) {
+    const r = p.recipe;
+    return `<article class="card recipe">
+      <h3 class="h3">${esc(r.name)}</h3>
+      <p class="note">${esc(r.blurb)}</p>
+      <p class="recipe__nums">${rangeLine(p)}</p>
+      <p class="note">${esc(r.minutes)} min · serves ${esc(r.serves)}${
+        p.sodiumIncomplete ? ' · sodium partly unknown' : ''}</p>
+      ${extra || ''}
+      <details class="srcnote">
+        <summary>Ingredients and method</summary>
+        <ul class="recipe__list">
+          ${p.items.map(i => `<li>${esc(i.name)} — ${esc(i.portion_text)}${
+            i._leached ? ' (boiled and drained)' : ''}</li>`).join('')}
+        </ul>
+        <ol class="recipe__steps">${r.steps.map(st => `<li>${esc(st)}</li>`).join('')}</ol>
+        ${r.note ? `<p class="note">${esc(r.note)}</p>` : ''}
+        <p class="note">${esc(COPY.kitchen.provenance)}</p>
+      </details>
+      <button type="button" class="btn btn--secondary" data-cook="${esc(r.id)}">Log this meal</button>
+    </article>`;
+  }
+
+  function renderKitchen() {
+    $$('#scr-kitchen .tabs__btn').forEach(b => {
+      const on = b.dataset.kitchen === kitchenTab;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    const host = $('#kitchenBody');
+
+    if (kitchenTab === 'all') {
+      host.innerHTML = `<p class="helper">${esc(COPY.kitchen.allLede)}</p>` +
+        Plan.all().map(p => recipeCard(p)).join('');
+      return;
+    }
+
+    if (kitchenTab === 'plan') {
+      const plan = Plan.threeDay();
+      if (!plan) { host.innerHTML = `<div class="card m-paper"><p class="note">${esc(COPY.kitchen.needTargets)}</p></div>`; return; }
+      host.innerHTML = `<p class="helper">${esc(COPY.kitchen.planLede)}</p>` +
+        plan.days.map((d, i) => `<section class="card">
+          <h2 class="h2">Day ${i + 1}</h2>
+          ${d.meals.length ? d.meals.map(m => `<div class="planrow">
+            <span class="planrow__slot">${esc(m.slot)}</span>
+            <span class="planrow__name">${esc(m.priced.recipe.name)}</span>
+            <span class="planrow__nums">${rangeLine(m.priced)}</span>
+          </div>`).join('') : `<p class="note">${esc(COPY.kitchen.planThin)}</p>`}
+          <p class="note mt-2">Day total, high end: K ${Clinical.fmt(Math.round(d.totals.k))} ·
+            P ${Clinical.fmt(Math.round(d.totals.p))} · Na ${Clinical.fmt(Math.round(d.totals.na))} mg
+            against ${Clinical.fmt(plan.targets.k)} · ${Clinical.fmt(plan.targets.p)} ·
+            ${Clinical.fmt(plan.targets.na)}.</p>
+        </section>`).join('') +
+        `<div class="card m-paper"><p class="note">${esc(COPY.kitchen.planCaveat)}</p></div>`;
+      return;
+    }
+
+    if (kitchenTab === 'shop') {
+      const g = Plan.grocery();
+      host.innerHTML = `<p class="helper">${esc(COPY.kitchen.shopLede)}</p>` +
+        Object.keys(g.grouped).map(a => `<section class="card">
+          <h2 class="h2">${esc(g.aisles[a].label)}</h2>
+          <ul class="shoplist">
+            ${g.grouped[a].map(v => `<li>${esc(v.row.food_name)}${
+              v.servings === 1 ? '' : ` <span class="note">(${v.servings} servings)</span>`}</li>`).join('')}
+          </ul>
+        </section>`).join('') +
+        `<button type="button" class="btn btn--secondary btn--block" id="shopCopy">Copy the list as text</button>`;
+      $('#shopCopy').addEventListener('click', async () => {
+        const text = Plan.groceryText();
+        try { await navigator.clipboard.writeText(text); toast('Shopping list copied'); }
+        catch (e) { Exporter.download('renalroute-shopping-list.txt', text, 'text/plain'); toast('List downloaded'); }
+      });
+      return;
+    }
+
+    /* "Fits today" — the thesis. Priced against what is actually left,
+       using the HIGH end, which is the same conservative reading the
+       rings colour themselves by. */
+    const s = Plan.suggestions(4);
+    if (!s.ready) {
+      host.innerHTML = `<div class="card m-paper"><p class="note">${esc(COPY.kitchen.needTargets)}</p></div>`;
+      return;
+    }
+    const roomLine = `K ${Clinical.fmt(s.room.k)} · P ${Clinical.fmt(s.room.p)} · Na ${Clinical.fmt(s.room.na)} mg left`;
+
+    host.innerHTML =
+      `<div class="card m-stone">
+        <h2 class="h2">Room left today</h2>
+        <p class="recipe__nums">${esc(roomLine)}</p>
+        <p class="note">${esc(COPY.kitchen.fitLede)}</p>
+      </div>` +
+      (s.fitting.length
+        ? s.fitting.map(p => recipeCard(p)).join('')
+        : `<div class="card m-paper"><p class="note">${esc(COPY.kitchen.noneFit)}</p></div>`) +
+      (s.overBy.length
+        ? `<h2 class="h2">Just out of reach</h2>
+           <p class="note">${esc(COPY.kitchen.overLede)}</p>` +
+          s.overBy.map(x => recipeCard(x.p,
+            `<p class="note recipe__over">${esc(COPY.kitchen.overBy(Math.round(x.over)))}</p>`)).join('')
+        : '');
+  }
+
+  /* Logging a recipe runs the SAME save path a typed meal does — the
+     items are already resolved anchor rows, so nothing here needs its
+     own totals arithmetic. */
+  function cookRecipe(id) {
+    const r = RECIPES.find(x => x.id === id);
+    if (!r) return;
+    const items = Plan.itemsFor(r);
+    if (!items.length) { toast('Those ingredients are missing from the table'); return; }
+    const rec = Object.assign({
+      meal_text: r.name,
+      logged_at: new Date().toISOString(),
+      meal_date: Store.todayISO(),
+      items,
+      confidence: Resolve.confidence(items),
+      needs_clarification: false,
+      clarification_question: null,
+      clarification_status: 'none',
+      explanation_text: ''
+    }, Resolve.totals(items));
+
+    const saved = Store.addMeal(rec);
+    if (!saved) { toast(COPY.mutationFailed); return; }
+    if (typeof Motion !== 'undefined') { Motion.haptic('commit'); Motion.chime(!!Store.settings().sound); }
+    toastWithUndo(`Logged ${r.name}`, () => { Store.deleteMeal(saved.id); renderKitchen(); });
+    renderKitchen();
+  }
+
   /* ═══════════ lab scan ═══════════
      Autofill is the default and confirmation is the exception, gated on
      whether a value would move somebody out of the normal band. See the
@@ -2075,12 +2220,14 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
+      if (el.dataset.kitchen) { kitchenTab = el.dataset.kitchen; renderKitchen(); return; }
+      if (el.dataset.cook) { cookRecipe(el.dataset.cook); return; }
       if (el.dataset.scanok) {
         // One tap, one field. Confirming a boundary-crossing reading
         // never confirms any other.
@@ -2505,6 +2652,7 @@ const UI = (() => {
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
+    $('#kitchenBack').addEventListener('click', () => go(lastScreen));
 
     /* Lab scan. The file input is visually hidden and driven by the
        button, so the control is a real 44px target rather than a
@@ -2541,5 +2689,5 @@ const UI = (() => {
   }
 
   return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals,
-           renderReferences, toast, esc, searchFoods };
+           renderReferences, renderKitchen, toast, esc, searchFoods };
 })();

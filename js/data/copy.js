@@ -28,6 +28,40 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── Kitchen ──
+     Careful about what is NOT said. No recipe is called "kidney-safe":
+     whether a meal suits a person depends on their labs, their targets
+     and their care team, none of which a recipe knows. These are
+     ordinary meals whose contents this app can actually price. */
+  kitchen: {
+    fitLede:
+      'Recipes below fit what is left, counted at the high end of their range — the cautious ' +
+      'reading, the same one the rings use. Fitting the budget is arithmetic, not a health verdict.',
+    allLede:
+      'Every recipe RenalRoute can price. Each one is built only from foods in the reference table, ' +
+      'so the figures carry the same ranges and sources as anything you log by hand.',
+    noneFit:
+      "Nothing fits what is left today, and that is not a failure — it is the app being straight " +
+      'with you. Tomorrow starts fresh, and your care team can help you plan around foods you want to keep.',
+    overLede: 'Close, but over on the cautious count. How far over is shown so you can judge it yourself.',
+    overBy: (mg) => `About ${mg} mg of potassium more than today has room for.`,
+    planLede:
+      'Three days built against your full daily targets, not today’s leftovers. Greedy rather than ' +
+      'optimal on purpose: every choice is "does the next thing still fit", which you can check by adding up.',
+    planThin:
+      'Not enough recipes fit your targets to fill this day. That is a limit of our small recipe set, not a verdict on your targets.',
+    planCaveat:
+      'A suggestion, never a prescription. Portion sizes, cooking method and your own appetite all move these ' +
+      'numbers, and your care team’s plan outranks anything here.',
+    shopLede:
+      'Everything the recipes need, grouped by aisle. Works with no signal, and copies out as plain text.',
+    needTargets:
+      'Set your daily targets first and this screen can tell you what fits. Settings → Daily targets.',
+    provenance:
+      'Every number in this recipe comes from the same reference table the rest of the app uses, priced by ' +
+      'the same code as a meal you type in. Nothing here was entered by hand.'
+  },
+
   /* ── Lab scan ──
      The gate copy is the important part. It names the reading, names
      what it would DO, and asks for one tap — which is the difference

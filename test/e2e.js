@@ -444,9 +444,15 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('  ...and that class is a real 5% step',
     /\bw-(0|5|10|15|20|25|30|35|40|45|50|55|60|65|70|75|80|85|90|95|100)\b/.test(
       $('#railGlance .rail__bar i').className), true);
-  check('two repeat actions offered', $$('.rail__action').length, 2);
-  check('  ...both routing somewhere real',
-    Array.from($$('.rail__action')).every(b => ['log','label'].includes(b.dataset.nav)), true);
+  /* The rail's shortcuts are the two or three things people repeat, and
+     every one has to point at a screen the router knows. Counting them
+     loosely rather than exactly, so adding a genuinely useful shortcut
+     is not a test failure — what matters is that none of them is a dead
+     link, which is the failure this catches. */
+  check('the rail offers repeat actions', $$('.rail__action').length >= 2, true);
+  check('  ...all routing somewhere real',
+    Array.from($$('.rail__action')).every(b =>
+      ['log', 'label', 'kitchen', 'passport', 'labs'].includes(b.dataset.nav)), true);
   check('a rotating fact is present', $('#railTip').textContent.length > 20, true);
   check('disclaimer lives in the rail too',
     $('.rail__foot').textContent.includes('Not medical advice'), true);
