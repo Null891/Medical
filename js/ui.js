@@ -396,6 +396,67 @@ const UI = (() => {
     });
   }
 
+  /* ═══════════ one way to show a field error ═══════════
+     Three forms had grown three slightly different versions of this,
+     which is how a form ends up with an error that never clears, or one
+     that clears the styling but leaves the text. It does four things
+     together, because doing three of them is a bug:
+
+       the message beside the field that caused it (never a toast — a
+         toast for "check this number" vanishes before it is read, and
+         vanishes fastest for the people who read slowest),
+       the field marked invalid so it is visibly the one at fault,
+       aria-invalid so a screen reader hears it as broken rather than
+         merely hearing an alert from somewhere on the page,
+       and focus moved there on the first error, so a keyboard user
+         lands on the problem instead of hunting for it.
+
+     `scope` is a container; passing one clears every error under it
+     first, so a corrected field stops complaining. */
+  function clearFieldErrors(scope) {
+    const root = typeof scope === 'string' ? $(scope) : (scope || document);
+    if (!root) return;
+    root.querySelectorAll('[data-fielderr]').forEach(el => {
+      el.hidden = true; el.textContent = '';
+      const field = el.closest('.field');
+      if (field) field.classList.remove('is-invalid');
+      const input = field && field.querySelector('input, textarea, select');
+      if (input) input.removeAttribute('aria-invalid');
+    });
+  }
+
+  function showFieldError(scope, fieldKey, message, focusIt) {
+    const root = typeof scope === 'string' ? $(scope) : (scope || document);
+    const el = root && root.querySelector(`[data-fielderr="${fieldKey}"]`);
+    if (!el) return false;                 // caller falls back to form level
+    el.textContent = message;
+    el.hidden = false;
+    const field = el.closest('.field');
+    if (field) field.classList.add('is-invalid');
+    const input = field && field.querySelector('input, textarea, select');
+    if (input) {
+      input.setAttribute('aria-invalid', 'true');
+      if (focusIt) { try { input.focus(); } catch (e) { } }
+    }
+    return true;
+  }
+
+  /* Route a model result to the right place: beside the named field if
+     it named one and that field exists on screen, otherwise the form's
+     own error line. The fallback matters — "nothing to record yet"
+     belongs to the whole form, and pinning it to an arbitrary input
+     would be a lie about which field was wrong. */
+  function showResultError(scope, formErrSel, res) {
+    clearFieldErrors(scope);
+    const placed = res.field && showFieldError(scope, res.field, res.message, true);
+    const formEl = $(formErrSel);
+    if (formEl) {
+      formEl.textContent = placed ? '' : res.message;
+      formEl.hidden = placed;
+    }
+    return placed;
+  }
+
   function readTargets(sel) {
     const out = { ok: true, values: {} };
     ['k', 'p', 'na'].forEach(k => {
@@ -2006,8 +2067,7 @@ const UI = (() => {
     });
     if (!res.ok) {
       $('#vitOk').hidden = true;
-      $('#vitError').textContent = res.message;
-      $('#vitError').hidden = false;
+      showResultError('#vitalsForm', '#vitError', res);
       return;
     }
     /* The write is checked before anything claims it worked. This
@@ -2020,6 +2080,7 @@ const UI = (() => {
       return;
     }
     $('#vitError').hidden = true;
+    clearFieldErrors('#vitalsForm');
     $('#vitOk').textContent = COPY.vitals.saved;
     $('#vitOk').hidden = false;
     ['#vitWeight', '#vitSys', '#vitDia', '#vitNote'].forEach(sel => { $(sel).value = ''; });
@@ -2064,8 +2125,7 @@ const UI = (() => {
       questions: $('#apptQuestions').value
     });
     if (!res.ok) {
-      $('#apptError').textContent = res.message;
-      $('#apptError').hidden = false;
+      showResultError('#apptForm', '#apptError', res);
       return;
     }
     if (!saved(Store.storageState() === null)) {
@@ -2074,6 +2134,7 @@ const UI = (() => {
       return;                                     // and the typed values stay put
     }
     $('#apptError').hidden = true;
+    clearFieldErrors('#apptForm');
     ['#apptDate', '#apptWho', '#apptQuestions'].forEach(sel => { $(sel).value = ''; });
     toast(COPY.appts.saved);
     renderAppointments();
@@ -2251,12 +2312,27 @@ const UI = (() => {
   let scanStream = null;
   let scanTimer = null;
 
-  function barcodeStatus(msg) { $('#barcodeStatus').textContent = msg || ''; }
+  /* One line serves both "looking it up…" and "that isn't a barcode",
+     so it stays a polite status region — an assertive one would
+     interrupt a screen-reader user mid-sentence on every lookup. What
+     changes is the FIELD: a typing mistake marks the input invalid, so
+     the fault is visibly attached to the box that holds it rather than
+     floating below the card. A lookup that simply found nothing is not
+     the user's mistake and never marks the field. */
+  function barcodeStatus(msg, isUserError) {
+    $('#barcodeStatus').textContent = msg || '';
+    const input = $('#barcodeInput');
+    const field = input && input.closest('.field');
+    if (!input || !field) return;
+    field.classList.toggle('is-invalid', !!isUserError);
+    if (isUserError) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  }
 
   async function lookupBarcode(code) {
     const clean = String(code || '').replace(/\D/g, '');
     if (!/^[0-9]{8,14}$/.test(clean)) {
-      barcodeStatus(COPY.barcode.invalid);
+      barcodeStatus(COPY.barcode.invalid, true);
       return;
     }
 

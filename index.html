@@ -487,22 +487,29 @@
            never interpreted: no categories, no colours, no arrows. A
            green badge on a reading a nephrologist would act on is the
            worst thing this app could produce, so it produces none. -->
-      <div class="card m-stone">
+      <div class="card m-stone" id="vitalsForm">
         <h2 class="h2">Weight, blood pressure and how you feel</h2>
         <p class="note" id="vitalsIntro"></p>
 
+        <!-- Each field carries its own error slot, following the pattern
+             the target and lab fields already use. A single message at
+             the foot of a five-input form makes the reader hunt for
+             which number it meant. -->
         <div class="vitalgrid">
           <label class="field">
             <span class="field__label">Weight (kg)</span>
             <input type="number" id="vitWeight" step="0.1" inputmode="decimal" autocomplete="off">
+            <span class="field__err" role="alert" data-fielderr="weight_kg" hidden></span>
           </label>
           <label class="field">
             <span class="field__label">Blood pressure, top number</span>
             <input type="number" id="vitSys" step="1" inputmode="numeric" autocomplete="off">
+            <span class="field__err" role="alert" data-fielderr="systolic" hidden></span>
           </label>
           <label class="field">
             <span class="field__label">Blood pressure, bottom number</span>
             <input type="number" id="vitDia" step="1" inputmode="numeric" autocomplete="off">
+            <span class="field__err" role="alert" data-fielderr="diastolic" hidden></span>
           </label>
         </div>
 
@@ -533,13 +540,14 @@
            Deliberately not a calendar — no reminders, because a
            reminder this app promised and did not deliver, for a clinic
            appointment, is worse than never offering one. -->
-      <div class="card m-stone">
+      <div class="card m-stone" id="apptForm">
         <h2 class="h2">Appointments</h2>
         <p class="note" id="apptIntro"></p>
         <div class="vitalgrid">
           <label class="field">
             <span class="field__label">Date</span>
             <input type="date" id="apptDate" autocomplete="off">
+            <span class="field__err" role="alert" data-fielderr="date" hidden></span>
           </label>
           <label class="field">
             <span class="field__label">Who with (optional)</span>

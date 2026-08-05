@@ -97,13 +97,22 @@ const Vitals = (() => {
       symptoms: [], note: ''
     };
 
+    /* Every rejection names the field it came from. Without that the UI
+       can only print one message at the bottom of a five-input form and
+       leave the reader hunting for which number it meant — which is the
+       difference between an error that helps and an error that blames. */
     for (const field of ['weight_kg', 'systolic', 'diastolic']) {
       const v = validate(field, entry[field]);
-      if (!v.ok) return { ok: false, message: v.message };
+      if (!v.ok) return { ok: false, field, message: v.message };
       rec[field] = v.value;
     }
     if ((rec.systolic === null) !== (rec.diastolic === null)) {
-      return { ok: false, message: 'Blood pressure needs both numbers — the top one and the bottom one.' };
+      // Blame the empty half, not the half they filled in correctly.
+      return {
+        ok: false,
+        field: rec.systolic === null ? 'systolic' : 'diastolic',
+        message: 'Blood pressure needs both numbers — the top one and the bottom one.'
+      };
     }
 
     rec.symptoms = Array.isArray(entry.symptoms)
@@ -113,6 +122,8 @@ const Vitals = (() => {
 
     const hasSomething = rec.weight_kg !== null || rec.systolic !== null ||
       rec.symptoms.length || rec.note.trim();
+    // A wholly empty form has no one field to blame, so this one stays
+    // at form level — which is the honest place for it.
     if (!hasSomething) return { ok: false, message: 'Nothing to record yet — add a number or pick how you are feeling.' };
 
     const next = all().concat(rec).slice(-400);   // a year of daily entries
@@ -169,7 +180,7 @@ const Vitals = (() => {
   function addAppointment(entry) {
     const date = String(entry.date || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return { ok: false, message: 'Pick a date for the appointment.' };
+      return { ok: false, field: 'date', message: 'Pick a date for the appointment.' };
     }
     const rec = {
       id: 'apt_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
