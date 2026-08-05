@@ -775,3 +775,21 @@ body { letter-spacing: var(--track-body); }
    make one. */
 .tabbar .tab__label { font-size: 11px; }
 @media (max-width: 359px) { .tabbar .tab__label { font-size: 10px; } }
+
+/* The rail lists every destination, so its shortcut block needs a
+   heading and tighter rows — six items at the old spacing pushed the
+   disclaimer off a 900px-tall window. */
+.rail__heading {
+  font-size: var(--type-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 620;
+  color: var(--color-text-secondary);
+  margin: var(--space-3) 0 var(--space-1);
+}
+@media (min-width: 900px) {
+  .rail__action { padding: 9px var(--space-2); font-size: var(--type-caption); }
+  .rail__action svg { width: 17px; height: 17px; }
+  /* The rail scrolls itself rather than pushing its own footer away. */
+  .rail__rest { overflow-y: auto; }
+}

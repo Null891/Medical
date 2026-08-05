@@ -452,7 +452,8 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   check('the rail offers repeat actions', $$('.rail__action').length >= 2, true);
   check('  ...all routing somewhere real',
     Array.from($$('.rail__action')).every(b =>
-      ['log', 'label', 'kitchen', 'passport', 'labs'].includes(b.dataset.nav)), true);
+      ['log', 'label', 'kitchen', 'passport', 'labs', 'references', 'settings', 'more']
+        .includes(b.dataset.nav)), true);
   check('a rotating fact is present', $('#railTip').textContent.length > 20, true);
   check('disclaimer lives in the rail too',
     $('.rail__foot').textContent.includes('Not medical advice'), true);
