@@ -97,7 +97,11 @@ const Rings = (() => {
       const sums = map[key];
       const suppressed = Clinical.ringSuppressed(key);   // audit F5: low-K mode
       const live = target && !suppressed;
-      const status = live ? Clinical.ringStatus(sums.high, target) : null;
+      /* How many of today's items this nutrient could not price. It
+         withholds the green claim (see Clinical.ringStatus) and gives
+         the chip something specific to say. */
+      const unpriced = (totals.unpriced && totals.unpriced[key]) || 0;
+      const status = live ? Clinical.ringStatus(sums.high, target, unpriced) : null;
 
       return {
         key,
@@ -107,6 +111,7 @@ const Rings = (() => {
         target,
         suppressed,
         status,
+        unpriced,
         fill: live ? Clinical.ringFill(sums.low, sums.high, target) : 0,
         readout: Clinical.readoutText(sums.low, sums.high, target),
         remaining: live ? Clinical.remainingText(sums.low, sums.high, target) : null,
@@ -236,8 +241,15 @@ const Rings = (() => {
       }
 
       const s = r.status;
-      const partial = (r.key === 'na' && totals.sodiumIncomplete)
-        ? `<span class="chip chip--muted" title="${COPY.sodiumPartial}">Partial data</span>` : '';
+      /* Any nutrient, not only sodium — and it says HOW MANY items the
+         table could not price, because "2 items have no potassium
+         figure" is something a reader can act on and "Partial data" is
+         a shrug. Sodium keeps its own longer explanation, since a wide
+         sodium range is a different problem from a missing one. */
+      const partial = r.unpriced
+        ? `<span class="chip chip--muted" title="${esc(
+             r.key === 'na' ? COPY.sodiumPartial : COPY.partialTitle)}">${
+             esc(COPY.partialChip(r.unpriced))}</span>` : '';
 
       return `<div class="statblock">
         <div class="statblock__dot bg-${s.key}"></div>

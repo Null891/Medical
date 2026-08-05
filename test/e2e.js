@@ -554,6 +554,72 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
   window.RenalRoute.UI.renderHome(); await wait(40);
   check('no-target state has no ring figure to mangle', $('#ringCard .ring__left'), null);
 
+  /* ═══ 19n. A TOTAL THE TABLE COULD NOT FULLY PRICE ═══
+     The bug: totals summed with `|| 0` and only sodium recorded that it
+     had done so, so a food with no potassium figure contributed 0 mg
+     and the ring reported MORE headroom than the person had, silently.
+     13 of 55 rows have no potassium and 36 have no phosphorus, so this
+     fired constantly — Frank's first breakfast is egg on white toast,
+     and the egg has no potassium value.
+
+     The app's own coverage copy already claimed this was handled. */
+  console.log('\n═══ 19n. PARTLY COUNTED TOTALS ═══');
+  {
+    window.RenalRoute.Seed.run();
+    click('[data-nav="home"]'); await wait(40);
+    const t = window.RenalRoute.Store.dayTotals();
+
+    check('the day knows which nutrients it could not fully price',
+      t.incomplete.k, true);
+    check('  ...and how many items, not just that it happened', t.unpriced.k, 1);
+    check('  ...while a fully priced nutrient is not flagged', t.incomplete.p, false);
+
+    const blocks = $$('#statBlocks .statblock').map(b => ({
+      name: (b.querySelector('.statblock__name') || {}).textContent || '',
+      status: (b.querySelector('.statblock__status') || {}).textContent || '',
+      chip: (b.querySelector('.chip') || {}).textContent || ''
+    }));
+    const k = blocks.find(b => /potassium/i.test(b.name));
+    const p = blocks.find(b => /phosphorus/i.test(b.name));
+
+    /* GREEN IS THE ONLY VERDICT WITHHELD, and the reasoning is what
+       makes it rigorous: a missing value can only ADD to a total, so
+       amber and red survive incompleteness untouched. "On track" is a
+       claim about headroom, and headroom is what an unpriced food eats. */
+    check('a partly counted nutrient does NOT claim "On track"',
+      /on track/i.test(k.status), false);
+    check('  ...it says it is partly counted', /partly counted/i.test(k.status), true);
+    check('  ...and the chip names the number of unpriced items',
+      /1 item not priced/i.test(k.chip), true);
+    check('a fully priced nutrient still says On track', /on track/i.test(p.status), true);
+    check('  ...and carries no chip', p.chip.trim(), '');
+
+    /* The day line is the largest text on the dashboard. If the
+       nutrient it names is short, it has to say so in the same breath —
+       otherwise the most prominent figure is the least qualified one. */
+    const S = window.RenalRoute.Store;
+    const before = S.targets();
+    /* The day line names whichever nutrient is closest to its limit, so
+       potassium has to be made the tightest for this to be the one under
+       test. All three values stay inside the schema's own bounds. */
+    S.updateProfile({ potassium_budget_mg: 500,
+                      phosphorus_budget_mg: 3000, sodium_budget_mg: 6000 });
+    click('[data-nav="home"]'); await wait(40);
+    const dl = $('#homeDayLine').textContent;
+    check('  (potassium is the nutrient the day line names)',
+      /potassium/.test(dl), true);
+    check('when the day line names a partly counted nutrient, it says so',
+      /no published figure/i.test(dl), true);
+    check('  ...and names the direction — less room, never more',
+      /less room/i.test(dl), true);
+    S.updateProfile({ potassium_budget_mg: before.k, phosphorus_budget_mg: before.p, sodium_budget_mg: before.na });
+
+    /* The promise the coverage panel makes, checked against behaviour
+       rather than assumed. It said this happened long before it did. */
+    check('the coverage copy describes what the app actually does',
+      /marked as partial rather than quietly summing/i.test(window.COPY.coverage.missing), true);
+  }
+
   console.log('\n═══ 19p. DAY LINE + TODAY FEED ═══');
   window.RenalRoute.Seed.run();
   click('[data-nav="home"]'); await wait(40);

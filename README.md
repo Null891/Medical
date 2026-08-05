@@ -159,18 +159,18 @@ Behavior should be identical. Where it isn't, one of the two is wrong.
 ```powershell
 cd test
 npm install     # once — pulls jsdom and axe-core
-npm test        # all nine suites, 1,344 assertions
+npm test        # all nine suites, 1,404 assertions
 ```
 
 | Suite | Assertions | What it is for |
 |---|---:|---|
-| `verify.js`  | 275 | Unit: clinical bands, resolution, ranges, translation tables |
-| `e2e.js`     | 513 | The app driven in a real DOM, by real clicks, end to end |
+| `verify.js`  | 283 | Unit: clinical bands, resolution, ranges, translation tables |
+| `e2e.js`     | 530 | The app driven in a real DOM, by real clicks, end to end |
 | `probe.js`   |  12 | Edge cases: empty, no-target, hostile input |
 | `headers.js` |  34 | Deployment headers, CSP hashes, caching policy |
 | `wiring.js`  | 174 | Dead controls: a button that exists and does nothing |
-| `sweep.js`   | 126 | The manual QA list, automated — bundle integrity, plus lints on the harness itself |
-| `journey.js` | 113 | Four journeys a real person walks, in order |
+| `sweep.js`   | 136 | The manual QA list, automated — bundle integrity, table coverage, plus lints on the harness itself |
+| `journey.js` | 143 | Four journeys a real person walks, in order |
 | `forms.js`   |  80 | Every form submitted empty, oversized, and hostile |
 | `a11y.js`    |  17 | axe-core across 14 screens, WCAG 2.1 A + AA |
 

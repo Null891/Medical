@@ -195,6 +195,52 @@ console.log('\n═══ 0. THE BUNDLES MATCH THEIR SOURCES ═══');
     now === 3, `index.html references ${now}: expected one stylesheet and two scripts`);
 }
 
+console.log('\n═══ 0-DATA. TABLE COVERAGE MAY IMPROVE, NEVER REGRESS ═══');
+
+/* The table cannot price everything, and the app is now honest about
+   that rather than summing missing values as zero. Honesty is not the
+   same as progress, so this pins the numbers: gaps may CLOSE, never
+   open. Adding a row with no potassium figure, or dropping one that had
+   it, fails here rather than quietly widening the hole the partial
+   chips have to explain.
+
+   Update these ceilings DOWNWARD as values get sourced. Never upward. */
+{
+  const vm = require('vm');
+  const box = { console, module: {}, window: {} };
+  vm.createContext(box);
+  vm.runInContext(read('js/data/anchor-foods.js'), box, { filename: 'anchor-foods.js' });
+  const rows = vm.runInContext('ANCHOR_FOODS', box);
+
+  const missing = (f) => rows.filter(r => r[f] == null).length;
+  const CEILING = { k_low: 13, p_low: 36, na_low: 35 };
+
+  Object.keys(CEILING).forEach(f => {
+    const n = missing(f);
+    const nutrient = { k_low: 'potassium', p_low: 'phosphorus', na_low: 'sodium' }[f];
+    check(`${nutrient} gaps have not grown (${n} of ${rows.length}, ceiling ${CEILING[f]})`,
+      n <= CEILING[f],
+      `${n} rows now lack ${nutrient} — was ${CEILING[f]}. Lower the ceiling if you SOURCED values; ` +
+      `if a row lost one, that is the regression this exists to catch.`);
+  });
+
+  // A row with no potassium at all is the worst case: potassium is the
+  // nutrient the whole product is built around.
+  const noK = rows.filter(r => r.k_low == null);
+  check('  ...and the worst case is bounded', noK.length <= CEILING.k_low,
+    noK.slice(0, 4).map(r => r.id).join(', '));
+
+  /* The gap report has to keep working, because it is the only thing
+     that makes closing these a bounded job rather than a trawl. */
+  const gaps = require(path.join(ROOT, 'tools/data-gaps.js')).gaps();
+  check('the gap report still runs and finds them', gaps.length > 0, '');
+  check('  ...ordered by how often the food is actually used',
+    gaps.every((g, i) => i === 0 || gaps[i - 1].uses >= g.uses), 'not sorted by usage');
+  check('  ...and it invents no value',
+    !/[kpn]a?_low\s*[:=]\s*\d/.test(read('tools/data-gaps.js')),
+    'this script must never write a nutrient figure');
+}
+
 console.log('\n═══ 0-404. A MISTYPED URL IS NOT A DEAD END ═══');
 
 /* An independent scan navigated to a nonexistent route and got the
@@ -293,6 +339,23 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
   });
   check('  ...and appears in NO file the browser downloads',
     offending.length === 0, offending.slice(0, 3).join('  |  '));
+
+  /* THE ENTRANCE IS THE FRONT DOOR, and it used to open "This is a
+     demonstration entrance" — written when it was reachable only at
+     ?demo=1. Every visitor sees it now, and telling a patient the first
+     screen is a demonstration says the whole app is one. Same defect,
+     different surface. */
+  const copySrc = read('js/data/copy.js');
+  const demoBlock = copySrc.slice(copySrc.indexOf('  demo: {'),
+                                 copySrc.indexOf('  demo: {') + 1400);
+  check('the entrance does not call itself a demonstration',
+    !/demonstration|this is a demo\b/i.test(demoBlock),
+    'it is the first screen every visitor sees, not a hidden hatch');
+  /* The two things that must survive any rewrite of it. */
+  check('  ...but still says there is no account',
+    /no accounts and no sign-up|no account/i.test(demoBlock), '');
+  check('  ...and still says the example patients are made up',
+    /made up|fictional|example patients/i.test(demoBlock), '');
 }
 
 console.log('\n═══ 0b. EVERY ARGOSX FINDING, AS A REGRESSION CHECK ═══');

@@ -297,12 +297,34 @@ const Resolve = (() => {
 
   /* ── meal totals & confidence ── */
   function totals(items) {
+    /* ═══ A MISSING VALUE MUST NOT PASS AS A ZERO ═══
+       These sums use `|| 0`, which is correct arithmetic — the app
+       must not invent a figure for a food it cannot price — but for a
+       long time only SODIUM recorded that it had done so. A food with
+       no potassium value therefore contributed 0 mg and the ring
+       reported more headroom than the person had, silently.
+
+       That is the error direction that flatters the budget, which is
+       the one this whole product exists to avoid. And the coverage
+       panel already told the reader it did not happen: "the day is
+       marked as partial rather than quietly summing as though nothing
+       were absent."
+
+       It is not rare. 13 of 55 rows have no potassium, 36 have no
+       phosphorus, and Frank's first breakfast — egg on white toast —
+       has no potassium figure for the egg.
+
+       So every nutrient now carries the flag, and a COUNT rather than
+       a boolean: "2 items have no potassium figure" is something a
+       reader can act on, where "partial data" is a shrug. */
     const t = {
       total_potassium_low_mg: 0, total_potassium_high_mg: 0,
       total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
       total_sodium_low_mg: 0, total_sodium_high_mg: 0,
-      sodium_totals_incomplete: false
+      incomplete: { k: false, p: false, na: false },
+      unpriced: { k: 0, p: 0, na: 0 }
     };
+    const absent = (v) => v === null || v === undefined;
     items.forEach(i => {
       if (i.source === 'uncounted') return;
       t.total_potassium_low_mg  += i.potassium_low_mg  || 0;
@@ -311,10 +333,15 @@ const Resolve = (() => {
       t.total_phosphorus_high_mg+= i.phosphorus_high_mg|| 0;
       t.total_sodium_low_mg     += i.sodium_low_mg     || 0;
       t.total_sodium_high_mg    += i.sodium_high_mg    || 0;
-      if (i.sodium_low_mg === null || i.sodium_low_mg === undefined) {
-        t.sodium_totals_incomplete = true;
-      }
+
+      if (absent(i.potassium_low_mg))  { t.incomplete.k = true;  t.unpriced.k++; }
+      if (absent(i.phosphorus_low_mg)) { t.incomplete.p = true;  t.unpriced.p++; }
+      if (absent(i.sodium_low_mg))     { t.incomplete.na = true; t.unpriced.na++; }
     });
+    /* Kept readable so stored meals written before this change, and any
+       caller not yet updated, still answer the same question rather
+       than reading undefined and quietly deciding everything is fine. */
+    t.sodium_totals_incomplete = t.incomplete.na;
     Object.keys(t).forEach(k => {
       if (typeof t[k] === 'number') t[k] = Math.round(t[k] * 10) / 10;
     });

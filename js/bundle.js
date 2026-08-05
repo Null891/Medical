@@ -170,19 +170,33 @@ const COPY_EN = {
      "sign in" expects an authentication boundary; there isn't one, and
      saying so here is more useful than implying otherwise. */
   demo: {
-    title: 'Try RenalRoute',
+    /* THIS IS THE FRONT DOOR NOW, not a hatch behind ?demo=1, and the
+       copy had not caught up: it opened by describing itself as a
+       showcase rather than as the app, which tells a patient the whole
+       product is one. Same defect an independent scan raised a HIGH
+       against elsewhere — wording about the build rather than about the
+       product — and it reads worse here, because this is the first
+       screen anybody sees. The exact phrases that must not return are
+       in test/sweep.js, not quoted here: this file is bundled and
+       served, so a comment naming them puts them back in the source.
+
+       Two things still have to survive, and both do: no account is ever
+       created, and the two example patients are fictional. The second
+       is also carried by the banner that stays up for the whole
+       session, so it is stated rather than hammered. */
+    title: 'How would you like to start?',
     lede:
-      'Pick how you would like to start. Everything happens in this browser — no account is created ' +
-      'and nothing is uploaded, whichever you choose.',
+      'RenalRoute has no accounts and no sign-up. Everything stays in this browser, ' +
+      'whichever you pick — nothing is uploaded and nothing is created for you.',
     note:
-      'This is a demonstration entrance, not a login. There is no protected data behind it: every option ' +
-      'below opens the same app in this browser with example information in it. RenalRoute has no accounts ' +
-      'at all — see Settings for what that means for your data.',
+      'The two example patients below are made up, so you can look around a full week without ' +
+      'entering anything. Nothing is protected here and nothing is hidden behind a password — ' +
+      'see Settings for exactly where your data lives.',
     choices: [
       {
         key: 'fresh',
         name: 'Set it up as myself',
-        what: 'The normal first run — consent, what the app will not do, then four questions. Takes about a minute and nothing is pre-filled.'
+        what: 'The normal first run — what the app will not do, then four questions. About a minute, nothing pre-filled, and you can skip any of it.'
       },
       {
         key: 'frank',
@@ -560,7 +574,12 @@ const COPY_EN = {
     room: 'Room left in all three today.',
     close: 'Getting close on one of the three.',
     over: 'Over on one of the three — worth a look before your next meal.',
-    paused: 'Coaching is paused while your potassium result is high. Logging still works.'
+    paused: 'Coaching is paused while your potassium result is high. Logging still works.',
+    /* Said in the same breath as the figure, not left to a chip lower
+       down. Names the direction, because that is the part that changes
+       a decision: the room is smaller than shown, never larger. */
+    partial: (n) => `${n} item${n === 1 ? '' : 's'} today ${n === 1 ? 'has' : 'have'} ` +
+      'no published figure for it, so you have a little less room than that.'
   },
 
   /* ── Dashboard ── */
@@ -583,6 +602,17 @@ const COPY_EN = {
     "tunes the guidance to you. It's optional, never required.",
 
   /* ── Ring status labels — status is NEVER color alone ── */
+  /* The status a nutrient gets when its total is built on data the food
+     table could not fully price. It replaces "On track" and nothing
+     else: a missing value can only ADD to a total, so amber and red
+     stay true regardless, and green is the only claim it undermines. */
+  statusPartial: 'Partly counted',
+  partialChip: (n) => `${n} item${n === 1 ? '' : 's'} not priced`,
+  partialTitle:
+    'Some foods in today\'s meals have no published figure for this nutrient in our table, ' +
+    'so they are logged but left out of this total. The real number is higher than shown — ' +
+    'never lower. See Settings for exactly which values are missing.',
+
   statusOk: 'On track',
   statusWarn: 'Getting close',
   statusDanger: 'Over budget',
@@ -2324,7 +2354,13 @@ const Store = (() => {
     const rows = meals(dateISO || todayISO());
     const t = {
       k: { low: 0, high: 0 }, p: { low: 0, high: 0 }, na: { low: 0, high: 0 },
-      sodiumIncomplete: false, uncountedMeals: 0, mealCount: rows.length
+      /* Rolled up per nutrient, not just for sodium. A day is partial
+         for potassium if ANY meal in it contained a food the table
+         could not price, and the count is what makes it sayable:
+         "2 items today have no potassium figure". */
+      incomplete: { k: false, p: false, na: false },
+      unpriced: { k: 0, p: 0, na: 0 },
+      uncountedMeals: 0, mealCount: rows.length
     };
     rows.forEach(m => {
       t.k.low  += m.total_potassium_low_mg  || 0;
@@ -2333,9 +2369,27 @@ const Store = (() => {
       t.p.high += m.total_phosphorus_high_mg|| 0;
       t.na.low += m.total_sodium_low_mg     || 0;
       t.na.high+= m.total_sodium_high_mg    || 0;
-      if (m.sodium_totals_incomplete) t.sodiumIncomplete = true;
+
+      /* Meals stored before this shipped have no `incomplete` block, so
+         recount from the items rather than trusting a field that will
+         not be there. A day that silently reported itself complete
+         because of an old record would be the same bug wearing a
+         different hat. */
+      const items = (m.items || []).filter(i => i.source !== 'uncounted');
+      const absent = (v) => v === null || v === undefined;
+      const n = {
+        k:  items.filter(i => absent(i.potassium_low_mg)).length,
+        p:  items.filter(i => absent(i.phosphorus_low_mg)).length,
+        na: items.filter(i => absent(i.sodium_low_mg)).length
+      };
+      ['k', 'p', 'na'].forEach(key => {
+        if (n[key]) { t.incomplete[key] = true; t.unpriced[key] += n[key]; }
+      });
+
       if ((m.items || []).some(i => i.source === 'uncounted')) t.uncountedMeals++;
     });
+    // Readable for anything not yet updated; see Resolve.totals().
+    t.sodiumIncomplete = t.incomplete.na;
     return t;
   }
 
@@ -2669,11 +2723,30 @@ const Clinical = (() => {
 
   const round10 = (n) => Math.round(n / 10) * 10;
 
-  function ringStatus(high, target) {
+  /* `partial` is the number of items in this total the table could not
+     price. The asymmetry it creates is the whole point, and it is
+     rigorous rather than cautious:
+
+       A MISSING VALUE CAN ONLY ADD TO A TOTAL. NEVER SUBTRACT.
+
+     So amber and red survive incompleteness untouched — if what we DO
+     know already reaches the target, the unknown part cannot rescue it,
+     and the warning is true regardless. Green is the only verdict the
+     missing data undermines, because "On track" is a claim about
+     headroom, and headroom is exactly what an unpriced food eats.
+
+     The app therefore withholds one word in one direction, rather than
+     dropping status everywhere — with 36 of 55 rows missing phosphorus,
+     blanking every partial nutrient would leave most days with no
+     status at all and read as broken. */
+  function ringStatus(high, target, partial) {
     if (!target) return null;
     const ratio = high / target;
     if (ratio > 1)              return { key: 'danger', label: COPY.statusDanger, icon: '⬣' };
     if (ratio >= RING_AMBER_AT) return { key: 'warn',   label: COPY.statusWarn,   icon: '▲' };
+    if (partial) {
+      return { key: 'partial', label: COPY.statusPartial, icon: '◐', partial: true };
+    }
     return { key: 'ok', label: COPY.statusOk, icon: '✓' };
   }
 
@@ -3033,12 +3106,34 @@ const Resolve = (() => {
 
   /* ── meal totals & confidence ── */
   function totals(items) {
+    /* ═══ A MISSING VALUE MUST NOT PASS AS A ZERO ═══
+       These sums use `|| 0`, which is correct arithmetic — the app
+       must not invent a figure for a food it cannot price — but for a
+       long time only SODIUM recorded that it had done so. A food with
+       no potassium value therefore contributed 0 mg and the ring
+       reported more headroom than the person had, silently.
+
+       That is the error direction that flatters the budget, which is
+       the one this whole product exists to avoid. And the coverage
+       panel already told the reader it did not happen: "the day is
+       marked as partial rather than quietly summing as though nothing
+       were absent."
+
+       It is not rare. 13 of 55 rows have no potassium, 36 have no
+       phosphorus, and Frank's first breakfast — egg on white toast —
+       has no potassium figure for the egg.
+
+       So every nutrient now carries the flag, and a COUNT rather than
+       a boolean: "2 items have no potassium figure" is something a
+       reader can act on, where "partial data" is a shrug. */
     const t = {
       total_potassium_low_mg: 0, total_potassium_high_mg: 0,
       total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
       total_sodium_low_mg: 0, total_sodium_high_mg: 0,
-      sodium_totals_incomplete: false
+      incomplete: { k: false, p: false, na: false },
+      unpriced: { k: 0, p: 0, na: 0 }
     };
+    const absent = (v) => v === null || v === undefined;
     items.forEach(i => {
       if (i.source === 'uncounted') return;
       t.total_potassium_low_mg  += i.potassium_low_mg  || 0;
@@ -3047,10 +3142,15 @@ const Resolve = (() => {
       t.total_phosphorus_high_mg+= i.phosphorus_high_mg|| 0;
       t.total_sodium_low_mg     += i.sodium_low_mg     || 0;
       t.total_sodium_high_mg    += i.sodium_high_mg    || 0;
-      if (i.sodium_low_mg === null || i.sodium_low_mg === undefined) {
-        t.sodium_totals_incomplete = true;
-      }
+
+      if (absent(i.potassium_low_mg))  { t.incomplete.k = true;  t.unpriced.k++; }
+      if (absent(i.phosphorus_low_mg)) { t.incomplete.p = true;  t.unpriced.p++; }
+      if (absent(i.sodium_low_mg))     { t.incomplete.na = true; t.unpriced.na++; }
     });
+    /* Kept readable so stored meals written before this change, and any
+       caller not yet updated, still answer the same question rather
+       than reading undefined and quietly deciding everything is fine. */
+    t.sodium_totals_incomplete = t.incomplete.na;
     Object.keys(t).forEach(k => {
       if (typeof t[k] === 'number') t[k] = Math.round(t[k] * 10) / 10;
     });
@@ -4076,7 +4176,11 @@ const Rings = (() => {
       const sums = map[key];
       const suppressed = Clinical.ringSuppressed(key);   // audit F5: low-K mode
       const live = target && !suppressed;
-      const status = live ? Clinical.ringStatus(sums.high, target) : null;
+      /* How many of today's items this nutrient could not price. It
+         withholds the green claim (see Clinical.ringStatus) and gives
+         the chip something specific to say. */
+      const unpriced = (totals.unpriced && totals.unpriced[key]) || 0;
+      const status = live ? Clinical.ringStatus(sums.high, target, unpriced) : null;
 
       return {
         key,
@@ -4086,6 +4190,7 @@ const Rings = (() => {
         target,
         suppressed,
         status,
+        unpriced,
         fill: live ? Clinical.ringFill(sums.low, sums.high, target) : 0,
         readout: Clinical.readoutText(sums.low, sums.high, target),
         remaining: live ? Clinical.remainingText(sums.low, sums.high, target) : null,
@@ -4215,8 +4320,15 @@ const Rings = (() => {
       }
 
       const s = r.status;
-      const partial = (r.key === 'na' && totals.sodiumIncomplete)
-        ? `<span class="chip chip--muted" title="${COPY.sodiumPartial}">Partial data</span>` : '';
+      /* Any nutrient, not only sodium — and it says HOW MANY items the
+         table could not price, because "2 items have no potassium
+         figure" is something a reader can act on and "Partial data" is
+         a shrug. Sodium keeps its own longer explanation, since a wide
+         sodium range is a different problem from a missing one. */
+      const partial = r.unpriced
+        ? `<span class="chip chip--muted" title="${esc(
+             r.key === 'na' ? COPY.sodiumPartial : COPY.partialTitle)}">${
+             esc(COPY.partialChip(r.unpriced))}</span>` : '';
 
       return `<div class="statblock">
         <div class="statblock__dot bg-${s.key}"></div>
@@ -6396,7 +6508,8 @@ const Orbit = (() => {
       const suppressed = Clinical.ringSuppressed(key);
       const live = !!target && !suppressed;
       const frac = live ? remainingFraction(sums, target) : 1;
-      const status = live ? Clinical.ringStatus(sums.high, target) : null;
+      const unpriced = (totals.unpriced && totals.unpriced[key]) || 0;
+      const status = live ? Clinical.ringStatus(sums.high, target, unpriced) : null;
 
       return {
         key,
@@ -7889,7 +8002,19 @@ const UI = (() => {
       const remaining = Clinical.remainingText(
         totals[tightest].low, totals[tightest].high, t[tightest]);
       // "About 600–1,100 mg left" → "About 600–1,100 mg of potassium left"
-      return remaining.replace(/\bmg\b/, `mg of ${name}`) + `. ${meals}.`;
+      const line = remaining.replace(/\bmg\b/, `mg of ${name}`);
+
+      /* If the nutrient this sentence names is built on food the table
+         could not price, SAY SO HERE. This is the largest text on the
+         dashboard and the number somebody acts on; leaving the caveat
+         to a chip further down would make the most prominent figure the
+         least qualified one. The direction is stated because it is the
+         part that matters — the real total is higher, so the room is
+         smaller, never larger. */
+      const short = (totals.unpriced && totals.unpriced[tightest]) || 0;
+      if (short) return `${line}. ${COPY.today.partial(short)}`;
+
+      return `${line}. ${meals}.`;
     }
 
     // Nothing live to report against: fall back to the standing summary.

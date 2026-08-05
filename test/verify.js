@@ -152,6 +152,51 @@ check('all uncounted → low', Resolve.confidence([mk('uncounted')]), 'low');
 check('uncounted excluded from totals',
   Resolve.totals([mk('anchor'), mk('uncounted')]).total_potassium_high_mg, 1);
 
+/* ═══════════ A MISSING VALUE MUST NOT BECOME ZERO ═══════════
+   totals() summed with `|| 0` and only sodium set an incompleteness
+   flag, so a food with no potassium figure contributed 0 mg and the
+   ring reported MORE headroom than the person had, with nothing on
+   screen saying so.
+
+   Not hypothetical: 13 of 55 rows have no potassium, 36 have no
+   phosphorus, and 22 of the 23 foods the demo personas eat have at
+   least one gap. Frank's first breakfast is egg on white toast, and the
+   egg has no potassium value.
+
+   The app's own coverage copy already promised this was handled: "the
+   day is marked as partial rather than quietly summing as though
+   nothing were absent." True for sodium. False for the other two. */
+{
+  const full = { source: 'anchor',
+    potassium_low_mg: 100, potassium_high_mg: 120,
+    phosphorus_low_mg: 50, phosphorus_high_mg: 60,
+    sodium_low_mg: 10, sodium_high_mg: 12 };
+  // An egg, as the table actually holds it: no potassium, no sodium.
+  const gappy = { source: 'anchor',
+    potassium_low_mg: null, potassium_high_mg: null,
+    phosphorus_low_mg: 86, phosphorus_high_mg: 95,
+    sodium_low_mg: null, sodium_high_mg: null };
+
+  const t = Resolve.totals([full, gappy]);
+
+  check('a missing potassium is flagged, not silently zero',
+    t.incomplete.k, true);
+  check('  ...and the unpriced item is COUNTED, so the app can say how many',
+    t.unpriced.k, 1);
+  check('a missing sodium is still flagged', t.incomplete.na, true);
+  check('a nutrient with every value present is NOT flagged',
+    t.incomplete.p, false);
+  check('  ...and reports zero unpriced', t.unpriced.p, 0);
+
+  // The old flag stays readable so nothing downstream breaks quietly.
+  check('the old sodium flag still answers', t.sodium_totals_incomplete, true);
+
+  // The arithmetic itself is unchanged: known values still sum.
+  check('known values still sum normally', t.total_phosphorus_high_mg, 155);
+  check('  ...and a missing value adds nothing rather than guessing',
+    t.total_potassium_high_mg, 120);
+}
+
 console.log('\n═══ SWAP-POOL INTEGRITY ═══');
 const additiveInPool = ANCHOR_FOODS.filter(f => f.additive_risk && f.swap_pool);
 check('no additive_risk row is ever a swap candidate', additiveInPool.length, 0);

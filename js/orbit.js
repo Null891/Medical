@@ -77,7 +77,8 @@ const Orbit = (() => {
       const suppressed = Clinical.ringSuppressed(key);
       const live = !!target && !suppressed;
       const frac = live ? remainingFraction(sums, target) : 1;
-      const status = live ? Clinical.ringStatus(sums.high, target) : null;
+      const unpriced = (totals.unpriced && totals.unpriced[key]) || 0;
+      const status = live ? Clinical.ringStatus(sums.high, target, unpriced) : null;
 
       return {
         key,

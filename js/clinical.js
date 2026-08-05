@@ -284,11 +284,30 @@ const Clinical = (() => {
 
   const round10 = (n) => Math.round(n / 10) * 10;
 
-  function ringStatus(high, target) {
+  /* `partial` is the number of items in this total the table could not
+     price. The asymmetry it creates is the whole point, and it is
+     rigorous rather than cautious:
+
+       A MISSING VALUE CAN ONLY ADD TO A TOTAL. NEVER SUBTRACT.
+
+     So amber and red survive incompleteness untouched — if what we DO
+     know already reaches the target, the unknown part cannot rescue it,
+     and the warning is true regardless. Green is the only verdict the
+     missing data undermines, because "On track" is a claim about
+     headroom, and headroom is exactly what an unpriced food eats.
+
+     The app therefore withholds one word in one direction, rather than
+     dropping status everywhere — with 36 of 55 rows missing phosphorus,
+     blanking every partial nutrient would leave most days with no
+     status at all and read as broken. */
+  function ringStatus(high, target, partial) {
     if (!target) return null;
     const ratio = high / target;
     if (ratio > 1)              return { key: 'danger', label: COPY.statusDanger, icon: '⬣' };
     if (ratio >= RING_AMBER_AT) return { key: 'warn',   label: COPY.statusWarn,   icon: '▲' };
+    if (partial) {
+      return { key: 'partial', label: COPY.statusPartial, icon: '◐', partial: true };
+    }
     return { key: 'ok', label: COPY.statusOk, icon: '✓' };
   }
 

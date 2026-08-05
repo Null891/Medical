@@ -327,7 +327,13 @@ const Store = (() => {
     const rows = meals(dateISO || todayISO());
     const t = {
       k: { low: 0, high: 0 }, p: { low: 0, high: 0 }, na: { low: 0, high: 0 },
-      sodiumIncomplete: false, uncountedMeals: 0, mealCount: rows.length
+      /* Rolled up per nutrient, not just for sodium. A day is partial
+         for potassium if ANY meal in it contained a food the table
+         could not price, and the count is what makes it sayable:
+         "2 items today have no potassium figure". */
+      incomplete: { k: false, p: false, na: false },
+      unpriced: { k: 0, p: 0, na: 0 },
+      uncountedMeals: 0, mealCount: rows.length
     };
     rows.forEach(m => {
       t.k.low  += m.total_potassium_low_mg  || 0;
@@ -336,9 +342,27 @@ const Store = (() => {
       t.p.high += m.total_phosphorus_high_mg|| 0;
       t.na.low += m.total_sodium_low_mg     || 0;
       t.na.high+= m.total_sodium_high_mg    || 0;
-      if (m.sodium_totals_incomplete) t.sodiumIncomplete = true;
+
+      /* Meals stored before this shipped have no `incomplete` block, so
+         recount from the items rather than trusting a field that will
+         not be there. A day that silently reported itself complete
+         because of an old record would be the same bug wearing a
+         different hat. */
+      const items = (m.items || []).filter(i => i.source !== 'uncounted');
+      const absent = (v) => v === null || v === undefined;
+      const n = {
+        k:  items.filter(i => absent(i.potassium_low_mg)).length,
+        p:  items.filter(i => absent(i.phosphorus_low_mg)).length,
+        na: items.filter(i => absent(i.sodium_low_mg)).length
+      };
+      ['k', 'p', 'na'].forEach(key => {
+        if (n[key]) { t.incomplete[key] = true; t.unpriced[key] += n[key]; }
+      });
+
       if ((m.items || []).some(i => i.source === 'uncounted')) t.uncountedMeals++;
     });
+    // Readable for anything not yet updated; see Resolve.totals().
+    t.sodiumIncomplete = t.incomplete.na;
     return t;
   }
 

@@ -20,8 +20,10 @@ paste it.
    cheaper to catch immediately than three blocks later.
 3. **If a block fails twice, revert via Version History and move on.** Do not enter
    a fix-prompt spiral; that is how the credit budget dies.
-4. **Blocks 1–4 are the ones that matter.** If you run out of budget after block 4,
-   you still have a coherent, honest product. Everything after is addition.
+4. **Blocks 1, 15 and 2–4 are the ones that matter.** If you run out of budget
+   after those, you still have a coherent, honest product. Everything else is
+   addition. Blocks 1 and 15 are not features at all — they are the app currently
+   telling people things that are not true.
 
 ## Budget, honestly
 
@@ -41,14 +43,17 @@ paste it.
 | 12 · Medicines, and data that survives a wipe | 1.5 | Low |
 | 13 · Three languages | 2.5 | Low |
 | 14 · The wording that reads as a staging build | 0.5 | **Cheap and worth it** |
-| | **26.5** | |
+| 15 · A missing value must not pass as a zero | 1.5 | **ESSENTIAL — paste with block 1** |
+| | **28.0** | |
 
 **That is more than the remaining budget allows, and pretending otherwise helps
-nobody.** The recommendation: **1 → 2 → 3 → 4 → 14** is about 8 credits and is the
-version of the app a judge actually meets. Add 5 and 9 if you can afford 12.
+nobody.** The recommendation: **1 → 15 → 2 → 3 → 4 → 14** is about 9.5 credits and
+is the version of the app a judge actually meets. Add 5 and 9 if you can afford 12.
 
-**If the budget is nearly gone: block 1 alone.** Everything else here is a feature.
-That one is an app telling people it saved their data when it did not.
+**If the budget is nearly gone: blocks 1 and 15.** Everything else here is a
+feature. Those two are the app reporting things that are not true — a save that
+did not happen, and a total it cannot support. Both mislead in the direction that
+looks fine.
 
 ---
 ---
@@ -476,14 +481,20 @@ Paper in a wallet outlives every app, including this one.
 
 # BLOCK 9 — the demo entrance, and two people to be
 
-> Do this if anybody will ever demo the app, or if an automated reviewer needs a way
-> in. Without it a scanner sees only the consent gate and reports on a page rather
-> than on a product.
+> This is the app's FRONT DOOR, not an optional extra. Before it existed, every
+> visitor met a consent gate and four setup questions before the app showed them
+> anything, and anybody who wanted to look around first had no way to.
 
 ```
-Add an entrance offering three ways to start. It is a CHOOSER, not an authentication boundary, and the copy must say so — there is nothing behind it to protect, since every door leads to the same app in the same browser with fictional data in it. Dressing it in real locks would imply there is something to unlock.
+Add an entrance offering three ways to start. It is a CHOOSER, not an authentication boundary, and the copy must say so — there is nothing behind it to protect, since every door leads to the same app in the same browser. Dressing it in locks would imply there is something to unlock.
 
-Reached only at ?demo=1 or #demo. An ordinary visitor never sees it and meets the consent gate exactly as before.
+IT IS THE FIRST SCREEN EVERY VISITOR SEES, not a hidden route. Show it whenever consent has not yet been accepted. Somebody evaluating this in ninety seconds should not have to fill in a form before the app shows them anything.
+
+Do NOT re-show it to somebody who already accepted consent — re-asking a returning user is a nag, not a feature.
+
+AND DO NOT LET IT CALL ITSELF A DEMONSTRATION. That wording was written when the screen was hidden behind a query string; on the front door it tells a patient the whole app is a showcase, which is the same defect an independent scan raised a HIGH against elsewhere. Title it as the question it asks — "How would you like to start?" — and say two things plainly: there is no account and no sign-up, and the two example patients are made up.
+
+It costs one extra tap for somebody setting the app up themselves. That is the trade, and it is worth it: one tap buys anybody the ability to be inside a populated app immediately.
 
 ═══ THREE CHOICES ═══
 
@@ -495,6 +506,20 @@ Reached only at ?demo=1 or #demo. An ordinary visitor never sees it and meets th
 
 3. "Continue as Maria — everything used"
    A patient who has used all of it: two lab results, weight and blood pressure recorded, symptoms noted, an appointment with questions written down, a filled-in health passport, medicines including a phosphate binder, and enough history for the pattern detector to have something to say.
+
+═══ THEY MUST BE TWO DIFFERENT PEOPLE, NOT ONE WEEK WITH TWO NAMES ═══
+
+Seed them from SEPARATE weeks of meals. If both personas share one set of meals, "two personas" is a claim rather than a fact — same food, same totals, same trends card, only the greeting different, and somebody switching between them sees nothing change.
+
+Frank is G3b, normal-range potassium, one lab, nothing else filled in. His week carries a chili day and a deli-ham-and-processed-cheese day, which is what gives him an amber potassium day and an amber phosphorus day to look at.
+
+Maria is G4, tighter targets, potassium 5.2 — caution mode. Her week reads like somebody managing that: BOILED potatoes rather than baked with the skin, because leaching is the one lever in the app that changes a number without changing what you ate. Low-potassium vegetables repeatedly. One cola, so the additive-phosphate card still has something to fire on — a seven-day record with no flags in it teaches nobody anything.
+
+═══ A NAME IS OPTIONAL, AND A SKIPPED ONE STILL NEEDS A LABEL ═══
+
+Somebody who skips the name should not leave the passport and the export with a blank where a name goes. Use a neutral placeholder and flag it as one.
+
+Do NOT invent a first name for them. A health app calling somebody Bob has decided who they are, which is exactly what this app argues it does not do. "You" works: it addresses the reader without claiming an identity.
 
 ═══ THE PROMISES MUST BE KEPT ═══
 
@@ -519,12 +544,17 @@ A "Leave demo" control on that banner. It clears the session AND the fictional d
 
 **Acceptance test**
 
-1. `?demo=1` → the chooser, three cards, each explaining what it gives you.
+1. Open the app with **no data in the browser** → the chooser appears immediately, three cards, each explaining what it gives you. `?demo=1` also works and skips nothing.
+1b. Accept consent, reload → the chooser does NOT reappear.
+1c. Read the entrance copy: it never describes itself as a demonstration, and it says both "no account" and that the example patients are made up.
 2. "Set it up as myself" → consent → refusals → setup, and **zero** fictional meals seeded.
 3. Frank → a week of meals, exactly one lab, banner up naming Frank.
 4. Maria → exactly two labs, weight and BP present, symptoms present, an appointment with real questions, a filled passport, **medicines listed with a phosphate binder among them**, and the pattern detector has enough to work with.
 5. Read Maria's card aloud and check each promise against the app. Every one must hold.
 6. Frank has one lab and no medicines — the two tours are genuinely different.
+6b. **List the meal names for each persona. They must not be the same set.** Frank has the chili day; Maria does not. Maria has boiled potatoes; Frank has them baked with the skin.
+6c. Skip the name at setup → the profile carries a neutral placeholder, flagged as one, and it is not a gendered first name.
+6d. Count the taps from a cold open to a working dashboard on the self-setup path. Four is expected. Five means the entrance grew a step.
 7. Navigate three screens as Frank → the fictional-data banner is still visible.
 8. "Leave demo" → session gone, fictional data gone, back at the entrance.
 9. Log a real meal in a normal browser, then try to enter a persona → refused, real data untouched.
@@ -777,6 +807,81 @@ The honest half must survive all three edits: the values are still described as 
 ---
 ---
 
+---
+---
+
+# BLOCK 15 — a missing value must not pass as a zero
+
+> **Paste this with Block 1.** It is the same class of defect: the app reporting a
+> number it cannot support. Here the error runs in the direction that flatters the
+> budget, which is the worse of the two.
+
+```
+Find where per-meal and per-day nutrient totals are summed. They almost certainly add each item's value with a fallback of zero — correct arithmetic, because the app must not invent a figure for a food it cannot price. The bug is that nothing RECORDS having done it.
+
+In the reference build only sodium carried an "incomplete" flag. Potassium and phosphorus did not, so a food with no potassium figure contributed 0 mg and the ring reported MORE headroom than the person actually had, with nothing on screen saying so.
+
+This is not an edge case. The food table has real holes — in the reference build 13 of 55 rows have no potassium figure, 36 no phosphorus, 35 no sodium, and 22 of the 23 foods the two example patients eat have at least one gap. The very first seeded breakfast is egg on white toast, and the egg has no potassium value: the app reported 36 mg for a meal it could price half of.
+
+═══ PART 1 — EVERY NUTRIENT CARRIES THE FLAG, AND A COUNT ═══
+
+For each of the three nutrients, per meal and rolled up per day, record:
+
+  whether any counted item was missing that nutrient's value, and
+  HOW MANY items were missing it.
+
+The count is the part that matters. "2 items have no potassium figure" is something a reader can act on. "Partial data" is a shrug.
+
+When rolling a day up from stored meals, RECOUNT FROM THE ITEMS rather than trusting a flag on the meal record. Meals saved before this change will not carry one, and a day that silently reported itself complete because of an old record is the same bug wearing a different hat.
+
+═══ PART 2 — GREEN IS THE ONLY VERDICT THE MISSING DATA UNDERMINES ═══
+
+This is the rule, and it is rigorous rather than cautious:
+
+  A MISSING VALUE CAN ONLY ADD TO A TOTAL. NEVER SUBTRACT.
+
+So:
+
+  If what is known already reaches amber or red, that stands. The unknown part cannot rescue it, and the warning is true regardless.
+
+  If what is known would show green — "on track", "room left" — the app CANNOT claim it. "On track" is a statement about headroom, and headroom is exactly what an unpriced food eats.
+
+Replace the green status with a neutral "partly counted" state carrying the count. Keep the figure, keep the range, keep the ring. Withhold only the verdict, and only in the one direction where it would overstate.
+
+Do NOT blank the status entirely on partial data. With most of the table missing phosphorus, nearly every day would show no phosphorus status at all and the dashboard would read as broken.
+
+Do NOT make the partial state a warning colour. Nothing is wrong with the person's day; the app simply knows less than it would like. Amber here would blame them for a gap in our table.
+
+═══ PART 3 — THE MOST PROMINENT NUMBER NEEDS THE CAVEAT MOST ═══
+
+If the dashboard has a single headline sentence — "about 600 to 1,100 mg of potassium left" — and the nutrient it names is partly counted, it must say so IN THE SAME SENTENCE. Leaving the caveat to a chip further down makes the largest text on the screen the least qualified thing on it.
+
+Name the direction, because that is what changes a decision:
+
+  ... 2 items today have no published figure for it, so you have a little less room than that.
+
+Less room. Never more.
+
+═══ PART 4 — CHECK WHAT YOUR COPY ALREADY PROMISES ═══
+
+Before writing any of this, read your own coverage or data-quality copy. In the reference build it already told the reader: "that nutrient is simply left out of the total, and the day is marked as partial rather than quietly summing as though nothing were absent."
+
+True for sodium. False for the other two, for months. Copy that promises behaviour the app does not have is the same defect as a demo persona whose card lists medicines she does not carry — and both were found by checking the promise against the data rather than re-reading the code.
+```
+
+**Acceptance test**
+
+1. Log a meal containing one food with a full set of values and one the table cannot price for potassium. → The potassium total is flagged partial and reports **1** unpriced item, not just `true`.
+2. A nutrient with every value present is **not** flagged, and reports zero unpriced.
+3. Known values still sum exactly as before — the arithmetic is unchanged.
+4. The partly counted nutrient does **not** say "On track".
+5. Push a partial nutrient over its target with foods that DO have values. → It still shows amber or red. Incompleteness must not soften a real warning.
+6. Make a partly counted nutrient the one the headline sentence names. → The sentence itself carries the caveat and says the room is *smaller*, not larger.
+7. Load a meal saved before this change. → The day still reports itself partial, because the roll-up recounted from the items.
+8. Read your coverage copy aloud and check each clause against behaviour.
+
+---
+
 ## What does NOT transfer
 
 Do not spend credits trying to move these; they are properties of the Vercel host.
@@ -794,7 +899,7 @@ Do not spend credits trying to move these; they are properties of the Vercel hos
 ## Order, and what depends on what
 
 ```
-BLOCK 1   (correctness — no dependencies, paste first)
+BLOCK 1  +  BLOCK 15   (both correctness — paste these first)
    |
    +-- BLOCK 2 --> BLOCK 3     (3 sits right after 2's consent step)
    +-- BLOCK 4                 (navigation first, so 6 and 8 have somewhere to live)

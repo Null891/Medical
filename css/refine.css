@@ -1222,3 +1222,26 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
 .notfound__actions .btn { display: inline-flex; text-decoration: none; }
 
 .notfound__note { margin-top: var(--space-4); }
+
+/* ═══════════════════════════════════════════════════════════════
+   PARTLY COUNTED
+   ───────────────────────────────────────────────────────────────
+   The state a nutrient gets when the food table could not price
+   everything in the day. It replaces "On track" and nothing else — a
+   missing value can only ADD to a total, so amber and red stay true
+   regardless, and green is the only claim it undermines.
+
+   Deliberately NEUTRAL, not a warning. Nothing is wrong: the app simply
+   knows less than it would like, and it is saying so. Amber here would
+   read as a problem with the person's day rather than a gap in our
+   table, and this app does not hand out verdicts it cannot support in
+   either direction.
+   ═══════════════════════════════════════════════════════════════ */
+.is-partial { color: var(--color-text-secondary); }
+.bg-partial { background: var(--color-track); }
+
+/* The ring itself keeps the muted track colour rather than a status
+   hue, so a partial nutrient reads as "not yet known" at a glance
+   instead of as a grade. */
+.ring__fill.is-partial,
+.ring__value.is-partial { stroke: var(--color-text-secondary); }

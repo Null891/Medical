@@ -657,7 +657,19 @@ const UI = (() => {
       const remaining = Clinical.remainingText(
         totals[tightest].low, totals[tightest].high, t[tightest]);
       // "About 600–1,100 mg left" → "About 600–1,100 mg of potassium left"
-      return remaining.replace(/\bmg\b/, `mg of ${name}`) + `. ${meals}.`;
+      const line = remaining.replace(/\bmg\b/, `mg of ${name}`);
+
+      /* If the nutrient this sentence names is built on food the table
+         could not price, SAY SO HERE. This is the largest text on the
+         dashboard and the number somebody acts on; leaving the caveat
+         to a chip further down would make the most prominent figure the
+         least qualified one. The direction is stated because it is the
+         part that matters — the real total is higher, so the room is
+         smaller, never larger. */
+      const short = (totals.unpriced && totals.unpriced[tightest]) || 0;
+      if (short) return `${line}. ${COPY.today.partial(short)}`;
+
+      return `${line}. ${meals}.`;
     }
 
     // Nothing live to report against: fall back to the standing summary.

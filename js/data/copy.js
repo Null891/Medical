@@ -165,19 +165,33 @@ const COPY_EN = {
      "sign in" expects an authentication boundary; there isn't one, and
      saying so here is more useful than implying otherwise. */
   demo: {
-    title: 'Try RenalRoute',
+    /* THIS IS THE FRONT DOOR NOW, not a hatch behind ?demo=1, and the
+       copy had not caught up: it opened by describing itself as a
+       showcase rather than as the app, which tells a patient the whole
+       product is one. Same defect an independent scan raised a HIGH
+       against elsewhere — wording about the build rather than about the
+       product — and it reads worse here, because this is the first
+       screen anybody sees. The exact phrases that must not return are
+       in test/sweep.js, not quoted here: this file is bundled and
+       served, so a comment naming them puts them back in the source.
+
+       Two things still have to survive, and both do: no account is ever
+       created, and the two example patients are fictional. The second
+       is also carried by the banner that stays up for the whole
+       session, so it is stated rather than hammered. */
+    title: 'How would you like to start?',
     lede:
-      'Pick how you would like to start. Everything happens in this browser — no account is created ' +
-      'and nothing is uploaded, whichever you choose.',
+      'RenalRoute has no accounts and no sign-up. Everything stays in this browser, ' +
+      'whichever you pick — nothing is uploaded and nothing is created for you.',
     note:
-      'This is a demonstration entrance, not a login. There is no protected data behind it: every option ' +
-      'below opens the same app in this browser with example information in it. RenalRoute has no accounts ' +
-      'at all — see Settings for what that means for your data.',
+      'The two example patients below are made up, so you can look around a full week without ' +
+      'entering anything. Nothing is protected here and nothing is hidden behind a password — ' +
+      'see Settings for exactly where your data lives.',
     choices: [
       {
         key: 'fresh',
         name: 'Set it up as myself',
-        what: 'The normal first run — consent, what the app will not do, then four questions. Takes about a minute and nothing is pre-filled.'
+        what: 'The normal first run — what the app will not do, then four questions. About a minute, nothing pre-filled, and you can skip any of it.'
       },
       {
         key: 'frank',
@@ -555,7 +569,12 @@ const COPY_EN = {
     room: 'Room left in all three today.',
     close: 'Getting close on one of the three.',
     over: 'Over on one of the three — worth a look before your next meal.',
-    paused: 'Coaching is paused while your potassium result is high. Logging still works.'
+    paused: 'Coaching is paused while your potassium result is high. Logging still works.',
+    /* Said in the same breath as the figure, not left to a chip lower
+       down. Names the direction, because that is the part that changes
+       a decision: the room is smaller than shown, never larger. */
+    partial: (n) => `${n} item${n === 1 ? '' : 's'} today ${n === 1 ? 'has' : 'have'} ` +
+      'no published figure for it, so you have a little less room than that.'
   },
 
   /* ── Dashboard ── */
@@ -578,6 +597,17 @@ const COPY_EN = {
     "tunes the guidance to you. It's optional, never required.",
 
   /* ── Ring status labels — status is NEVER color alone ── */
+  /* The status a nutrient gets when its total is built on data the food
+     table could not fully price. It replaces "On track" and nothing
+     else: a missing value can only ADD to a total, so amber and red
+     stay true regardless, and green is the only claim it undermines. */
+  statusPartial: 'Partly counted',
+  partialChip: (n) => `${n} item${n === 1 ? '' : 's'} not priced`,
+  partialTitle:
+    'Some foods in today\'s meals have no published figure for this nutrient in our table, ' +
+    'so they are logged but left out of this total. The real number is higher than shown — ' +
+    'never lower. See Settings for exactly which values are missing.',
+
   statusOk: 'On track',
   statusWarn: 'Getting close',
   statusDanger: 'Over budget',

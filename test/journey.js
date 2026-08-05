@@ -299,8 +299,17 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     /* It must not claim to be a login. That claim, made to a security
        reviewer, would be a lie told to the worst possible audience. */
     const demoText = a.$('#scr-home') && a.$('#demoModal').textContent;
-    check('  ...and says plainly that it is not a login',
-      /not a login|no protected data/i.test(demoText), true);
+    /* The intent, not one phrasing of it: nothing here may read as an
+       authentication boundary. The screen used to say "not a login"
+       literally; it now says nothing is protected and nothing sits
+       behind a password, which makes the same promise to the same
+       audience without opening the front door by calling itself a
+       showcase. Either wording passes; a screen that implies a lock
+       does not. */
+    check('  ...and says plainly that nothing here is protected',
+      /not a login|no protected data|nothing is protected|behind a password/i.test(demoText), true);
+    check('  ...while never implying there is a lock to get past',
+      /sign in|log in|password required|enter your credentials/i.test(demoText), false);
     check('  ...and that no account is created',
       /no account/i.test(demoText), true);
 
