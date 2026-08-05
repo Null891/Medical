@@ -139,6 +139,18 @@ const Passport = (() => {
       }
     }
 
+    /* The next appointment's questions, on the card you carry into the
+       room. This is the entire reason the appointment feature exists —
+       a date is something every phone already stores. */
+    if (typeof Vitals !== 'undefined') {
+      const next = Vitals.nextAppointment();
+      if (next && next.questions.trim()) {
+        out.push(`QUESTIONS FOR ${next.date}${next.who ? ' — ' + next.who : ''}`);
+        next.questions.split(/\r?\n/).forEach(q => { if (q.trim()) out.push('  ' + q.trim()); });
+        out.push('');
+      }
+    }
+
     out.push(`Generated ${new Date().toLocaleDateString('en-US',
       { year: 'numeric', month: 'long', day: 'numeric' })} by RenalRoute,`);
     out.push('an educational wellness app. Not a medical record.');

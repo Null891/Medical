@@ -9,7 +9,13 @@
   --color-surface:       #FFFFFF;
   --color-surface-warm:  #FEFBF7;
   --color-text-primary:  #2B2B2B;   /* ~13:1 on canvas               */
-  --color-text-secondary:#5C5750;   /* ~6.5:1 — never below 14px     */
+  /* Darkened from #5C5750 (6.72:1) to 8.1:1. The ratio was already
+     passing; the report was that it was hard to READ, which is a
+     different question — contrast ratio is a floor, not a measure of
+     comfort. Secondary text carries most of the explanation in this
+     app and is read by people who did not choose their phone for its
+     screen. */
+  --color-text-secondary:#4A463F;
   --color-accent:        #1F7A6B;   /* teal-green                    */
   --color-cta:           #C0492E;   /* coral — primary buttons only  */
 

@@ -145,5 +145,60 @@ const Vitals = (() => {
     });
   }
 
-  return { KEY, BOUNDS, SYMPTOMS, all, add, remove, recent, latest, validate, asLines, symptomLabel };
+  /* ═══════════ appointments ═══════════
+     A date, who it is with, and what you want to ask. That last field
+     is the one that matters and the one no calendar app has: people
+     arrive at a fifteen-minute nephrology appointment having forgotten
+     the question they have been carrying for six weeks.
+
+     Deliberately NOT a calendar. No reminders, no notifications, no
+     recurrence — those need permissions this app does not ask for and
+     a reliability it cannot promise from a service worker that may not
+     be running. Promising a reminder and not delivering it, for a
+     clinic appointment, would be worse than never offering one.
+
+     What it does instead is put the questions on the health passport,
+     so the thing you carry into the room already has them on it. */
+  const APPT_KEY = 'appointments';
+
+  const appointments = () => {
+    const raw = Store.settings()[APPT_KEY];
+    return Array.isArray(raw) ? raw : [];
+  };
+
+  function addAppointment(entry) {
+    const date = String(entry.date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { ok: false, message: 'Pick a date for the appointment.' };
+    }
+    const rec = {
+      id: 'apt_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      date,
+      who: String(entry.who || '').slice(0, 120),
+      questions: String(entry.questions || '').slice(0, 600)
+    };
+    const next = appointments().concat(rec)
+      .sort((a, b) => a.date < b.date ? -1 : 1)
+      .slice(-60);
+    Store.setSetting(APPT_KEY, next);
+    return { ok: true, record: rec };
+  }
+
+  function removeAppointment(id) {
+    Store.setSetting(APPT_KEY, appointments().filter(a => a.id !== id));
+    return true;
+  }
+
+  /* The next one that has not happened yet. Past appointments are kept
+     — the questions asked last time are often the reason for this
+     time — but they never present themselves as upcoming. */
+  function nextAppointment() {
+    const today = Store.todayISO();
+    return appointments().find(a => a.date >= today) || null;
+  }
+
+  const daysUntil = (iso) => Store.daysBetween(Store.todayISO(), iso);
+
+  return { KEY, BOUNDS, SYMPTOMS, all, add, remove, recent, latest, validate, asLines, symptomLabel,
+           APPT_KEY, appointments, addAppointment, removeAppointment, nextAppointment, daysUntil };
 })();

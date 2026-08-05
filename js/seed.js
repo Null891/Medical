@@ -145,5 +145,120 @@ const Seed = (() => {
     return true;
   }
 
-  return { run, resetToday, FRANK };
+  /* ═══════════ MARIA — every feature, used ═══════════
+     Frank exists for the demo script: a clean week and today's
+     breakfast, tuned so the swap beat has headroom. He deliberately
+     does NOT touch most of the app, because a walkthrough needs a
+     stage, not a museum.
+
+     Maria is the opposite, and she exists for a different job: showing
+     somebody the full extent of what this is. Every surface is
+     populated — labs across two dates so the trend is real, weight and
+     blood pressure recorded, symptoms noted, an appointment with the
+     questions already written, a passport filled in, medicines
+     including a binder so the timing note fires, and enough logged days
+     for the pattern detector to clear its evidence floor and actually
+     say something.
+
+     Built entirely through the app's own paths. Nothing here is a
+     fixture that could drift from what the code produces. */
+  const MARIA = {
+    display_name: 'Maria',
+    ckd_stage: 'G4',
+    budget_source: 'care_team',
+    potassium_budget_mg: 2200,
+    phosphorus_budget_mg: 800,
+    sodium_budget_mg: 2000
+  };
+
+  function runFull() {
+    run();                                    // the week of meals first
+    Store.updateProfile(MARIA);
+
+    /* run() seeds Frank's baseline lab, and Maria has her own history —
+       leaving both gives her three results from two different people.
+       Caught by the demo journey test asserting exactly two, which is
+       the kind of thing that would otherwise have sat in the demo
+       looking almost right. */
+    Store.labs().forEach(l => Store.deleteLab(l.id));
+
+    /* Two labs, four weeks apart, so the Labs screen has real history
+       and the mode is derived rather than asserted. The later one is
+       5.2 — caution mode, which is where this app has the most to say
+       and therefore the most to show somebody seeing it for the first
+       time. */
+    Store.addLab({ k: 4.4, p: 3.9, egfr: 26, lab_date: Store.daysAgoISO(38) });
+    Store.addLab({ k: 5.2, p: 4.7, egfr: 24, lab_date: Store.daysAgoISO(9) });
+
+    // What her care team asked her to watch. Drives ring emphasis.
+    Store.setSetting('watched', ['k', 'p']);
+    Store.setSetting('hardest', 'restaurant');
+    Store.setSetting('scene', 'home');
+    Store.setSetting('refusalsSeen', true);
+
+    /* A passport somebody could actually hand to a stranger. The
+       fistula line is the kind of detail that makes the feature obvious
+       the moment a clinician reads it. */
+    /* Multi-line content as an array joined at use, rather than escaped
+       newlines inside a literal. Same output, and it cannot be broken
+       by anything that rewrites this file. */
+    const MEDS = [
+      'Lisinopril 10mg every morning',
+      'Sevelamer 800mg with each meal',      // a binder: fires the timing note
+      'Metformin 500mg twice daily'
+    ].join('\n');
+
+    Store.setSetting('passport', {
+      conditions: 'CKD stage G4. Type 2 diabetes since 2016.',
+      medications: MEDS,
+      allergies: 'Penicillin — rash and swelling',
+      clinic: 'City Renal Unit, Tuesdays — 555 0100',
+      contact: 'Ana Reyes, daughter — 555 0142',
+      notes: 'No blood pressure cuff and no needles in the left arm (fistula).'
+    });
+    Store.setSetting('medications', MEDS);
+
+    /* Vitals across several days, recorded and never interpreted. The
+       values drift slightly because a flat line looks like test data. */
+    if (typeof Vitals !== 'undefined') {
+      const readings = [
+        { d: 12, w: 71.2, s: 138, dia: 84, sym: [] },
+        { d: 9,  w: 71.8, s: 142, dia: 86, sym: ['tired'] },
+        { d: 6,  w: 72.6, s: 145, dia: 88, sym: ['swelling', 'tired'] },
+        { d: 3,  w: 72.1, s: 136, dia: 82, sym: ['cramps'] },
+        { d: 1,  w: 71.9, s: 134, dia: 81, sym: [] }
+      ];
+      const rows = readings.map((r, i) => ({
+        id: 'vit_seed' + i,
+        at: new Date().toISOString(),
+        date: Store.daysAgoISO(r.d),
+        weight_kg: r.w, systolic: r.s, diastolic: r.dia,
+        symptoms: r.sym,
+        note: r.d === 6 ? 'Ankles puffy by the evening.' : ''
+      }));
+      Store.setSetting(Vitals.KEY, rows);
+
+      Store.setSetting(Vitals.APPT_KEY, [{
+        id: 'apt_seed1',
+        date: Store.daysAgoISO(-11),          // eleven days from now
+        who: 'Dr Osei, nephrology',
+        /* The questions are the point of the feature. These are the
+           ones people actually carry for six weeks and then forget in
+           the room — a symptom they are not sure is relevant, a target
+           they are not sure still applies, and a food they have been
+           told to give up and would rather not. */
+        questions: [
+          'Ankles have been swelling in the evenings — is that the amlodipine or the kidneys?',
+          'Is 2,200 mg still the right potassium target now the last result was 5.2?',
+          'Can I keep having potatoes if I boil and drain them?'
+        ].join('\n')
+      }]);
+    }
+
+    Store.setSetting('demoSeeded', true);
+    Store.setSetting('demoPersona', 'maria');
+    return true;
+  }
+
+  return { run, runFull, resetToday, FRANK, MARIA };
 })();

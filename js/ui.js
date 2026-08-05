@@ -71,7 +71,7 @@ const UI = (() => {
 
     if (name === 'home') renderHome();
     if (name === 'log') resetLog(opts && opts.keepDraft);
-    if (name === 'labs') { renderLabs(); renderVitals(); }
+    if (name === 'labs') { renderLabs(); renderVitals(); renderAppointments(); }
     if (name === 'settings') renderSettings();
   }
 
@@ -1720,6 +1720,54 @@ const UI = (() => {
     renderLabs();
   }
 
+  /* ═══════════ demo entrance ═══════════
+     Three doors, no password. The security note this needs is that it
+     guards nothing — every door leads to the same local app with
+     fictional data, so there is no privilege to escalate and no other
+     user's record to reach. The copy says exactly that on screen. */
+  function renderDemo() {
+    const c = COPY.demo;
+    $('#demoTitle').textContent = c.title;
+    $('#demoLede').textContent = c.lede;
+    $('#demoNote').textContent = c.note;
+    $('#demoChoices').innerHTML = c.choices.map(ch =>
+      `<button type="button" class="hub__card m-stone demo__card" data-demo="${esc(ch.key)}">
+        <span class="hub__name">${esc(ch.name)}</span>
+        <span class="hub__what">${esc(ch.what)}</span>
+      </button>`).join('');
+    $('#demoModal').hidden = false;
+    const first = $('#demoChoices .demo__card');
+    if (first) first.focus();
+  }
+
+  function enterDemo(kind) {
+    /* The one safeguard that genuinely matters: a demo must never
+       overwrite somebody's real history. A test account that eats a
+       patient's year of meals is a data-loss bug wearing a costume. */
+    if (kind !== 'fresh' && DemoAuth.wouldDestroyRealData()) {
+      $('#demoError').textContent = COPY.demo.hasRealData;
+      $('#demoError').hidden = false;
+      return;
+    }
+    $('#demoError').hidden = true;
+    $('#demoModal').hidden = true;
+
+    if (kind === 'fresh') { renderConsent(); return; }
+
+    const res = DemoAuth.signIn(DemoAuth.USER, DemoAuth.PASS, kind);
+    if (!res.ok) {
+      $('#demoModal').hidden = false;
+      $('#demoError').textContent = COPY.demo.hasRealData;
+      $('#demoError').hidden = false;
+      return;
+    }
+    if (kind === 'maria') Seed.runFull();
+    Store.acceptConsent();
+    Store.setSetting('refusalsSeen', true);
+    $('#app').hidden = false;
+    go('home');
+  }
+
   /* ═══════════ the three refusals ═══════════
      Shown once, right after consent. The whole design of this screen is
      that every claim on it is CHECKABLE within a minute of using the
@@ -1845,6 +1893,52 @@ const UI = (() => {
     vitalsPicked = [];
     if (typeof Motion !== 'undefined') Motion.haptic('commit');
     renderVitals();
+  }
+
+  /* ═══════════ appointments ═══════════ */
+  function renderAppointments() {
+    const host = $('#apptList');
+    if (!host) return;
+    $('#apptIntro').textContent = COPY.appts.intro;
+    $('#apptQNote').textContent = COPY.appts.qNote;
+
+    const rows = Vitals.appointments();
+    const next = Vitals.nextAppointment();
+    const today = Store.todayISO();
+
+    const nextLine = next
+      ? `<p class="appt__next">${esc(COPY.appts.next(Vitals.daysUntil(next.date), next.who))}</p>`
+      : `<p class="note">${esc(COPY.appts.none)}</p>`;
+
+    host.innerHTML = `<div class="card m-paper">
+      <h3 class="h3">${esc(COPY.appts.listTitle)}</h3>
+      ${nextLine}
+      ${rows.map(a => `<div class="appt${a.date < today ? ' appt--past' : ''}">
+        <div>
+          <span class="appt__date">${esc(a.date)}</span>
+          ${a.who ? `<span class="appt__who">${esc(a.who)}</span>` : ''}
+          ${a.questions ? `<p class="note appt__q">${esc(a.questions)}</p>` : ''}
+        </div>
+        <button type="button" class="linkbtn" data-aptdel="${esc(a.id)}">${esc(COPY.appts.remove)}</button>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  function saveAppointment() {
+    const res = Vitals.addAppointment({
+      date: $('#apptDate').value,
+      who: $('#apptWho').value,
+      questions: $('#apptQuestions').value
+    });
+    if (!res.ok) {
+      $('#apptError').textContent = res.message;
+      $('#apptError').hidden = false;
+      return;
+    }
+    $('#apptError').hidden = true;
+    ['#apptDate', '#apptWho', '#apptQuestions'].forEach(sel => { $(sel).value = ''; });
+    toast(COPY.appts.saved);
+    renderAppointments();
   }
 
   /* ═══════════ health passport ═══════════
@@ -2372,7 +2466,7 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
@@ -2389,6 +2483,7 @@ const UI = (() => {
       }
       if (el.dataset.kitchen) { kitchenTab = el.dataset.kitchen; renderKitchen(); return; }
       if (el.dataset.cook) { cookRecipe(el.dataset.cook); return; }
+      if (el.dataset.demo) { enterDemo(el.dataset.demo); return; }
       if (el.dataset.symptom) {
         const k = el.dataset.symptom;
         vitalsPicked = vitalsPicked.includes(k)
@@ -2398,6 +2493,7 @@ const UI = (() => {
         return;
       }
       if (el.dataset.vitdel) { Vitals.remove(el.dataset.vitdel); renderVitals(); return; }
+      if (el.dataset.aptdel) { Vitals.removeAppointment(el.dataset.aptdel); renderAppointments(); return; }
       if (el.dataset.scanok) {
         // One tap, one field. Confirming a boundary-crossing reading
         // never confirms any other.
@@ -2841,6 +2937,7 @@ const UI = (() => {
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
     $('#vitSave').addEventListener('click', saveVitals);
+    $('#apptSave').addEventListener('click', saveAppointment);
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));
 
     /* ── Quick actions ──
@@ -2928,7 +3025,7 @@ const UI = (() => {
     $('#learnDismiss').addEventListener('click', () => go(lastScreen));
   }
 
-  return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals,
+  return { wire, go, renderConsent, renderOnboarding, renderHome, renderRefusals, renderDemo,
            renderReferences, renderKitchen, renderSettings, renderInstall,
            toast, esc, searchFoods };
 })();

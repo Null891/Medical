@@ -63,6 +63,25 @@
   </div>
 </div>
 
+<!-- ═══════════ DEMO ENTRANCE ═══════════
+     Reached only at ?demo=1 or #demo. An ordinary visitor never sees
+     this and meets the consent gate exactly as before.
+
+     It is a CHOOSER, not an authentication boundary, and the copy says
+     so. There is nothing behind it to protect: every door leads to the
+     same app in the same browser with fictional data in it. Dressing a
+     demo entrance in real locks would imply there is something to
+     unlock. See the header of js/demo-auth.js. -->
+<div id="demoModal" class="modal-scrim" role="dialog" aria-modal="true" aria-labelledby="demoTitle" hidden>
+  <div class="modal modal--tall">
+    <h1 class="modal__title" id="demoTitle"></h1>
+    <p class="modal__lede" id="demoLede"></p>
+    <div id="demoChoices"></div>
+    <p class="note" id="demoNote"></p>
+    <p class="inline-error" id="demoError" role="alert" hidden></p>
+  </div>
+</div>
+
 <!-- ═══════════ THE THREE REFUSALS ═══════════
      Shown once, straight after consent. Answers "why should I trust
      this" with three claims the reader can check inside a minute, and
@@ -397,6 +416,40 @@
       </div>
 
       <div id="vitalsHistory"></div>
+
+      <!-- ───────── APPOINTMENTS ─────────
+           A date, who it is with, and what you want to ask. The last
+           field is the one that matters: people arrive at a
+           fifteen-minute nephrology appointment having forgotten the
+           question they carried for six weeks. It goes on the passport
+           so the thing you take into the room already has it on it.
+
+           Deliberately not a calendar — no reminders, because a
+           reminder this app promised and did not deliver, for a clinic
+           appointment, is worse than never offering one. -->
+      <div class="card m-stone">
+        <h2 class="h2">Appointments</h2>
+        <p class="note" id="apptIntro"></p>
+        <div class="vitalgrid">
+          <label class="field">
+            <span class="field__label">Date</span>
+            <input type="date" id="apptDate" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="field__label">Who with (optional)</span>
+            <input type="text" id="apptWho" maxlength="120" autocomplete="off" placeholder="">
+          </label>
+        </div>
+        <label class="field">
+          <span class="field__label">What do you want to ask?</span>
+          <textarea id="apptQuestions" rows="3" maxlength="600"></textarea>
+          <span class="field__note" id="apptQNote"></span>
+        </label>
+        <p class="inline-error" id="apptError" role="alert" hidden></p>
+        <button type="button" class="btn btn--secondary btn--block" id="apptSave">Save this appointment</button>
+      </div>
+
+      <div id="apptList"></div>
     </section>
 
     <!-- ───────── MORE ─────────
@@ -885,6 +938,7 @@
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
 <script src="js/vitals.js"></script>
+<script src="js/demo-auth.js"></script>
 <script src="js/install.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/meds.js"></script>

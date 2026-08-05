@@ -65,6 +65,62 @@ const COPY_EN = {
     remove: 'Remove'
   },
 
+  /* ── Appointments ──
+     The questions field is the feature. Everything else here is a date
+     picker, which every phone already has. */
+  appts: {
+    intro:
+      'RenalRoute does not send reminders — a reminder an app promises and fails to deliver, for a ' +
+      'clinic appointment, is worse than none. What it does is carry your questions onto your health ' +
+      'passport, so the card you take into the room already has them on it.',
+    qNote:
+      'The thing people most often forget. Write it down when you think of it, not on the way there.',
+    next: (days, who) =>
+      days === 0 ? `Today${who ? ' — ' + who : ''}.`
+      : days === 1 ? `Tomorrow${who ? ' — ' + who : ''}.`
+      : `In ${days} days${who ? ' — ' + who : ''}.`,
+    none: 'No appointment saved. Add one and your questions travel with your passport.',
+    listTitle: 'Saved appointments',
+    saved: 'Saved.',
+    remove: 'Remove'
+  },
+
+  /* ── Demo entrance ──
+     Honest about what it is. An automated security review that reads
+     "sign in" expects an authentication boundary; there isn't one, and
+     saying so here is more useful than implying otherwise. */
+  demo: {
+    title: 'Try RenalRoute',
+    lede:
+      'Pick how you would like to start. Everything happens in this browser — no account is created ' +
+      'and nothing is uploaded, whichever you choose.',
+    note:
+      'This is a demonstration entrance, not a login. There is no protected data behind it: every option ' +
+      'below opens the same app in this browser with example information in it. RenalRoute has no accounts ' +
+      'at all — see Settings for what that means for your data.',
+    choices: [
+      {
+        key: 'fresh',
+        name: 'Set it up as myself',
+        what: 'The normal first run — consent, what the app will not do, then four questions. Takes about a minute and nothing is pre-filled.'
+      },
+      {
+        key: 'frank',
+        name: 'Continue as Frank',
+        what: 'A week of logged meals and one recent lab result. The cleanest way to see the daily loop: what is left today, and what dinner can be.'
+      },
+      {
+        key: 'maria',
+        name: 'Continue as Maria — everything used',
+        what: 'A patient who has used all of it: two lab results, weight and blood pressure recorded, symptoms noted, an appointment with questions written down, a filled-in health passport, medicines including a phosphate binder, and enough history for the pattern detector to have something to say.'
+      }
+    ],
+    hasRealData:
+      'This browser already has real data in it, so the demo will not load — it would overwrite what is here. ' +
+      'Open the demo in a private window instead, or export a backup first from Settings.',
+    signedOut: 'Demo ended.'
+  },
+
   /* ── Install ──
      Written per platform because the platforms genuinely differ, and a
      single generic "install this app" is useless on the one where no

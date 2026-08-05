@@ -39,7 +39,15 @@
   window.addEventListener('offline', syncOnline);
   syncOnline();
 
-  if (!Store.hasConsented()) {
+  /* The demo entrance, reached only at ?demo=1 or #demo. An automated
+     security review needs somewhere to sign in; this app has no
+     accounts, so without this a scanner only ever sees the pre-consent
+     shell and reports on a page rather than on the app.
+
+     It guards nothing — see js/demo-auth.js. */
+  if (typeof DemoAuth !== 'undefined' && DemoAuth.requested() && !Store.hasConsented()) {
+    UI.renderDemo();
+  } else if (!Store.hasConsented()) {
     // Nothing behind the modal is reachable until it is acknowledged.
     UI.renderConsent();
   } else {
@@ -82,7 +90,7 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
-    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup, I18N, Install, Vitals,
+    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup, I18N, Install, Vitals, DemoAuth,
     /* Guarded, unlike its neighbours. Object shorthand would be a BARE
        reference, and a bare reference to a module that failed to load
        is a ReferenceError that takes the whole boot down — which is

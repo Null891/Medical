@@ -57,17 +57,30 @@
      bottom where legibility matters more than proportion. The floor
      stays 16px for body and 13px for the smallest label, because those
      are accessibility limits, not taste. */
-  --type-caption: 13px;
-  --type-body: 16px;
-  --type-lead: 18px;      /* first paragraph of a screen */
-  --type-title: 21px;
+  /* Caption raised from 13px to 14.5px after a plain report that the
+     text was hard to read. 13px cleared the 12px accessibility floor
+     and still failed the actual test, which is whether a person in
+     their sixties can read it on a phone without effort — and that is
+     the population this app exists for. The floor was never the
+     target; it was the minimum below which we would have been
+     indefensible.
+
+     Body goes to 17px for the same reason. Both changes cascade
+     through every screen because the whole system is token-driven. */
+  --type-caption: 14.5px;
+  --type-body: 17px;
+  --type-lead: 19px;      /* first paragraph of a screen */
+  --type-title: 22px;
   --type-h1: 27px;
   --type-numeral: 34px;
   --type-display: 44px;
 
   --leading-display: 1.04;
-  --leading-tight: 1.2;
-  --leading-body: 1.55;
+  --leading-tight: 1.22;
+  /* 1.62 rather than 1.55: longer measure needs more leading, and
+     secondary text at caption size is where cramped line spacing does
+     the most damage. */
+  --leading-body: 1.62;
 
   /* Optical letter-spacing. Large type needs tightening or it reads as
      loose; small type needs opening or it reads as cramped. This is the
@@ -135,7 +148,14 @@ body { letter-spacing: var(--track-body); }
   line-height: var(--leading-body);
   max-width: 62ch;         /* the readability cap, applied for real */
 }
-.note { max-width: 68ch; }
+/* Secondary text gets its own line-height rather than inheriting the
+   body's. It is the smallest type in the app and carries most of the
+   explanation, so it is the last place to save vertical space. */
+.note {
+  max-width: 68ch;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
 
 /* Numerals get tabular figures so ranges do not shimmy as they count
    up, and so two stacked figures align on the decimal. This is the
@@ -869,3 +889,14 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
 }
 .vitrow:first-of-type { border-top: 0; }
 .vitrow__line { font-variant-numeric: tabular-nums; line-height: var(--leading-body); }
+
+/* The demo chooser. Cards rather than a form, because a password field
+   would imply there is something to unlock — and saying that to a
+   security reviewer would be a lie told to the worst possible
+   audience. */
+.demo__card { margin-bottom: var(--space-3); }
+#demoChoices { margin-bottom: var(--space-3); }
+#demoNote {
+  border-top: 1px solid var(--color-hairline);
+  padding-top: var(--space-3);
+}

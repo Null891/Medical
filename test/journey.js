@@ -264,6 +264,86 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
       /typed by you/i.test(a.$('#scr-passport').textContent), true);
   }
 
+  /* ═══════════════════════════════════════════════════════════════
+     JOURNEY 5 — a reviewer, or a judge, arriving at ?demo=1.
+     ═══════════════════════════════════════════════════════════════ */
+  console.log('\n═══ JOURNEY 5 · SOMEBODY SENT THE DEMO LINK ═══');
+  {
+    const a = boot();
+    a.R.UI.renderDemo();
+
+    check('the demo entrance opens', a.vis('#demoModal'), true);
+    check('  ...offering three doors', a.$$('#demoChoices .demo__card').length, 3);
+    /* It must not claim to be a login. That claim, made to a security
+       reviewer, would be a lie told to the worst possible audience. */
+    const demoText = a.$('#scr-home') && a.$('#demoModal').textContent;
+    check('  ...and says plainly that it is not a login',
+      /not a login|no protected data/i.test(demoText), true);
+    check('  ...and that no account is created',
+      /no account/i.test(demoText), true);
+
+    a.click('#demoChoices [data-demo="maria"]');
+    await wait(40);
+    check('Maria loads straight into the app', a.vis('#scr-home'), true);
+    check('  ...as a G4 patient', a.R.Store.profile().ckd_stage, 'G4');
+
+    /* The point of this persona: every surface populated, so somebody
+       seeing the app for the first time sees what it is FOR rather
+       than an empty frame with good intentions. */
+    check('  ...with a week of meals', a.R.Store.meals().length > 5, true);
+    check('  ...two lab results, so the history is real', a.R.Store.labs().length, 2);
+    check('  ...in caution mode, where the app has the most to say',
+      a.R.Clinical.potassiumMode().mode, 'caution');
+    check('  ...weight and blood pressure recorded', a.R.Vitals.all().length >= 4, true);
+    check('  ...an appointment with the questions written down',
+      (a.R.Vitals.nextAppointment() || {}).questions.length > 40, true);
+    check('  ...a passport somebody could hand over',
+      a.R.Passport.filledCount() >= 5, true);
+    check('  ...medicines including a binder', a.R.Meds.hasPhosphateBinder(), true);
+    check('  ...and enough history for a pattern to clear its floor',
+      a.R.Insights.read(2).ready, true);
+
+    // Every screen must render with this data rather than only with none.
+    for (const t of ['home', 'log', 'kitchen', 'labs', 'more']) {
+      a.click(`.tabbar [data-nav="${t}"]`); await wait(20);
+      check(`the ${t} tab renders Maria's data`, a.vis('#scr-' + t), true);
+    }
+    a.R.UI.go('passport');
+    check('the passport carries her questions',
+      /amlodipine|potassium target/i.test(a.R.Passport.asText()), true);
+  }
+
+  console.log('\n═══ JOURNEY 6 · THE DEMO MUST NEVER EAT REAL DATA ═══');
+  {
+    /* The one safeguard here that genuinely matters. A test account
+       that overwrites a patient's year of meals is a data-loss bug
+       wearing a costume. */
+    const a = boot();
+    a.R.Store.acceptConsent();
+    a.R.Store.useEducationRanges();
+    a.R.Store.addMeal({
+      meal_text: 'a real meal somebody logged', logged_at: new Date().toISOString(),
+      meal_date: a.R.Store.todayISO(), items: [], confidence: 'high',
+      total_potassium_low_mg: 100, total_potassium_high_mg: 120,
+      total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+      total_sodium_low_mg: 0, total_sodium_high_mg: 0
+    });
+
+    check('real data is detected', a.R.DemoAuth.wouldDestroyRealData(), true);
+    a.R.UI.renderDemo();
+    a.click('#demoChoices [data-demo="frank"]');
+    await wait(30);
+    check('  ...so the demo refuses to load', a.R.Store.meals().length, 1);
+    check('  ...and says why', a.vis('#demoError'), true);
+    check('  ...naming the way out',
+      /private window|export a backup/i.test(a.$('#demoError').textContent), true);
+
+    // Setting up fresh is still allowed — it destroys nothing by itself.
+    a.click('#demoChoices [data-demo="fresh"]');
+    await wait(20);
+    check('starting fresh is still offered', a.vis('#consentModal'), true);
+  }
+
   console.log('\n═══ ERRORS ACROSS EVERY JOURNEY ═══');
   if (pageErrors.length) pageErrors.slice(0, 5).forEach(e => console.log('   ! ' + e));
   check('nothing threw on any path a person would take', pageErrors.length, 0);
