@@ -10965,6 +10965,30 @@ const Seed = (() => {
       }]);
     }
 
+    /* MEDICINES. The demo chooser promises Maria has "medicines
+       including a phosphate binder", and until this existed she had
+       none — the entrance advertised a feature the persona could not
+       demonstrate, which is the worst kind of gap because the copy
+       makes it look deliberate.
+
+       Sevelamer is here specifically because it is a phosphate binder,
+       which is the one piece of medication logic this app is allowed to
+       have: binders work taken WITH food, so the meal review shows that
+       line. The amlodipine matters too — it is why her appointment
+       question about swollen ankles reads as a real question, and it is
+       a blood-pressure medicine, which the education card names as a
+       reason potassium targets are personal.
+
+       Stored as free text, exactly as typed. Nothing here is parsed for
+       dose, frequency or interaction; see the header of js/meds.js. */
+    if (typeof Meds !== 'undefined') {
+      Meds.set([
+        'Sevelamer carbonate 800mg — with meals',
+        'Amlodipine 5mg — mornings',
+        'Ferrous sulfate 200mg'
+      ].join('\n'));
+    }
+
     Store.setSetting('demoSeeded', true);
     Store.setSetting('demoPersona', 'maria');
     return true;

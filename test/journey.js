@@ -351,6 +351,84 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
      checks. This app has no accounts, so the honest answer to each has
      to be demonstrated rather than claimed.
      ═══════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════
+     JOURNEY 6b · THE CHOOSER'S PROMISES ARE KEPT
+     ───────────────────────────────────────────────────────────────
+     Maria's card promises a specific list: two labs, weight and blood
+     pressure, symptoms, an appointment with questions, a filled
+     passport, medicines INCLUDING A PHOSPHATE BINDER, and enough
+     history for the pattern detector.
+
+     She had no medicines at all. The entrance was advertising a
+     feature the persona could not demonstrate — the worst kind of gap,
+     because the copy makes it look deliberate and anybody following the
+     tour finds an empty screen.
+
+     So this asserts the copy against the data, item by item. The
+     generalisable rule: if the chooser says she has it, she has it.
+     ═══════════════════════════════════════════════════════════════ */
+  console.log('\n═══ JOURNEY 6b · WHAT THE CHOOSER PROMISES, MARIA HAS ═══');
+  {
+    const a = boot();
+    a.R.UI.renderDemo();
+    a.click('#demoChoices [data-demo="maria"]');
+    await wait(60);
+
+    const R = a.R;
+    const promise = (R.COPY || a.window.COPY).demo.choices.find(c => c.key === 'maria').what;
+
+    check('she is actually Maria', /maria/i.test(R.Store.profile().display_name || ''), true);
+    check('  ...with one profile record, not two people layered',
+      R.Store.exportAll().profiles.length, 1);
+
+    check('promised two lab results', /two lab results/i.test(promise), true);
+    check('  ...and has exactly two', R.Store.labs().length, 2);
+
+    check('promised weight and blood pressure', /weight and blood pressure/i.test(promise), true);
+    check('  ...and has readings', R.Vitals.all().length > 0, true);
+    check('  ...with a weight among them',
+      R.Vitals.all().some(v => v.weight_kg !== null), true);
+    check('  ...and a blood pressure', R.Vitals.all().some(v => v.systolic !== null), true);
+
+    check('promised symptoms noted', /symptoms noted/i.test(promise), true);
+    check('  ...and has some', R.Vitals.all().some(v => v.symptoms.length), true);
+
+    check('promised an appointment with questions', /appointment with questions/i.test(promise), true);
+    check('  ...and has one', R.Vitals.appointments().length > 0, true);
+    check('  ...carrying real questions',
+      R.Vitals.appointments().some(x => (x.questions || '').length > 20), true);
+
+    check('promised a filled-in passport', /passport/i.test(promise), true);
+    check('  ...and it is filled', R.Passport.filledCount() > 0, true);
+
+    /* The one that was broken. */
+    check('promised medicines including a phosphate binder',
+      /medicines including a phosphate binder/i.test(promise), true);
+    check('  ...and has medicines', R.Meds.count() > 0, true);
+    check('  ...one of which IS a phosphate binder', R.Meds.hasPhosphateBinder(), true);
+    /* And the one safe piece of medication logic actually fires for
+       her — a binder in the list with no binder line on screen would be
+       the same broken promise one layer down. */
+    check('  ...so the with-food line is available to show',
+      R.Meds.phosphateBinders().length > 0, true);
+
+    check('promised enough history for the pattern detector',
+      /pattern detector/i.test(promise), true);
+    check('  ...and the detector has something to work with',
+      R.Insights.read(2).ready, true);
+
+    /* Frank is the simpler tour and must stay simpler — if the two
+       personas seeded identically there would be no reason for two. */
+    const b = boot();
+    b.R.UI.renderDemo();
+    b.click('#demoChoices [data-demo="frank"]');
+    await wait(40);
+    check('Frank is the simpler tour: one lab, not two', b.R.Store.labs().length, 1);
+    check('  ...and no medicines to explain', b.R.Meds.count(), 0);
+    check('  ...but the same week of meals',
+      b.R.Store.meals().length === R.Store.meals().length, true);
+  }
+
   console.log('\n═══ JOURNEY 7 · SIGNING IN AND OUT OF THE DEMO ═══');
   {
     const a = boot();
