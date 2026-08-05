@@ -14,7 +14,13 @@
      · all mode banners ....... G.2
    ═══════════════════════════════════════════════════════════════ */
 
-const COPY = {
+/* Renamed from COPY: this is now the ENGLISH TABLE, and js/i18n.js
+   binds the global `COPY` to English merged with whichever language is
+   selected. Every other file still reads plain `COPY` and needs no
+   knowledge that translation exists — which is the whole reason the
+   single-source-of-truth rule was worth keeping for a hundred commits
+   before there was any second language to justify it. */
+const COPY_EN = {
 
   /* ── Disclaimers: the three mandated placements ── */
   consentTitle: 'Before you start',
@@ -27,6 +33,21 @@ const COPY = {
   consentButton: 'I understand — continue',
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
+
+  /* ── Language ──
+     The machine-translation note is not a disclaimer for its own sake.
+     Shipping unreviewed clinical copy while presenting it as reviewed
+     is exactly the failure this product spends its whole design
+     avoiding, so the picker says what these translations are. */
+  lang: {
+    englishNote:
+      'English is the language this app was written and reviewed in.',
+    machineNote:
+      'These translations were produced by a language model and have not been reviewed by a native ' +
+      'speaker or a renal dietitian. Every number, threshold and guideline figure is identical to the ' +
+      'English version. Anything not yet translated appears in English rather than being guessed at.',
+    changed: 'Language changed'
+  },
 
   /* ── Backup ──
      Restore overwrites everything, so the confirmation says so in those

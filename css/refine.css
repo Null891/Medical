@@ -549,3 +549,54 @@ body { letter-spacing: var(--track-body); }
    reads as a footnote rather than a decision. */
 .promise { margin-bottom: var(--space-4); }
 .promise .h3 { margin-bottom: var(--space-2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   NON-LATIN SCRIPTS
+   ───────────────────────────────────────────────────────────────
+   Keyed off the SCRIPT rather than the language code, so a future CJK
+   or Indic language inherits the rule without anybody rewriting it.
+
+   CJK: no word spaces, so it does not wrap on spaces — line-breaking
+   must be allowed anywhere, and the leading opens because dense glyphs
+   at Latin line-height read as a solid block.
+
+   Devanagari: matras sit above and below the baseline and clip at
+   tight leading. It also runs physically wider than Latin at the same
+   point size, which is why the readability caps loosen — a 62ch cap
+   tuned for English wraps Hindi far too early.
+   ═══════════════════════════════════════════════════════════════ */
+:root[data-script="cjk"] body {
+  line-height: 1.75;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+:root[data-script="cjk"] .h1,
+:root[data-script="cjk"] .h2,
+:root[data-script="cjk"] .hdr__title--display {
+  line-height: 1.35;
+  letter-spacing: 0;          /* negative tracking damages CJK legibility */
+}
+:root[data-script="cjk"] .helper { max-width: 40ch; }
+:root[data-script="cjk"] .note   { max-width: 44ch; }
+
+:root[data-script="devanagari"] body { line-height: 1.85; }
+:root[data-script="devanagari"] .h1,
+:root[data-script="devanagari"] .h2,
+:root[data-script="devanagari"] .hdr__title--display {
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+:root[data-script="devanagari"] .helper { max-width: 52ch; }
+:root[data-script="devanagari"] .note   { max-width: 56ch; }
+
+/* Both scripts need the display size pulled back: a 4rem Devanagari
+   heading with matras overflows a 320px phone where Latin fits. */
+:root[data-script="cjk"] .hdr__title--display,
+:root[data-script="devanagari"] .hdr__title--display {
+  font-size: clamp(1.75rem, 0.9rem + 3.8vw, 3rem);
+}
+
+/* The language picker shows native names, so each chip renders in its
+   own script and must not inherit a Latin-tuned tracking. */
+#langPicker .chip-opt { letter-spacing: 0; }

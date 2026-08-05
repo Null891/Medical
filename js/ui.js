@@ -931,7 +931,13 @@ const UI = (() => {
 
     const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new Ctor();
-    recognition.lang = document.documentElement.lang || 'en-US';
+    /* A full BCP-47 tag, not the two-letter code. document.lang carries
+       "es", and SpeechRecognition given "es" behaves inconsistently
+       across engines — the regional variant is what actually selects a
+       model. I18N.speechTag() maps es → es-US, zh → zh-CN, hi → hi-IN.
+       [NEEDS VERIFICATION — recognition quality per tag has not been
+       tested on a real device in any language including English.] */
+    recognition.lang = I18N.speechTag();
     recognition.interimResults = true;
     recognition.continuous = false;
 
@@ -2239,12 +2245,21 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
+      if (el.dataset.lang) {
+        I18N.set(el.dataset.lang);
+        /* Re-render the screen that is open rather than reloading. A
+           full reload would lose a half-typed meal, and losing somebody's
+           work because they changed language is not a trade worth making. */
+        renderSettings();
+        toast(COPY.lang.changed);
+        return;
+      }
       if (el.dataset.kitchen) { kitchenTab = el.dataset.kitchen; renderKitchen(); return; }
       if (el.dataset.cook) { cookRecipe(el.dataset.cook); return; }
       if (el.dataset.scanok) {
@@ -2591,6 +2606,22 @@ const UI = (() => {
     /* Sound is opt-in and previews itself the moment it is switched on
        — a toggle for something you cannot hear until later is a toggle
        people flip twice and then give up on. */
+    /* ── Language ──
+       Native names, not English ones: somebody looking for Hindi is
+       looking for हिन्दी. Coverage is stated per language because a
+       partly-translated app that presents itself as finished is the
+       kind of thing people discover mid-sentence. */
+    const cur = I18N.current();
+    $('#langPicker').innerHTML = I18N.LANGUAGES.map(l => {
+      const on = l.code === cur;
+      const cov = I18N.coverage(l.code);
+      return `<button type="button" class="chip-opt${on ? ' is-on' : ''}"
+        role="radio" aria-checked="${on}" data-lang="${l.code}" lang="${l.code}">
+        ${esc(l.native)}${l.code === 'en' ? '' : ` <span class="note">${cov.pct}%</span>`}
+      </button>`;
+    }).join('');
+    $('#langNote').textContent = cur === 'en' ? COPY.lang.englishNote : COPY.lang.machineNote;
+
     const snd = $('#soundToggle');
     snd.checked = !!Store.settings().sound;
     snd.addEventListener('change', () => {

@@ -5,7 +5,11 @@
 
 (function boot() {
 
+  /* Language before anything renders. I18N binds the global COPY to
+     English merged with the selected table, so every module that reads
+     COPY gets the right language without knowing translation exists. */
   Store.load();
+  I18N.apply(I18N.current());
 
   if (Store.settings().devBannerHidden) {
     document.getElementById('devBanner').hidden = true;
@@ -62,7 +66,7 @@
   // Expose a small surface for console testing against the Base44 build.
   window.RenalRoute = {
     Store, Clinical, Resolve, LLM, Cards, Rings, Trends, Exporter, Seed, UI,
-    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup,
+    Insights, Passport, Scenes, Orbit, Plan, LabScan, Meds, Backup, I18N,
     /* Guarded, unlike its neighbours. Object shorthand would be a BARE
        reference, and a bare reference to a module that failed to load
        is a ReferenceError that takes the whole boot down — which is

@@ -425,6 +425,10 @@
              noise unasked gets muted at the system level within a day,
              and that mute takes every accessibility use of audio with
              it. One tone, on saving a meal, only if asked for. -->
+        <h3 class="h3 mt-2">Language</h3>
+        <div class="chipset" role="radiogroup" aria-label="Language" id="langPicker"></div>
+        <p class="note" id="langNote"></p>
+
         <label class="switch mt-2">
           <input type="checkbox" id="soundToggle">
           <span>Sound — a short tone when a meal is saved</span>
@@ -676,6 +680,13 @@
 
 <!-- Load order matters: data → logic → view → bootstrap -->
 <script src="js/data/copy.js"></script>
+<!-- Language tables load before i18n, which merges the selected one
+     over English and binds the global COPY. Every other module reads
+     plain COPY and needs no knowledge that translation exists. -->
+<script src="js/data/copy.es.js"></script>
+<script src="js/data/copy.zh.js"></script>
+<script src="js/data/copy.hi.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/data/references.js"></script>
 <script src="js/data/recipes.js"></script>
 <script src="js/data/anchor-foods.js"></script>

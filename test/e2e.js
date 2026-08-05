@@ -1395,6 +1395,63 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     S.meals().forEach(m => S.deleteMeal(m.id));
   }
 
+  console.log('\n═══ 34. LANGUAGE ACTUALLY CHANGES THE APP ═══');
+  {
+    const I = window.RenalRoute.I18N;
+    const S = window.RenalRoute.Store;
+
+    window.RenalRoute.UI.go('settings');
+    check('language picker rendered', $$('#langPicker .chip-opt').length, I.LANGUAGES.length);
+    check('  ...showing native names, not English ones',
+      $('#langPicker [data-lang="zh"]').textContent.indexOf('中文') !== -1, true);
+
+    /* The bug this catches is the one that nearly shipped: a top-level
+       const is not a global property, so the tables were unreachable
+       and every language silently fell back to English while the picker
+       reported a coverage percentage. Switching must change real text. */
+    const englishConsent = window.COPY.consentButton;
+    click('#langPicker [data-lang="es"]');
+    await wait(20);
+    check('switching to Spanish changes the copy', window.COPY.consentButton !== englishConsent, true);
+    check('  ...to actual Spanish', /Entiendo/.test(window.COPY.consentButton), true);
+    check('  ...and persists', S.settings().lang, 'es');
+    check('  ...and sets the document language', doc.documentElement.getAttribute('lang'), 'es');
+
+    click('#langPicker [data-lang="zh"]');
+    await wait(20);
+    check('Chinese loads too', /继续/.test(window.COPY.consentButton), true);
+    check('  ...and names its script for the stylesheet',
+      doc.documentElement.getAttribute('data-script'), 'cjk');
+
+    click('#langPicker [data-lang="hi"]');
+    await wait(20);
+    check('Hindi loads too', /जारी/.test(window.COPY.consentButton), true);
+    check('  ...with its own script attribute',
+      doc.documentElement.getAttribute('data-script'), 'devanagari');
+
+    /* Untranslated keys must fall back to readable English rather than
+       to undefined. This is checked in the RENDERED app, not just in
+       the merge function, because a screen reading "undefined" is the
+       failure that matters. */
+    window.RenalRoute.UI.go('home');
+    check('no screen renders the word undefined',
+      /\bundefined\b/.test($('#scr-home').textContent), false);
+    window.RenalRoute.UI.go('settings');
+    check('  ...on settings either',
+      /\bundefined\b/.test($('#scr-settings').textContent), false);
+
+    // Numbers must survive into every language, in the rendered output.
+    click('#langPicker [data-lang="es"]');
+    await wait(20);
+    window.RenalRoute.UI.go('settings');
+    check('guideline figures survive translation on screen',
+      /2,?300|2\.3/.test($('#scr-settings').textContent), true);
+
+    click('#langPicker [data-lang="en"]');
+    await wait(20);
+    check('switching back restores English', /I understand/.test(window.COPY.consentButton), true);
+  }
+
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');
   if (pageErrors.length) pageErrors.forEach(e => console.log('   ! ' + e));
   check('zero uncaught page errors across the whole run', pageErrors.length, 0);

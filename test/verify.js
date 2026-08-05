@@ -21,16 +21,22 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 
-['js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js',
- 'js/clinical.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js',
+/* copy.js now declares COPY_EN; i18n.js binds the global COPY to
+   English merged with whichever language is selected. The language
+   tables load first so the merge has something to find. */
+['js/data/copy.js', 'js/data/copy.es.js', 'js/data/copy.zh.js', 'js/data/copy.hi.js',
+ 'js/data/anchor-foods.js', 'js/store.js',
+ 'js/clinical.js', 'js/i18n.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js',
  'js/data/recipes.js', 'js/plan.js', 'js/backup.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
+vm.runInContext('I18N.apply("en");', sandbox);
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, I18N, COPY_EN,
+        COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, I18N, COPY_EN, COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -227,6 +233,115 @@ check('  ...claimed removal is smaller than published removal',
   (926 - L.high) / 926 < 0.50, true);
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
+
+console.log('\n═══ TRANSLATION NEVER MOVES A NUMBER ═══');
+
+/* The clinical rule for i18n, and the only one that could hurt anybody:
+   every threshold, milligram figure and guideline value is QUOTED from
+   KDOQI, KDIGO, AKF or NICE. It is not authored here, so it is not
+   translatable. A translator may rebuild the sentence around 5.5 mEq/L
+   however their language requires; 5.5 may not become 5,5 or 5.0 or
+   ५.५.
+
+   So every numeral in an English string is compared against its
+   translation. This is the test that would catch a decimal comma, a
+   localised digit, or a well-meaning "rounded for readability". */
+{
+  const numerals = (s) => (String(s).match(/\d+(?:[.,]\d+)?/g) || [])
+    .map(n => n.replace(/,(?=\d{3}\b)/g, ''));   // 2,300 and 2300 are the same figure
+
+  function walk(en, tr, path, out) {
+    if (!tr) return;
+    Object.keys(tr).forEach(k => {
+      const e = en ? en[k] : undefined;
+      const t = tr[k];
+      const p = path ? path + '.' + k : k;
+      if (t && typeof t === 'object' && !Array.isArray(t) && typeof t !== 'function') {
+        walk(e || {}, t, p, out);
+      } else if (Array.isArray(t) && Array.isArray(e)) {
+        t.forEach((v, i) => {
+          if (typeof v === 'string' && typeof e[i] === 'string') out.push([p + '[' + i + ']', e[i], v]);
+        });
+      } else if (typeof t === 'string' && typeof e === 'string') {
+        out.push([p, e, t]);
+      }
+    });
+  }
+
+  [['Spanish', COPY_ES], ['Chinese', COPY_ZH], ['Hindi', COPY_HI]].forEach(([name, table]) => {
+    const pairs = [];
+    walk(COPY_EN, table, '', pairs);
+    check(`${name}: there is something to check`, pairs.length > 20, true);
+
+    const drifted = pairs.filter(([, en, tr]) => {
+      const a = numerals(en), b = numerals(tr);
+      // Every number in the English MUST survive into the translation.
+      return !a.every(n => b.indexOf(n) !== -1);
+    }).map(([p]) => p);
+    check(`${name}: every number survives translation`, drifted.join(', ') || 'none', 'none');
+
+    // Devanagari and full-width digits would both break a reader
+    // comparing the app against a lab report printed in 5.5.
+    const localisedDigits = pairs.filter(([, , tr]) => /[०-९٠-٩０-９]/.test(tr)).map(([p]) => p);
+    check(`${name}: digits stay in Western Arabic numerals`,
+      localisedDigits.join(', ') || 'none', 'none');
+  });
+
+  /* Guideline names are proper nouns and must not be translated either:
+     a reader checking KDOQI against a source needs the string to match. */
+  [['Spanish', COPY_ES], ['Chinese', COPY_ZH], ['Hindi', COPY_HI]].forEach(([name, table]) => {
+    const pairs = [];
+    walk(COPY_EN, table, '', pairs);
+    const lost = pairs.filter(([, en, tr]) =>
+      ['KDOQI', 'KDIGO', 'NICE', 'mEq/L', 'mg/dL'].some(t =>
+        en.indexOf(t) !== -1 && tr.indexOf(t) === -1)).map(([p]) => p);
+    check(`${name}: guideline names and units are preserved`, lost.join(', ') || 'none', 'none');
+  });
+}
+
+console.log('\n═══ FALLBACK IS PER KEY, NOT PER LANGUAGE ═══');
+{
+  const merged = I18N.merge(COPY_EN, COPY_ES);
+
+  check('a translated key comes through', merged.consentButton, COPY_ES.consentButton);
+  /* A key with no translation must fall back to ENGLISH, not to
+     undefined. A partly translated app is awkward; a screen reading
+     "undefined" is broken, and this app has strings that a user must be
+     able to read to give consent. */
+  check('an untranslated key falls back to English',
+    merged.cardDisclaimer !== undefined && merged.cardDisclaimer.length > 0, true);
+  check('  ...and no key anywhere is undefined',
+    JSON.stringify(merged).indexOf('undefined'), -1);
+
+  // Nested objects merge key by key rather than being replaced wholesale.
+  check('nested objects merge rather than replace',
+    typeof merged.learn.protein, 'object');
+  check('  ...while the translated nested key wins',
+    merged.learn.warnings.title, COPY_ES.learn.warnings.title);
+
+  // Functions survive as functions — several strings are templates.
+  check('template functions survive the merge', typeof merged.backup.restored, 'function');
+  check('  ...and produce the translated sentence',
+    /restaurado/i.test(merged.backup.restored(2, 1)), true);
+
+  // Empty strings are treated as absent, so a blank line in a
+  // translation file cannot blank out a disclaimer.
+  const withBlank = I18N.merge(COPY_EN, { cardDisclaimer: '' });
+  check('an empty translation does NOT blank an English string',
+    withBlank.cardDisclaimer, COPY_EN.cardDisclaimer);
+
+  // Coverage is reported honestly rather than rounded up to "done".
+  ['es', 'zh', 'hi'].forEach(code => {
+    const cov = I18N.coverage(code);
+    check(`${code} coverage is reported`, cov.pct > 0 && cov.pct < 100, true);
+  });
+
+  // Speech tags are full BCP-47, not the two-letter code.
+  check('speech tag for Spanish is regional', I18N.speechTag('es'), 'es-US');
+  check('speech tag for Chinese is regional', I18N.speechTag('zh'), 'zh-CN');
+  check('speech tag for Hindi is regional', I18N.speechTag('hi'), 'hi-IN');
+  check('an unknown language falls back to English speech', I18N.speechTag('xx'), 'en-US');
+}
 
 console.log('\n═══ BACKUP: LEAVING IS ACTUALLY POSSIBLE ═══');
 
