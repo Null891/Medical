@@ -543,3 +543,9 @@ body { letter-spacing: var(--track-body); }
    deliberately does not use a status colour. */
 .binder { margin-bottom: var(--space-3); }
 .binder .h3 { margin-bottom: var(--space-1); }
+
+/* The no-account promise. Paper, and deliberately the first thing in
+   Your data — a claim about privacy that sits below an export button
+   reads as a footnote rather than a decision. */
+.promise { margin-bottom: var(--space-4); }
+.promise .h3 { margin-bottom: var(--space-2); }

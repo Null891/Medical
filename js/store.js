@@ -288,11 +288,21 @@ const Store = (() => {
 
   function reset() { db = blank(); save(); }
 
-  /* Wholesale replace — used only by the demo seeder. */
+  /* Wholesale replace — the demo seeder and the backup restore. Both
+     are all-or-nothing by construction: the object is built completely
+     before it is assigned, so there is no window in which half the
+     store is new and half is old. */
   function replaceAll(next) { db = Object.assign(blank(), next); save(); }
 
+  /* A deep copy for export. Returned by value rather than by reference
+     so a caller holding a backup cannot accidentally mutate live data
+     while serialising it — which would be a very quiet way to corrupt
+     somebody's history at exactly the moment they were trying to
+     protect it. */
+  function exportAll() { return JSON.parse(JSON.stringify(db)); }
+
   return {
-    load, save, reset, replaceAll,
+    load, save, reset, replaceAll, exportAll,
     todayISO, daysAgoISO, daysBetween,
     me, setIdentity,
     profile, updateProfile, acceptConsent, hasConsented,

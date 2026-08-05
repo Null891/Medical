@@ -28,6 +28,18 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── Backup ──
+     Restore overwrites everything, so the confirmation says so in those
+     words. "Are you sure?" on a destructive action tells nobody what
+     they are about to lose. */
+  backup: {
+    confirm:
+      'Restoring replaces everything currently in this app — all meals, labs, targets and settings — ' +
+      'with the contents of that file. This cannot be undone. Continue?',
+    restored: (meals, labs) =>
+      `Restored ${meals} meal${meals === 1 ? '' : 's'} and ${labs} lab result${labs === 1 ? '' : 's'}.`
+  },
+
   /* ── Medicines ──
      One line of timing, and nothing else. Binders working with food is
      the most commonly missed practical fact about the class, it is

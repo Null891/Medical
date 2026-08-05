@@ -23,14 +23,14 @@ vm.createContext(sandbox);
 
 ['js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js',
  'js/clinical.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js',
- 'js/data/recipes.js', 'js/plan.js'].forEach(f => {
+ 'js/data/recipes.js', 'js/plan.js', 'js/backup.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, Cards, LabScan, Plan, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -227,6 +227,96 @@ check('  ...claimed removal is smaller than published removal',
   (926 - L.high) / 926 < 0.50, true);
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
+
+console.log('\n═══ BACKUP: LEAVING IS ACTUALLY POSSIBLE ═══');
+
+/* Having no account is only a feature if the data can leave. These
+   tests are the difference between "we do not lock you in" as a claim
+   and as a fact.
+
+   The failure mode that matters most is a HALF-applied import — profile
+   restored, meals lost — because the user would not know which half
+   survived. So every rejection case is checked for leaving the existing
+   store completely untouched. */
+{
+  Store.reset(); Store.load();
+  Store.useEducationRanges();
+  Store.updateProfile({ display_name: 'Round Trip', ckd_stage: 'G4' });
+  Store.addLab({ lab_date: Store.todayISO(), k: 4.6, p: 3.8 });
+  Store.addMeal({
+    meal_text: 'backup test meal', logged_at: new Date().toISOString(),
+    meal_date: Store.todayISO(), items: [], confidence: 'high',
+    total_potassium_low_mg: 100, total_potassium_high_mg: 120,
+    total_phosphorus_low_mg: 0, total_phosphorus_high_mg: 0,
+    total_sodium_low_mg: 0, total_sodium_high_mg: 0
+  });
+  Store.setSetting('medications', 'Sevelamer 800mg');
+
+  const backup = Backup.text();
+  const before = JSON.stringify(Store.exportAll());
+
+  // Wipe as thoroughly as clearing a browser would.
+  Store.reset(); Store.load();
+  check('after a wipe, nothing is left', Store.meals().length, 0);
+  check('  ...and no name survives', Store.profile().display_name, '');
+
+  const done = Backup.restore(backup);
+  check('the backup restores', done.ok, true);
+  check('  ...and reports what came back', done.summary.meals, 1);
+  check('everything round-trips byte for byte',
+    JSON.stringify(Store.exportAll()).length + '/' + JSON.stringify(Store.exportAll()).slice(0, 40),
+    before.length + '/' + before.slice(0, 40));
+  check('  ...including the name', Store.profile().display_name, 'Round Trip');
+  check('  ...the targets', Store.targets().k, 2500);
+  check('  ...the labs', Store.labs().length, 1);
+  check('  ...and settings outside the main entities', Store.settings().medications, 'Sevelamer 800mg');
+
+  /* Rejections. Each must name a reason a person can act on — "invalid
+     file" tells somebody holding the only copy of their data nothing —
+     and each must leave the store completely alone. */
+  /* Compared as a short fingerprint rather than the whole store: the
+     assertion is "did anything change", and printing 2 KB of JSON per
+     check buries every other line of output. A test log nobody can
+     read is a test log nobody reads. */
+  const fingerprint = () => {
+    const j = JSON.stringify(Store.exportAll());
+    let h = 0;
+    for (let i = 0; i < j.length; i++) { h = ((h << 5) - h + j.charCodeAt(i)) | 0; }
+    return j.length + ':' + (h >>> 0).toString(36);
+  };
+  const good = fingerprint();
+  const cases = [
+    ['not JSON at all',        'this is not json {'],
+    ['a different app\'s file', JSON.stringify({ format: 'other-app', version: 1, data: {} })],
+    ['a newer format version',  JSON.stringify({ format: 'renalroute-backup', version: 99, data: {} })],
+    ['a file with no contents', JSON.stringify({ format: 'renalroute-backup', version: 1 })],
+    ['a truncated file',        JSON.stringify({ format: 'renalroute-backup', version: 1,
+                                  data: { profiles: [], labs: [], settings: {} } })]  // meals missing
+  ];
+  cases.forEach(([what, raw]) => {
+    const r = Backup.restore(raw);
+    check(`${what} is refused`, r.ok, false);
+    check(`  ...with a reason worth reading`, r.reason && r.reason.length > 25, true);
+    check(`  ...and nothing is overwritten`, fingerprint(), good);
+  });
+
+  /* A truncated download is the realistic version of this: the file
+     parses as JSON, has the right format string, and is missing an
+     entity. Restoring it would replace a full history with an empty
+     one and report success. */
+  const truncated = JSON.parse(backup);
+  delete truncated.data.meals;
+  check('a backup missing its meals is refused, not applied as empty',
+    Backup.restore(JSON.stringify(truncated)).ok, false);
+  check('  ...and the real meals are still there', Store.meals().length, 1);
+
+  // Export must be a copy, not a live reference.
+  const snap = Store.exportAll();
+  snap.meals.length = 0;
+  check('exportAll returns a copy, not the live store', Store.meals().length, 1);
+
+  Store.reset(); Store.load();
+}
 
 console.log('\n═══ RECIPES CARRY NO NUMBERS OF THEIR OWN ═══');
 

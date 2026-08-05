@@ -1377,6 +1377,12 @@ const UI = (() => {
     });
   }
 
+  function showBackupError(msg) {
+    $('#backupOk').hidden = true;
+    $('#backupError').textContent = msg;
+    $('#backupError').hidden = false;
+  }
+
   /* ═══════════ kitchen ═══════════
      Recipes priced through the real resolver, so every card shows a
      range and carries the same provenance a logged meal does. Nothing
@@ -2666,6 +2672,39 @@ const UI = (() => {
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));
+
+    /* ── Backup and restore ──
+       Restore is destructive by definition, so it goes behind the same
+       confirmation the delete-everything action uses. The validation
+       runs BEFORE the confirmation, so nobody is asked to confirm
+       overwriting their history with a file that was never going to
+       load. */
+    $('#backupSaveBtn').addEventListener('click', () => {
+      Exporter.download(Backup.filename(), Backup.text(), 'application/json');
+      toast('Backup saved');
+    });
+    $('#backupLoadBtn').addEventListener('click', () => $('#backupFileInput').click());
+    $('#backupFileInput').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onerror = () => showBackupError("That file couldn't be read.");
+      reader.onload = () => {
+        const raw = String(reader.result || '');
+        const check = Backup.parse(raw);
+        if (!check.ok) { showBackupError(check.reason); return; }
+        if (!window.confirm(COPY.backup.confirm)) return;
+        const done = Backup.restore(raw);
+        if (!done.ok) { showBackupError(done.reason); return; }
+        $('#backupError').hidden = true;
+        $('#backupOk').textContent = COPY.backup.restored(done.summary.meals, done.summary.labs);
+        $('#backupOk').hidden = false;
+        renderSettings();
+        toast('Backup restored');
+      };
+      reader.readAsText(f);
+    });
 
     /* Lab scan. The file input is visually hidden and driven by the
        button, so the control is a real 44px target rather than a

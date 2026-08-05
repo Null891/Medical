@@ -436,7 +436,25 @@
            the app, not the person building it. -->
       <div class="card">
         <h2 class="h2">Your data</h2>
-        <p class="note">Everything you log stays on this device, in this browser. Nothing is uploaded, and there is no account. Clearing your browser data removes it too.</p>
+
+        <!-- The no-account promise, stated rather than merely
+             implemented. An app that happens not to ask for a password
+             reads as unfinished; one that says so reads as a decision. -->
+        <div class="card m-paper promise">
+          <h3 class="h3">No account. Not now, not later.</h3>
+          <p class="note">There is no sign-up, no password, and no server holding your lab values. Everything you log stays in this browser on this device, and nothing is uploaded &mdash; the only thing that ever leaves is a meal photo you choose to take, which is read and discarded, never stored.</p>
+          <p class="note mt-2">The trade is that clearing your browser data, switching phones, or using a different browser loses everything. That is what the backup below is for.</p>
+        </div>
+
+        <h3 class="h3 mt-2">Back up everything</h3>
+        <p class="note">One file with all of it &mdash; meals, labs, targets, passport, settings. Keep it somewhere safe and you can restore it on any device.</p>
+        <div class="dev-actions">
+          <button type="button" class="btn btn--secondary" id="backupSaveBtn">Save a backup file</button>
+          <button type="button" class="btn btn--ghost" id="backupLoadBtn">Restore from a backup</button>
+        </div>
+        <input type="file" id="backupFileInput" accept="application/json,.json" class="sr-only">
+        <p class="inline-error" id="backupError" role="alert" hidden></p>
+        <p class="note" id="backupOk" role="status" hidden></p>
 
         <h3 class="h3 mt-2">Where our numbers come from</h3>
         <p class="note">Every position this app takes and the source behind it — including the ones we have not re-derived yet. Nutrition apps rarely publish this, which is why it is worth publishing.</p>
@@ -668,6 +686,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/meds.js"></script>
 <script src="js/plan.js"></script>
 <script src="js/labscan.js"></script>
