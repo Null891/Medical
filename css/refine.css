@@ -446,3 +446,41 @@ body { letter-spacing: var(--track-body); }
   padding-left: var(--space-2);
   border-left: 2px solid var(--color-hairline);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   LAB SCAN REVIEW
+   ───────────────────────────────────────────────────────────────
+   Ordinary rows are quiet. A row that crosses a guidance band gets a
+   left rule and a tint, so the one thing worth reading is the one
+   thing that looks different — rather than three rows all shouting
+   "please confirm" and training people to tap past them.
+   ═══════════════════════════════════════════════════════════════ */
+.scanrow {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-hairline);
+}
+.scanrow:first-of-type { border-top: 0; }
+.scanrow__label { display: block; font-size: var(--type-caption); color: var(--color-text-secondary); }
+.scanrow__value {
+  display: block;
+  font-size: var(--type-title);
+  font-weight: 640;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-title);
+}
+.scanrow--absent { opacity: .7; }
+.scanrow--absent .scanrow__value { font-size: var(--type-body); font-weight: 400; }
+
+/* The gate. Amber rather than red: this is "check this", not "this is
+   wrong" — the reading may well be correct, and colouring it as an
+   error would teach people to distrust accurate scans. */
+.scanrow--gate {
+  background: var(--color-tint-warn);
+  border-left: 3px solid var(--color-status-warn);
+  border-radius: var(--radius-field);
+  padding: var(--space-3);
+  margin: var(--space-2) 0;
+}
+.scanrow--gate .btn { margin-top: var(--space-2); }
+.scanrow--bad { border-left: 3px solid var(--color-status-danger); padding-left: var(--space-3); }
+.scanrow__ok { color: var(--color-status-ok); font-weight: 600; }

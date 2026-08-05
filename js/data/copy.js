@@ -28,6 +28,43 @@ const COPY = {
   footerDisclaimer: "Estimates for education only — not medical advice. Follow your care team's targets.",
   cardDisclaimer: 'Educational estimate — confirm with your care team.',
 
+  /* ── Lab scan ──
+     The gate copy is the important part. It names the reading, names
+     what it would DO, and asks for one tap — which is the difference
+     between a confirmation somebody reads and one they dismiss. */
+  labScan: {
+    reading: 'Reading your report…',
+    readTitle: 'Here is what we read',
+    readBody:
+      'Check these against the page in front of you. Nothing is saved until you press save, ' +
+      'and the photo itself is never stored.',
+    notOnReport: "Not found on this report — you can type it in below instead.",
+    nothingFound:
+      "We couldn't find potassium, phosphorus or eGFR on that image. Try a straighter photo in " +
+      'better light, or type the numbers in below — that always works.',
+    unreadable:
+      "We couldn't read that image. Type your numbers in below instead — it takes about twenty seconds.",
+    failed:
+      "The scan didn't work just now. Your report is unchanged, and typing the numbers in below still works.",
+    /* Named consequence, not a generic "please confirm". Somebody who
+       is told WHAT a value will do can actually check it; somebody
+       shown a bare "are you sure?" has been trained to tap yes. */
+    gate: (v, consequence) =>
+      `This reads ${v}, which would ${consequence}. Check it against your report before saving.`,
+    gateButton: 'It matches my report',
+    confirmed: 'Confirmed against your report.',
+    /* Units are reported, never converted. Phosphorus in mmol/L differs
+       from mg/dL by roughly 3.2x, and silently converting somebody's
+       report would invent a number they can no longer check against the
+       page in front of them. */
+    oddUnit: (u) =>
+      `Your report shows phosphorus in ${u}, and RenalRoute expects mg/dL. We have not converted it — ` +
+      'check with your care team rather than trusting a number in the wrong unit.',
+    dated: (d) => `Report dated ${d}.`,
+    save: 'Save these values',
+    saveBlocked: 'Check the flagged value first'
+  },
+
   /* ── The three refusals ──
      Shown once, immediately after consent, before the app is used.
 

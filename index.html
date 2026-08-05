@@ -318,6 +318,23 @@
     <section class="screen" id="scr-labs" hidden>
       <header class="hdr"><h1 class="hdr__title">Labs</h1></header>
       <div id="labModeCards"></div>
+      <!-- Photograph the report instead of typing it. Every value
+           autofills; only a reading that would leave the normal band
+           asks for a tap, because that is the only place a misread
+           decimal changes what the app DOES. See js/labscan.js. -->
+      <div class="card m-stone">
+        <h2 class="h2">Scan your lab report</h2>
+        <p class="note">Take a photo and RenalRoute fills in the potassium, phosphorus, eGFR and date. Nothing is saved until you check it — and nothing about the report leaves your device except the image itself.</p>
+        <input type="file" id="labPhotoInput" accept="image/*" capture="environment" class="sr-only">
+        <button type="button" class="btn btn--secondary btn--block" id="labPhotoBtn">Photograph the report</button>
+        <div id="labScanPending" hidden>
+          <div id="labScanArt" aria-hidden="true"></div>
+          <p class="sr-only" role="status" id="labScanStatus">Reading your report…</p>
+        </div>
+        <p class="inline-error" id="labScanError" role="alert" hidden></p>
+        <div id="labScanReview" hidden></div>
+      </div>
+
       <div class="card">
         <h2 class="h2">Add a result</h2>
         <div id="labFields"></div>
@@ -623,6 +640,7 @@
 <script src="js/cards.js"></script>
 <script src="js/rings.js"></script>
 <script src="js/trends.js"></script>
+<script src="js/labscan.js"></script>
 <script src="js/motion.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/orbit.js"></script>

@@ -1363,6 +1363,128 @@ const UI = (() => {
     });
   }
 
+  /* ═══════════ lab scan ═══════════
+     Autofill is the default and confirmation is the exception, gated on
+     whether a value would move somebody out of the normal band. See the
+     header of js/labscan.js for why that is the right place to spend
+     the user's attention.
+
+     The extracted numbers live only in this closure until saved. A
+     photograph of a lab report is the most sensitive thing this app
+     ever handles, and it is never written to storage in any form. */
+  let scanRows = null;
+  let scanConfirmed = [];
+
+  async function analyzeLabPhoto(file) {
+    $('#labScanError').hidden = true;
+    $('#labScanReview').hidden = true;
+    $('#labPhotoBtn').disabled = true;
+
+    let shot;
+    try {
+      shot = await downscale(file);
+    } catch (e) {
+      $('#labPhotoBtn').disabled = false;
+      showLabScanError(COPY.labScan.unreadable);
+      return;
+    }
+
+    if (typeof Motion !== 'undefined') {
+      $('#labScanArt').innerHTML = Motion.loaderHtml(COPY.labScan.reading);
+    }
+    $('#labScanStatus').textContent = COPY.labScan.reading;
+    $('#labScanPending').hidden = false;
+
+    try {
+      const { data } = await LLM.extractLab({ media_type: 'image/jpeg', data: shot.base64 });
+      $('#labScanPending').hidden = true;
+      $('#labPhotoBtn').disabled = false;
+
+      if (!data.readable) { showLabScanError(COPY.labScan.unreadable); return; }
+
+      scanRows = LabScan.review({
+        k: data.potassium, p: data.phosphorus, egfr: data.egfr
+      });
+      scanConfirmed = [];
+
+      if (!scanRows.some(r => r.found)) { showLabScanError(COPY.labScan.nothingFound); return; }
+
+      /* A unit the app does not expect is reported, never converted.
+         Phosphorus in mmol/L differs from mg/dL by roughly 3.2x, and
+         silently converting somebody's report would be inventing a
+         number they can no longer check against the page in front of
+         them. */
+      const oddUnit = (data.phosphorus_unit && !/mg\s*\/\s*dl/i.test(data.phosphorus_unit))
+        ? data.phosphorus_unit : null;
+
+      renderLabScanReview(data.lab_date, oddUnit);
+    } catch (e) {
+      $('#labScanPending').hidden = true;
+      $('#labPhotoBtn').disabled = false;
+      showLabScanError(COPY.labScan.failed);
+    }
+  }
+
+  function showLabScanError(msg) {
+    $('#labScanError').textContent = msg;
+    $('#labScanError').hidden = false;
+  }
+
+  function renderLabScanReview(labDate, oddUnit) {
+    const host = $('#labScanReview');
+    host.hidden = false;
+
+    const rows = scanRows.map(r => {
+      if (!r.found) {
+        return `<div class="scanrow scanrow--absent">
+          <span class="scanrow__label">${esc(r.field.label)}</span>
+          <span class="note">${esc(COPY.labScan.notOnReport)}</span>
+        </div>`;
+      }
+      if (!r.valid) {
+        return `<div class="scanrow scanrow--bad">
+          <span class="scanrow__label">${esc(r.field.label)}</span>
+          <span class="scanrow__value">${esc(String(r.value))} ${esc(r.field.unit)}</span>
+          <p class="inline-error">${esc(r.error)}</p>
+        </div>`;
+      }
+      const done = scanConfirmed.indexOf(r.field.key) !== -1;
+      return `<div class="scanrow${r.confirm && !done ? ' scanrow--gate' : ''}">
+        <span class="scanrow__label">${esc(r.field.label)}</span>
+        <span class="scanrow__value">${esc(String(r.value))} ${esc(r.field.unit)}</span>
+        ${r.confirm ? (done
+          ? `<p class="note scanrow__ok">${esc(COPY.labScan.confirmed)}</p>`
+          : `<p class="note">${esc(COPY.labScan.gate(r.value, r.confirm.consequence))}</p>
+             <button type="button" class="btn btn--secondary" data-scanok="${esc(r.field.key)}">${esc(COPY.labScan.gateButton)}</button>`)
+          : ''}
+      </div>`;
+    }).join('');
+
+    const ready = LabScan.ready(scanRows, scanConfirmed);
+    host.innerHTML = `
+      <h3 class="h3">${esc(COPY.labScan.readTitle)}</h3>
+      <p class="note">${esc(COPY.labScan.readBody)}</p>
+      ${oddUnit ? `<p class="inline-error">${esc(COPY.labScan.oddUnit(oddUnit))}</p>` : ''}
+      ${rows}
+      ${labDate ? `<p class="note">${esc(COPY.labScan.dated(labDate))}</p>` : ''}
+      <button type="button" class="btn btn--primary btn--block" id="labScanSave" ${ready ? '' : 'disabled'}>
+        ${esc(ready ? COPY.labScan.save : COPY.labScan.saveBlocked)}
+      </button>`;
+
+    $('#labScanSave').addEventListener('click', () => saveScannedLab(labDate));
+  }
+
+  function saveScannedLab(labDate) {
+    if (!scanRows || !LabScan.ready(scanRows, scanConfirmed)) return;
+    const vals = { lab_date: labDate || Store.todayISO() };
+    scanRows.forEach(r => { if (r.found && r.valid) vals[r.field.key] = Number(r.value); });
+    Store.addLab(vals);
+    scanRows = null; scanConfirmed = [];
+    $('#labScanReview').hidden = true;
+    toast('Lab values saved');
+    renderLabs();
+  }
+
   /* ═══════════ the three refusals ═══════════
      Shown once, right after consent. The whole design of this screen is
      that every claim on it is CHECKABLE within a minute of using the
@@ -1953,12 +2075,19 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],' +
+        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],' +
         '[data-del-lab],[data-repeat],[data-leach]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
       if (el.dataset.learn) { showLearn(el.dataset.learn); return; }
+      if (el.dataset.scanok) {
+        // One tap, one field. Confirming a boundary-crossing reading
+        // never confirms any other.
+        if (scanConfirmed.indexOf(el.dataset.scanok) === -1) scanConfirmed.push(el.dataset.scanok);
+        renderLabScanReview(null, null);
+        return;
+      }
       if (el.dataset.onb) {
         const group = el.dataset.onb, val = el.dataset.val;
         if (group === 'stage') {
@@ -2376,6 +2505,16 @@ const UI = (() => {
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
+
+    /* Lab scan. The file input is visually hidden and driven by the
+       button, so the control is a real 44px target rather than a
+       browser-styled file picker. */
+    $('#labPhotoBtn').addEventListener('click', () => $('#labPhotoInput').click());
+    $('#labPhotoInput').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f) analyzeLabPhoto(f);
+      e.target.value = '';        // same file twice must re-trigger
+    });
     $('#refusalsGo').addEventListener('click', dismissRefusals);
     $('#passportFields').addEventListener('input', (e) => {
       const key = e.target && e.target.dataset && e.target.dataset.pp;

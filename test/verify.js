@@ -22,14 +22,14 @@ const sandbox = {
 vm.createContext(sandbox);
 
 ['js/data/copy.js', 'js/data/anchor-foods.js', 'js/store.js',
- 'js/clinical.js', 'js/resolve.js', 'js/cards.js'].forEach(f => {
+ 'js/clinical.js', 'js/resolve.js', 'js/cards.js', 'js/labscan.js'].forEach(f => {
   vm.runInContext(read(f), sandbox, { filename: f });
 });
 
 // `const` at the top level of a VM script binds into the context's global
 // lexical scope, not onto the sandbox object — pull them out explicitly.
-const { Store, Clinical, Resolve, Cards, ANCHOR_FOODS, ANCHOR_STATS } =
-  vm.runInContext('({ Store, Clinical, Resolve, Cards, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+const { Store, Clinical, Resolve, Cards, LabScan, ANCHOR_FOODS, ANCHOR_STATS } =
+  vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
 Store.load();
 
 let pass = 0, fail = 0;
@@ -226,6 +226,78 @@ check('  ...claimed removal is smaller than published removal',
   (926 - L.high) / 926 < 0.50, true);
 check('  ...and the result is still a range, never a point', L.low < L.high, true);
 check('null potassium survives leaching untouched', Clinical.leach(null, null).low, null);
+
+console.log('\n═══ LAB SCAN — THE GATE IS ON THE BOUNDARY ═══');
+
+/* The design being tested: autofill is free, confirmation is spent only
+   where a misread would change what the app DOES. So there are two
+   failure modes and both are checked.
+
+   Too tight — asking about ordinary readings — makes the feature
+   tedious in exactly the place it exists to remove tedium, and it will
+   not get used. Too loose — letting a band-crossing value through
+   silently — is the actual safety hole. */
+{
+  // Ordinary readings must cost nothing.
+  check('normal potassium needs no confirmation', LabScan.needsConfirm('k', 4.6), null);
+  check('normal phosphorus needs no confirmation', LabScan.needsConfirm('p', 3.8), null);
+  check('eGFR never needs confirmation', LabScan.needsConfirm('egfr', 38), null);
+  check('  ...even a very low eGFR, because it changes no mode',
+    LabScan.needsConfirm('egfr', 9), null);
+
+  // Every crossing must be caught, and must name what it would do.
+  [[3.2, 'low'], [5.3, 'caution'], [5.7, 'restricted'], [6.1, 'paused']]
+    .forEach(([v, mode]) => {
+      const c = LabScan.needsConfirm('k', v);
+      check(`K ${v} is gated`, !!c, true);
+      check(`  ...and identifies it as ${mode}`, c && c.mode, mode);
+      check('  ...and names the consequence in plain words',
+        !!(c && c.consequence && c.consequence.length > 10), true);
+    });
+  check('P 4.9 is gated', (LabScan.needsConfirm('p', 4.9) || {}).mode, 'caution');
+  check('P 1.1 is gated', (LabScan.needsConfirm('p', 1.1) || {}).mode, 'below_range');
+
+  /* Exact band edges, because off-by-one at a boundary is the whole
+     failure class this feature could introduce. */
+  check('K 3.5 exactly is normal', LabScan.wouldBeMode('k', 3.5), 'normal');
+  check('K 3.4 is low', LabScan.wouldBeMode('k', 3.4), 'low');
+  check('K 5.0 is normal', LabScan.wouldBeMode('k', 5.0), 'normal');
+  check('K 5.1 is caution', LabScan.wouldBeMode('k', 5.1), 'caution');
+  check('K 5.5 is caution', LabScan.wouldBeMode('k', 5.5), 'caution');
+  check('K 5.6 is restricted', LabScan.wouldBeMode('k', 5.6), 'restricted');
+  check('K 5.9 is restricted', LabScan.wouldBeMode('k', 5.9), 'restricted');
+  check('K 6.0 is paused', LabScan.wouldBeMode('k', 6.0), 'paused');
+
+  /* LabScan re-expresses the bands as a pure function of a value, since
+     Clinical's own versions read the stored latest lab. Two copies of a
+     threshold is a drift risk, so they are checked against each other
+     through the real storage path at every boundary. */
+  [3.4, 3.5, 5.0, 5.1, 5.5, 5.6, 5.9, 6.0, 7.5].forEach(v => {
+    Store.reset(); Store.load();
+    Store.addLab({ lab_date: Store.todayISO(), k: v });
+    check(`K ${v}: LabScan agrees with Clinical`,
+      LabScan.wouldBeMode('k', v), Clinical.potassiumMode().mode);
+  });
+  Store.reset(); Store.load();
+
+  // Implausible values are rejected by the existing bounds and are
+  // never offered for confirmation — they are not going to be stored.
+  const rows = LabScan.review({ k: 45, p: 3.8, egfr: null });
+  const kRow = rows.find(r => r.field.key === 'k');
+  check('an impossible potassium is marked invalid', kRow.valid, false);
+  check('  ...and is never offered for confirmation', kRow.confirm, null);
+  check('a missing value is simply absent, not zero',
+    rows.find(r => r.field.key === 'egfr').found, false);
+
+  // The save gate: blocked until every crossing is confirmed, and
+  // confirming one never confirms another.
+  const gated = LabScan.review({ k: 6.1, p: 4.9, egfr: 20 });
+  check('save is blocked with two crossings unconfirmed', LabScan.ready(gated, []), false);
+  check('  ...still blocked with only one confirmed', LabScan.ready(gated, ['k']), false);
+  check('  ...released when both are confirmed', LabScan.ready(gated, ['k', 'p']), true);
+  const plain = LabScan.review({ k: 4.6, p: 3.8, egfr: 38 });
+  check('an ordinary report saves with zero confirmations', LabScan.ready(plain, []), true);
+}
 
 console.log('\n═══ CALENDAR DAYS ARE LOCAL, NEVER UTC ═══');
 
