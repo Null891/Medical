@@ -60,6 +60,10 @@ const UI = (() => {
     // for the label scanner, warmer for reading, clinical for labs.
     // Data only: no colour decision lives in JS.
     if (typeof Motion !== 'undefined') Motion.setScreen(name);
+    // A quick-action menu left open across a screen change is a menu
+    // floating over content it no longer relates to.
+    const fabBtn = $('#fabToggle');
+    if (fabBtn && fabBtn.getAttribute('aria-expanded') === 'true') toggleFab(false);
     // Guarded: not every environment implements scrollTo, and a missing
     // scroll must never take the navigation down with it.
     try { window.scrollTo(0, 0); } catch (e) { /* non-fatal */ }
@@ -473,6 +477,8 @@ const UI = (() => {
     renderInsights();
     applyAdaptiveOrder();
     maybeBloom();
+    // Cards were just replaced, so the observer has nothing to watch.
+    if (typeof Motion !== 'undefined') Motion.rearmReveal();
   }
 
   /* ═══════════ the bloom ═══════════
@@ -1381,6 +1387,15 @@ const UI = (() => {
       el.classList.remove(...Array.from(el.classList).filter(c => c.startsWith('ord-')));
       el.classList.add('ord-' + i);
     });
+  }
+
+  function toggleFab(force) {
+    const btn = $('#fabToggle');
+    const open = (force === undefined) ? btn.getAttribute('aria-expanded') !== 'true' : force;
+    btn.setAttribute('aria-expanded', String(open));
+    $('#fabMenu').hidden = !open;
+    $('#fab').classList.toggle('is-open', open);
+    if (open) { const first = $('#fabMenu .fab__item'); if (first) first.focus(); }
   }
 
   function showBackupError(msg) {
@@ -2703,6 +2718,24 @@ const UI = (() => {
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));
+
+    /* ── Quick actions ──
+       Expanded state is on the toggle's aria-expanded, so the markup
+       and the behaviour cannot drift apart. Escape closes it and
+       returns focus, the same contract the delete dialog follows. */
+    $('#fabToggle').addEventListener('click', () => toggleFab());
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('#fabToggle').getAttribute('aria-expanded') === 'true') {
+        toggleFab(false);
+        $('#fabToggle').focus();
+      }
+    });
+    // Tapping anywhere else closes it — an expanded menu that survives
+    // the next tap is a menu people close by navigating away from.
+    document.addEventListener('click', (e) => {
+      if (!$('#fab').contains(e.target) &&
+          $('#fabToggle').getAttribute('aria-expanded') === 'true') toggleFab(false);
+    });
 
     /* ── Backup and restore ──
        Restore is destructive by definition, so it goes behind the same

@@ -483,6 +483,88 @@ const Motion = (() => {
      card in js/ui.js. Same information, stated openly, where a
      clinician can actually find it. */
 
+  /* ═══════════ SCROLL REVEAL ═══════════
+     Cards arrive as they enter the viewport rather than all at once.
+
+     IntersectionObserver, not a scroll handler: the browser does the
+     work off the main thread, and there is no per-frame cost at all.
+     Each element is unobserved the moment it has appeared, so a long
+     dashboard does not accumulate live observers.
+
+     Everything starts VISIBLE and the class only ever adds motion. If
+     this function never runs — old browser, no observer, script failed
+     to load — the page is a normal page rather than a blank one, which
+     is the failure mode a scroll-reveal built the other way around
+     produces on exactly the devices least able to run it. */
+  function scrollReveal() {
+    if (typeof window === 'undefined' || !window.IntersectionObserver) return;
+    if (reduced()) return;
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('is-revealed');
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.04 });
+
+    document.querySelectorAll('.card, .recipe, .ref').forEach(el => {
+      if (el.classList.contains('is-revealed')) return;
+      el.classList.add('reveal');
+      io.observe(el);
+    });
+    return io;
+  }
+
+  /* Re-armed after any render that replaces cards. Called from the UI
+     rather than watching the DOM, because a MutationObserver on a
+     screen that re-renders on every navigation is a lot of work to
+     achieve the same thing. */
+  function rearmReveal() {
+    if (reduced()) return;
+    scrollReveal();
+  }
+
+  /* ═══════════ DEPTH ON HOVER ═══════════
+     A card lifts slightly toward the pointer, and the ones around it do
+     not. Fine pointers only, transform only, capped at a 1.4-degree
+     tilt — enough to read as physical, far short of the wobble that
+     makes text hard to follow.
+
+     Deliberately NOT applied to the ring card or the orbit: tilting a
+     surface somebody is reading numbers off is a legibility cost paid
+     for an effect. */
+  const TILT_MAX = 1.4;
+
+  function depth() {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (reduced()) return;
+
+    let pending = false, last = null;
+    document.addEventListener('pointermove', (e) => {
+      last = e;
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        const card = last.target && last.target.closest &&
+          last.target.closest('.card:not(.m-stone):not(.orbit-card)');
+        document.querySelectorAll('.card.is-lifted').forEach(c => {
+          if (c !== card) { c.classList.remove('is-lifted'); c.style.removeProperty('transform'); }
+        });
+        if (!card) return;
+        const r = card.getBoundingClientRect();
+        const dx = (last.clientX - (r.left + r.width / 2)) / (r.width / 2);
+        const dy = (last.clientY - (r.top + r.height / 2)) / (r.height / 2);
+        card.classList.add('is-lifted');
+        card.style.setProperty('transform',
+          `perspective(900px) rotateX(${(-dy * TILT_MAX).toFixed(2)}deg) ` +
+          `rotateY(${(dx * TILT_MAX).toFixed(2)}deg) translateZ(2px)`);
+      });
+    }, { passive: true });
+  }
+
   function init() {
     spotlight();
     condenseNav();
@@ -490,6 +572,8 @@ const Motion = (() => {
     magnetic();
     parallax();
     daylight();
+    scrollReveal();
+    depth();
     // Re-check the light every ten minutes; a session can outlive dusk.
     if (typeof setInterval !== 'undefined') setInterval(() => daylight(), 600000);
   }
@@ -497,7 +581,7 @@ const Motion = (() => {
   return {
     ripple, ringsAcknowledge, bloom, morph,
     loaderHtml, livingChart, setScreen, init,
-    haptic, chime, daylight, magnetic, parallax,
-    HAPTIC, MAGNET_MAX, FACTS, reduced
+    haptic, chime, daylight, magnetic, parallax, scrollReveal, rearmReveal, depth,
+    HAPTIC, MAGNET_MAX, TILT_MAX, FACTS, reduced
   };
 })();

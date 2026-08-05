@@ -1,0 +1,331 @@
+/* ═══════════════════════════════════════════════════════════════
+   SWEEP — the manual checklist, automated.
+   ───────────────────────────────────────────────────────────────
+   The README has carried a manual QA list since the first week —
+   320px, keyboard-only, grayscale, 200% zoom, measured contrast — and
+   not one item on it has ever been performed. A checklist nobody runs
+   is a checklist that reports whatever you hope.
+
+   So the parts that can be checked mechanically are checked here, on
+   every `npm test`. What CANNOT be automated is stated as such at the
+   end rather than quietly dropped, because the honest failure is a
+   short list of real manual items, not a long list of imaginary
+   automated ones.
+
+   WHAT jsdom CANNOT DO, and why these tests are shaped the way they
+   are: it does not lay out, so nothing here can measure a rendered
+   pixel or detect an overflow. It resolves computed styles only for
+   simple declarations and never resolves var(). It does not evaluate
+   media queries. Every check below is therefore either a SOURCE-level
+   check on the stylesheet, or a DOM-structure check — and each one
+   says which, so nobody mistakes this file for a rendering test.
+   ═══════════════════════════════════════════════════════════════ */
+
+const fs = require('fs');
+const path = require('path');
+const { JSDOM, VirtualConsole } = require('jsdom');
+
+const ROOT = path.join(__dirname, '..');
+const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+
+let pass = 0, fail = 0;
+const failures = [];
+function check(label, ok, detail) {
+  if (ok) { pass++; console.log(`  PASS  ${label}`); }
+  else { fail++; failures.push(label); console.log(`  FAIL  ${label}${detail ? '  → ' + detail : ''}`); }
+}
+
+const html = read('index.html');
+const cssFiles = Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m => m[1]);
+const css = cssFiles.map(read).join('\n');
+const scripts = Array.from(html.matchAll(/<script src="([^"]+)"><\/script>/g)).map(m => m[1]);
+
+/* ═══════════════════════════════════════════════════════════════
+   1 · NO HORIZONTAL OVERFLOW — source-level
+   jsdom cannot lay out, so a fixed width wider than the smallest
+   supported viewport is caught in the stylesheet instead. 320px is the
+   floor the design commits to.
+   ═══════════════════════════════════════════════════════════════ */
+console.log('\n═══ 1. NOTHING IS WIDER THAN THE SMALLEST PHONE ═══');
+{
+  const decls = Array.from(css.matchAll(/(?:^|[;{])\s*(min-width|width)\s*:\s*(\d+)px/g));
+  const tooWide = decls.filter(m => Number(m[2]) > 320).map(m => `${m[1]}: ${m[2]}px`);
+  check('no fixed width exceeds 320px', tooWide.length === 0, tooWide.join(', '));
+
+  check('the body forbids horizontal scroll', /body\s*{[^}]*overflow-x:\s*hidden/s.test(css),
+    'body needs overflow-x: hidden as the backstop');
+
+  // Wide content must scroll inside its own container, not the page.
+  ['.tabs', '.scenes', '.chipset'].forEach(sel => {
+    const rule = css.match(new RegExp('\\' + sel + '\\s*{[^}]*}', 's'));
+    const ok = rule && (/overflow-x:\s*auto/.test(rule[0]) || /flex-wrap:\s*wrap/.test(rule[0]));
+    check(`${sel} either scrolls itself or wraps`, !!ok,
+      'a horizontal row that neither wraps nor scrolls pushes the page sideways');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2 · TAP TARGETS — source-level
+   Every interactive class must declare at least 44px somewhere in its
+   own rule. Cannot be measured here; it can be required.
+   ═══════════════════════════════════════════════════════════════ */
+console.log('\n═══ 2. TAP TARGETS ARE DECLARED AT 44px OR MORE ═══');
+{
+  const interactive = ['.btn', '.chip-opt', '.scene', '.tabs__btn', '.fab__item', '.fab__toggle', '.tab'];
+  interactive.forEach(sel => {
+    const rules = Array.from(css.matchAll(new RegExp('\\' + sel + '[^{]*{([^}]*)}', 'gs')))
+      .map(m => m[1]).join(' ');
+    const sizes = Array.from(rules.matchAll(/(?:min-height|height|min-width|width)\s*:\s*(\d+)px/g))
+      .map(m => Number(m[1]));
+    check(`${sel} declares a target of 44px or more`,
+      sizes.some(n => n >= 44), sizes.length ? `largest declared: ${Math.max(...sizes)}px` : 'no size declared');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · CONTRAST — computed from the tokens, not eyeballed
+   The one item on the manual list that is pure arithmetic, and so the
+   one there was never any excuse for not automating.
+   ═══════════════════════════════════════════════════════════════ */
+console.log('\n═══ 3. CONTRAST, MEASURED ═══');
+{
+  /* ONLY the base :root block. tokens.css also defines dark-mode and
+     high-contrast palettes further down with literal hex values, and a
+     naive last-wins scan picked those up instead — reporting the DARK
+     secondary text against the LIGHT canvas as 1.28:1 and calling it a
+     failure. The first draft of this test measured two palettes mixed
+     together, which is worse than not measuring at all: it produces a
+     confident number about a pairing that never appears on screen. */
+  const tokensSrc = read('css/tokens.css');
+  const baseBlock = tokensSrc.slice(tokensSrc.indexOf(':root {'),
+                                    tokensSrc.indexOf('}', tokensSrc.indexOf(':root {')));
+  const tokens = {};
+  Array.from(baseBlock.matchAll(/(--color-[a-z-]+):\s*(#[0-9A-Fa-f]{6})/g))
+    .forEach(m => { tokens[m[1]] = m[2]; });
+  check('the light palette parsed on its own', Object.keys(tokens).length >= 10,
+    `only ${Object.keys(tokens).length} colours found in the base :root block`);
+
+  const lum = (hex) => {
+    const c = [1, 3, 5].map(i => parseInt(hex.substr(i, 2), 16) / 255)
+      .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const ratio = (a, b) => {
+    const l1 = lum(a), l2 = lum(b);
+    return ((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05));
+  };
+
+  /* WCAG AA: 4.5:1 for normal text, 3:1 for large text and for
+     non-text indicators. Status colours are checked against BOTH
+     surfaces they actually appear on. */
+  const pairs = [
+    ['text-primary on canvas',   '--color-text-primary',   '--color-canvas',       4.5],
+    ['text-primary on surface',  '--color-text-primary',   '--color-surface',      4.5],
+    ['text-secondary on canvas', '--color-text-secondary', '--color-canvas',       4.5],
+    ['text-secondary on surface','--color-text-secondary', '--color-surface',      4.5],
+    ['accent on surface',        '--color-accent',         '--color-surface',      4.5],
+    ['status ok on surface',     '--color-status-ok',      '--color-surface',      4.5],
+    ['status warn on surface',   '--color-status-warn',    '--color-surface',      4.5],
+    ['status danger on surface', '--color-status-danger',  '--color-surface',      4.5],
+    ['status warn on its tint',  '--color-status-warn',    '--color-tint-warn',    4.5],
+    ['status ok on its tint',    '--color-status-ok',      '--color-tint-ok',      4.5],
+    ['status danger on its tint','--color-status-danger',  '--color-tint-danger',  4.5],
+    ['accent on its tint',       '--color-accent',         '--color-tint-accent',  4.5]
+  ];
+
+  pairs.forEach(([label, fg, bg, min]) => {
+    const a = tokens[fg], b = tokens[bg];
+    if (!a || !b) { check(`${label} — tokens found`, false, `${fg} or ${bg} missing`); return; }
+    const r = ratio(a, b);
+    check(`${label} meets ${min}:1`, r >= min, `measured ${r.toFixed(2)}:1`);
+  });
+
+  /* ── DARK MODE, measured too ──
+     The dark palette was never checked either, and a colour that works
+     on white very often fails on a dark surface — the status amber in
+     particular, since darkening it for AA on white pushes it toward
+     failing against a dark card. Two palettes, both measured. */
+  const dkBlock = tokensSrc.slice(tokensSrc.indexOf('--dk-'));
+  const dk = {};
+  Array.from(dkBlock.matchAll(/(--dk-[a-z-]+):\s*(#[0-9A-Fa-f]{6})/g))
+    .forEach(m => { dk[m[1]] = m[2]; });
+
+  if (Object.keys(dk).length >= 6) {
+    check('the dark palette parsed', true);
+    [['dark text-primary',   '--dk-text-primary',   '--dk-surface'],
+     ['dark text-secondary', '--dk-text-secondary', '--dk-surface'],
+     ['dark status ok',      '--dk-status-ok',      '--dk-surface'],
+     ['dark status warn',    '--dk-status-warn',    '--dk-surface'],
+     ['dark status danger',  '--dk-status-danger',  '--dk-surface']
+    ].forEach(([label, fg, bg]) => {
+      if (!dk[fg] || !dk[bg]) { check(`${label} — tokens found`, false, `${fg} or ${bg} missing`); return; }
+      const r = ratio(dk[fg], dk[bg]);
+      check(`${label} meets 4.5:1`, r >= 4.5, `measured ${r.toFixed(2)}:1`);
+    });
+  } else {
+    check('the dark palette parsed', false, `only ${Object.keys(dk).length} --dk- colours found`);
+  }
+
+  // White on the CTA is the one reversed pairing in the app.
+  const white = '#FFFFFF';
+  const cta = tokens['--color-cta'];
+  check('white text on the CTA meets 4.5:1', ratio(white, cta) >= 4.5,
+    `measured ${ratio(white, cta).toFixed(2)}:1`);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · STATUS IS NEVER COLOUR ALONE — grayscale, mechanically
+   The grayscale screenshot check, done as a structural assertion: any
+   element carrying a status class must also carry text. This is the
+   rule that survives colour-blindness, a photocopier, and a projector.
+   ═══════════════════════════════════════════════════════════════ */
+console.log('\n═══ 4. STATUS SURVIVES GRAYSCALE ═══');
+{
+  const vc = new VirtualConsole();
+  const dom = new JSDOM(html, { url: 'https://renalroute.test/', runScripts: 'dangerously',
+    virtualConsole: vc, pretendToBeVisual: true });
+  const { window } = dom, doc = window.document;
+  window.fetch = () => Promise.reject(new Error('offline'));
+  const style = doc.createElement('style');
+  style.textContent = css;
+  doc.head.appendChild(style);
+  for (const s of scripts) {
+    const el = doc.createElement('script');
+    el.textContent = read(s);
+    doc.body.appendChild(el);
+  }
+
+  const R = window.RenalRoute;
+  R.Store.acceptConsent();
+  R.Store.setSetting('refusalsSeen', true);
+  R.Store.useEducationRanges();
+  R.Seed.run();
+  R.UI.go('home');
+
+  const statusEls = Array.from(doc.querySelectorAll('.ring__status, .statblock__status, .chip'));
+  check('there are status indicators to check', statusEls.length > 0);
+  const silent = statusEls.filter(el => el.textContent.replace(/[^\p{L}\p{N}]/gu, '').length === 0);
+  check('every status indicator carries text, not just colour',
+    silent.length === 0, `${silent.length} indicator(s) render colour with no words`);
+
+  // Every ring must state its own meaning without a voiceover.
+  const ringNames = Array.from(doc.querySelectorAll('.ring__name')).length;
+  const ringSubs = Array.from(doc.querySelectorAll('.ring__sub')).length;
+  check('every ring is labelled', ringNames >= 3 && ringSubs >= 3,
+    `${ringNames} names, ${ringSubs} sub-labels`);
+
+  // Every chart carries a text alternative.
+  const charts = Array.from(doc.querySelectorAll('svg[role="img"]'));
+  const unlabelled = charts.filter(s => !(s.getAttribute('aria-label') || '').trim());
+  check('every role=img graphic has a text alternative',
+    unlabelled.length === 0, `${unlabelled.length} unlabelled`);
+
+  console.log('\n═══ 5. KEYBOARD ═══');
+
+  // Skip link must be the first focusable thing on the page.
+  const focusable = Array.from(doc.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+  )).filter(el => !el.closest('[hidden]'));
+  check('the first focusable element is the skip link',
+    focusable.length > 0 && focusable[0].classList.contains('skiplink'),
+    focusable[0] ? focusable[0].className || focusable[0].tagName : 'nothing focusable');
+
+  // Nothing may be reachable by keyboard without an accessible name.
+  const nameless = focusable.filter(el => {
+    if (el.getAttribute('aria-label') || el.getAttribute('aria-labelledby')) return false;
+    if ((el.textContent || '').trim()) return false;
+    if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+      const id = el.getAttribute('id');
+      if (el.closest('label') || (id && doc.querySelector(`label[for="${id}"]`))) return false;
+      if (el.getAttribute('placeholder')) return false;
+    }
+    return true;
+  });
+  check('every focusable control has an accessible name',
+    nameless.length === 0,
+    nameless.slice(0, 4).map(el => el.id || el.className || el.tagName).join(', '));
+
+  /* outline:none is only a failure when nothing replaces it. A custom
+     focus ring built from box-shadow is a perfectly good indicator, and
+     the first version of this check flagged one and was simply wrong.
+     What matters is that every rule removing the outline supplies its
+     own visible ring in the same declaration block. */
+  const strippedCss = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const suppressors = Array.from(strippedCss.matchAll(/{[^}]*outline:\s*(?:none|0)[^}]*}/g))
+    .map(m => m[0])
+    .filter(block => !/box-shadow:\s*0\s+0\s+0/.test(block) && !/outline-width/.test(block));
+  check('every outline:none supplies its own focus ring',
+    suppressors.length === 0,
+    `${suppressors.length} rule(s) remove the outline with nothing in its place`);
+
+  console.log('\n═══ 6. MOTION AND ZOOM ═══');
+
+  /* Checked against the viewport META TAG, not the whole document. The
+     first version scanned all of index.html and matched its own HTML
+     comment — the one explaining that neither attribute is used. That
+     is the second time in this suite a test has failed on its own
+     documentation; both times the fix was to narrow what it reads. */
+  const viewportTag = (html.match(/<meta[^>]+name="viewport"[^>]*>/i) || [''])[0];
+  check('the viewport allows zoom',
+    !!viewportTag &&
+    !/user-scalable\s*=\s*no/i.test(viewportTag) &&
+    !/maximum-scale/i.test(viewportTag),
+    `viewport tag: ${viewportTag || 'MISSING'}`);
+
+  /* Text size scales TOKENS, not zoom, so layout survives. Checked as
+     a source assertion since jsdom will not resolve var(). */
+  check('text size scales the type tokens',
+    /:root\[data-textsize="large"\][^}]*--type-body/s.test(css) ||
+    /:root\[data-textsize="large"\]/.test(css),
+    'text size must scale tokens rather than zooming the page');
+
+  const reducedBlocks = (css.match(/@media[^{]*prefers-reduced-motion:\s*reduce/g) || []).length;
+  check('reduced motion is honoured throughout', reducedBlocks >= 8,
+    `only ${reducedBlocks} reduced-motion blocks for a build with this much animation`);
+
+  // Every keyframe animation needs a reduced-motion escape somewhere.
+  const keyframes = Array.from(css.matchAll(/@keyframes\s+([A-Za-z][\w-]*)/g)).map(m => m[1]);
+  check('there are animations to check', keyframes.length > 0);
+  const reducedCss = (css.match(/@media[^{]*prefers-reduced-motion:\s*reduce[^{]*{([\s\S]*?)\n}/g) || []).join(' ');
+  check('reduced-motion rules disable animation broadly',
+    /animation:\s*none/.test(reducedCss) && /transition:\s*none/.test(reducedCss),
+    'reduced motion must switch off both animation and transition');
+
+  console.log('\n═══ 7. CSP — NO INLINE STYLES ANYWHERE ═══');
+
+  /* The bug class this build has hit twice: style-src 'self' drops
+     style="" from generated markup, so a layout works on a local file
+     and silently collapses on the deployed site. */
+  check('no inline style attribute in the markup',
+    !/\sstyle="/.test(html), 'style-src self will drop it on the deployed site');
+
+  const renderedInline = Array.from(doc.querySelectorAll('#app [style]'))
+    .filter(el => !el.className || typeof el.className !== 'string' ||
+      !/ripple|morph-ghost|bloom__leaf|is-magnet|is-lifted/.test(el.className));
+  check('no rendered element carries an inline style',
+    renderedInline.length === 0,
+    renderedInline.slice(0, 3).map(el => el.id || el.className).join(', '));
+}
+
+console.log(`\n═══ ${pass} passed, ${fail} failed ═══`);
+if (failures.length) console.log('FAILURES:\n  · ' + failures.join('\n  · '));
+
+/* ═══════════════════════════════════════════════════════════════
+   WHAT THIS FILE CANNOT CHECK
+   Stated rather than dropped. These need a real browser and a person:
+     · Actual rendered overflow at 320 / 375 / 768 / 1440
+     · Whether the tab ORDER matches the visual order on each screen
+     · Camera, dictation and barcode on a real device
+     · Whether Devanagari and CJK clip at the two larger text sizes
+     · How the orbit and the rings read to somebody seeing them cold
+   ═══════════════════════════════════════════════════════════════ */
+console.log('\nSTILL NEEDS A HUMAN AND A REAL BROWSER:');
+[
+  'rendered overflow at 320 / 375 / 768 / 1440',
+  'tab order matches visual order on each screen',
+  'camera, dictation and barcode on a device',
+  'Devanagari and CJK at the two larger text sizes',
+  'whether the rings read correctly to somebody seeing them cold'
+].forEach(s => console.log('  · ' + s));
+
+process.exit(fail ? 1 : 0);

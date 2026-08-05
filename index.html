@@ -615,6 +615,34 @@
   </main>
 
   <!-- ───────── BOTTOM TAB BAR ───────── -->
+  <!-- ═══════════ QUICK ACTIONS ═══════════
+       A floating action object, and it earns its place only because
+       there are now ten screens. It collapses to one button and expands
+       to the three things people repeat — log, check a label, find
+       dinner. Not a radial menu: an arc of buttons is harder to hit,
+       impossible to label properly, and this app's users skew older,
+       which is exactly the population a novelty control fails. -->
+  <div class="fab" id="fab">
+    <div class="fab__menu" id="fabMenu" hidden>
+      <button type="button" class="fab__item" data-nav="log">
+        <span class="fab__label">Log a meal</span>
+      </button>
+      <button type="button" class="fab__item" data-nav="kitchen">
+        <span class="fab__label">What can dinner be?</span>
+      </button>
+      <button type="button" class="fab__item" data-nav="label">
+        <span class="fab__label">Check a label</span>
+      </button>
+    </div>
+    <button type="button" class="fab__toggle m-light" id="fabToggle"
+            aria-expanded="false" aria-controls="fabMenu" aria-label="Quick actions">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </button>
+  </div>
+
   <nav class="tabbar m-glass" aria-label="Main">
     <!-- Desktop-only rail furniture. Hidden on phones, where the bar is
          four tabs and nothing else. -->

@@ -13,8 +13,13 @@
   --color-accent:        #1F7A6B;   /* teal-green                    */
   --color-cta:           #C0492E;   /* coral — primary buttons only  */
 
-  --color-status-ok:     #2E7D5B;
-  --color-status-warn:   #B4690E;   /* amber, deliberately NOT yellow */
+  --color-status-ok:     #2A7150;   /* darkened: 4.50:1 on its own tint failed AA */
+  /* Darkened from #B4690E, which measured 4.23:1 on white and 3.78:1 on
+     its own tint — both below the 4.5:1 the design has claimed since
+     the first commit. Nobody caught it because nobody ever measured;
+     the sweep does now, on every test run. Still amber, still
+     deliberately not yellow. */
+  --color-status-warn:   #9A5A0C;
   --color-status-danger: #C0392B;
 
   --color-track:         #EFE7DC;   /* unfilled ring arc = remaining  */

@@ -600,3 +600,123 @@ body { letter-spacing: var(--track-body); }
 /* The language picker shows native names, so each chip renders in its
    own script and must not inherit a Latin-tuned tracking. */
 #langPicker .chip-opt { letter-spacing: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   QUICK ACTIONS
+   ───────────────────────────────────────────────────────────────
+   A stack, not a radial menu. An arc of buttons is harder to hit,
+   impossible to label in full, and fails hardest for older users —
+   which is precisely who this app is for. The stack costs nothing in
+   novelty and everything in hit area.
+
+   Sits above the tab bar, clear of the safe-area inset, and hides
+   entirely on wide screens where the rail already carries the same
+   shortcuts.
+   ═══════════════════════════════════════════════════════════════ */
+.fab {
+  position: fixed;
+  right: calc(var(--space-3) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tabbar-h) + var(--space-3) + env(safe-area-inset-bottom, 0px));
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;             /* only the controls are clickable */
+}
+.fab > * { pointer-events: auto; }
+
+.fab__toggle {
+  width: 56px; height: 56px;
+  border: 0; border-radius: 50%;
+  background: var(--color-cta);
+  color: #fff;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: transform var(--motion-standard) var(--ease-out);
+}
+.fab__toggle svg { width: 24px; height: 24px; }
+.fab.is-open .fab__toggle { transform: rotate(45deg); }
+
+.fab__menu { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
+.fab__item {
+  min-height: 44px;
+  padding: 10px var(--space-3);
+  border: 0;
+  border-radius: var(--radius-capsule);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  animation: fabIn var(--motion-standard) var(--ease-out) both;
+}
+.fab__item:nth-child(2) { animation-delay: 40ms; }
+.fab__item:nth-child(3) { animation-delay: 80ms; }
+@keyframes fabIn { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+
+@media (min-width: 900px) { .fab { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .fab__toggle { transition: none; }
+  .fab__item { animation: none; }
+}
+@media print { .fab { display: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL REVEAL
+   ───────────────────────────────────────────────────────────────
+   Cards arrive as they enter view. Everything starts VISIBLE and the
+   reveal class only adds motion, so if the observer never runs the
+   page is a normal page rather than a blank one — which is the failure
+   mode a reveal built the other way round produces on exactly the
+   devices least able to run it.
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { opacity: 0; transform: translateY(14px); }
+  .reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+    transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DEPTH
+   ───────────────────────────────────────────────────────────────
+   A 1.4-degree tilt toward the pointer: enough to read as physical,
+   far short of the wobble that makes text hard to follow. Never on the
+   ring card or the orbit — tilting a surface somebody is reading
+   numbers off is a legibility cost paid for an effect.
+   ═══════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  .card.is-lifted {
+    transition: transform var(--motion-standard) var(--ease-out),
+                box-shadow var(--motion-standard) var(--ease-out);
+    box-shadow: 0 2px 4px rgba(43,43,43,.04), 0 22px 46px -20px rgba(43,43,43,.22);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card.is-lifted { transform: none !important; transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATED SEARCH
+   ───────────────────────────────────────────────────────────────
+   Results settle in rather than snapping, and the field grows a ring
+   on focus. Staggered by index but capped: past about eight rows the
+   stagger stops being sequence and starts being latency.
+   ═══════════════════════════════════════════════════════════════ */
+#pickerSearch {
+  transition: box-shadow var(--motion-fast) var(--ease-out);
+}
+#pickerSearch:focus-visible {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #pickerResults > * { animation: riseIn 260ms var(--ease-out) both; }
+  #pickerResults > *:nth-child(1) { animation-delay: 0ms; }
+  #pickerResults > *:nth-child(2) { animation-delay: 22ms; }
+  #pickerResults > *:nth-child(3) { animation-delay: 44ms; }
+  #pickerResults > *:nth-child(4) { animation-delay: 66ms; }
+  #pickerResults > *:nth-child(n+5) { animation-delay: 88ms; }
+}
