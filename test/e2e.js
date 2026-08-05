@@ -106,6 +106,19 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
 (async function run() {
 
   console.log('\n═══ 1. BOOT — first visit ═══');
+  /* The boot screen is released the moment boot finishes — no wait()
+     here, because there is nothing to wait for. It fades rather than
+     vanishing, but it stops blocking immediately, which is the part
+     that matters: the app is usable during the fade, not after it. */
+  check('the boot screen is released the instant the app is up',
+    $('#boot').classList.contains('is-done'), true);
+  check('  ...and stops intercepting taps at once',
+    window.getComputedStyle($('#boot')).pointerEvents, 'none');
+  /* Then it is REMOVED, not left hidden: a fixed overlay lingering in
+     the tree is one CSS mistake away from covering the app, and its
+     status role would keep announcing itself. */
+  await wait(260);
+  check('  ...then removed from the document entirely', $('#boot'), null);
   check('consent modal is visible', vis('#consentModal'), true);
   check('delete modal is HIDDEN (was the click-blocking bug)', vis('#deleteModal'), false);
   check('app shell is hidden behind consent', vis('#app'), false);

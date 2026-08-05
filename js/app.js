@@ -105,6 +105,30 @@
     version: '1.0.0-reference'
   };
 
+  /* ═══════════ dismiss the boot screen ═══════════
+     Here, at the end of boot, because everything above it is the work
+     the screen was covering: storage read, language bound, listeners
+     wired, first screen chosen and rendered. Removing it earlier would
+     reveal a half-built app; removing it later would mean waiting on
+     nothing.
+
+     There is deliberately NO setTimeout gating this. A boot screen with
+     a minimum display time is a lie about how fast the app is, and on a
+     warm cache this whole function runs in a few milliseconds — so the
+     screen flashes past, which is the correct outcome rather than a
+     defect to pad out.
+
+     The node is REMOVED, not hidden: a fixed overlay left in the tree is
+     one CSS mistake away from covering the app, and its status role
+     would keep announcing. The 200ms is the fade already running in
+     CSS, not a wait — and it holds even under reduced motion, where the
+     transition is off and the node simply goes. */
+  const bootEl = document.getElementById('boot');
+  if (bootEl) {
+    bootEl.classList.add('is-done');
+    setTimeout(() => { if (bootEl.parentNode) bootEl.parentNode.removeChild(bootEl); }, 200);
+  }
+
   console.info(
     '%cRenalRoute reference build',
     'font-weight:600',

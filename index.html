@@ -98,6 +98,43 @@
 
 <a class="skiplink" href="#mainContent">Skip to content</a>
 
+<!-- ═══════════ BOOT ═══════════
+     The app used to paint a consent modal over a blank shell. This
+     covers the real gap before first paint with the mark, the name, and
+     the one line that ought to be the first thing anybody reads.
+
+     THE DISCIPLINE, and it is the whole design: THIS NEVER WAITS ON
+     PURPOSE. There is no minimum display time, no artificial delay, no
+     "let them see the logo" pause. It is removed the instant the app is
+     ready, which on a warm cache is almost immediately — and a boot
+     screen that flashes past in 80ms is working correctly, not
+     misconfigured. An app that pads its own start to look considered is
+     lying about how fast it is, and this population opens it several
+     times a day.
+
+     It ships VISIBLE, so it covers the gap even on the first cold load
+     before any script has run. js/app.js removes it. If scripts never
+     arrive at all, the line at the bottom surfaces after six seconds —
+     the only timed thing here, and it exists to admit a failure rather
+     than to stage a performance.
+
+     role="status" rather than a dialog: it traps nothing, focuses
+     nothing, and is gone before most people could tab into it. -->
+<div id="boot" class="boot" role="status" aria-label="Starting RenalRoute">
+  <div class="boot__inner">
+    <svg class="boot__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <!-- The same incomplete arc as the rail mark: the gap IS the
+           product, and it is the first thing on screen. -->
+      <circle cx="16" cy="16" r="12.5" class="boot__mark-track" stroke-width="3"/>
+      <circle cx="16" cy="16" r="12.5" class="boot__mark-fill" stroke-width="3"
+              stroke-dasharray="47 78.5" stroke-linecap="round" transform="rotate(-77 16 16)"/>
+    </svg>
+    <p class="boot__word">RenalRoute</p>
+    <p class="boot__lede">An educational wellness tool — not a medical device.</p>
+    <p class="boot__slow">Still starting. If this stays, check your connection and reload.</p>
+  </div>
+</div>
+
 <!-- A banner landmark. These two notices previously sat outside every
      landmark region, which axe flags on every screen: content a screen
      reader user cannot reach by jumping between landmarks. role="status"

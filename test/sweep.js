@@ -476,6 +476,58 @@ console.log('\n═══ 4. STATUS SURVIVES GRAYSCALE ═══');
   check('no rendered element carries an inline style',
     renderedInline.length === 0,
     renderedInline.slice(0, 3).map(el => el.id || el.className).join(', '));
+
+  /* ═══ 8. THE BOOT SCREEN NEVER WAITS ON PURPOSE ═══
+     A splash that pads its own duration is a lie about how fast the app
+     is, and this one is opened several times a day. These checks exist
+     because the mistake is a single plausible line — somebody deciding
+     the logo "deserves a moment" — and it would be invisible in review.
+
+     Enforced at source level: the dismissal must not sit behind a timer,
+     and the CSS must not hold the screen open with a delay. */
+  console.log('\n═══ 8. THE BOOT SCREEN NEVER WAITS ON PURPOSE ═══');
+
+  const appJs = read('js/app.js');
+  const bootBlock = (appJs.match(/const bootEl[\s\S]*?\n  }/) || [''])[0];
+  check('the boot screen is dismissed in app.js', bootBlock.length > 0,
+    'no dismissal found — the screen would never come down');
+  check('  ...not behind a timer that delays the dismissal',
+    !/setTimeout\([^)]*\)\s*;?\s*(?:\n\s*)?bootEl\.classList\.add\('is-done'\)/.test(appJs) &&
+    !/setTimeout\(\s*\(\)\s*=>\s*{?\s*bootEl\.classList\.add/.test(appJs),
+    'is-done must be set immediately, never inside a delay');
+  const delays = (bootBlock.match(/setTimeout\([^,]*,\s*(\d+)\)/g) || [])
+    .map(s => Number(s.match(/(\d+)\)/)[1]));
+  check('  ...and the only timer is the fade already running in CSS',
+    delays.length <= 1 && (delays[0] === undefined || delays[0] <= 400),
+    'timers found: ' + delays.join(', '));
+  check('  ...the node is removed, not merely hidden',
+    /removeChild\(bootEl\)|bootEl\.remove\(\)/.test(bootBlock),
+    'a fixed overlay left in the tree keeps announcing and can come back');
+
+  /* It ships VISIBLE. Hidden, it would cover nothing on the cold load
+     it exists for — the exact load where a blank canvas is longest. */
+  check('the boot screen ships visible, not hidden',
+    /<div id="boot"[^>]*>/.test(html) && !/<div id="boot"[^>]*\shidden/.test(html),
+    'hidden at rest means it covers nothing on a cold start');
+
+  // The honest line, first thing on screen rather than in a footer.
+  const bootMarkup = (html.match(/<div id="boot"[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
+  check('  ...and carries the not-a-medical-device line',
+    /not a medical device/i.test(bootMarkup),
+    'the first thing on screen should be the honest one');
+  check('  ...announces itself without trapping anything',
+    /role="status"/.test(bootMarkup) && !/tabindex|<button|<a /.test(bootMarkup),
+    'nothing focusable belongs on a screen that is gone in 80ms');
+
+  // Nothing in CSS may hold it open.
+  const bootCss = (css.match(/\.boot[\s\S]*?(?=\n\/\* ═|$)/) || [''])[0];
+  const holdOpen = (bootCss.match(/animation:[^;]*?(\d+(?:\.\d+)?)s\s+(?:\w+\s+)?(\d+(?:\.\d+)?)s/g) || [])
+    .filter(s => !/boot-slow/.test(s));
+  check('  ...and no CSS delay holds it open', holdOpen.length === 0,
+    holdOpen.join(' | '));
+  check('  ...the stall notice is the only timed thing on it',
+    /boot-slow/.test(bootCss) && /6s/.test(bootCss),
+    'the one timer should admit a failure, not stage a performance');
 }
 
 console.log(`\n═══ ${pass} passed, ${fail} failed ═══`);

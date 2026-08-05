@@ -963,3 +963,88 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   #orbitCard .orbit { max-width: 260px; }
   #orbitCard > .card { padding: var(--space-4) var(--space-3); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+   ───────────────────────────────────────────────────────────────
+   Covers the gap before first paint. It never waits on purpose: no
+   minimum display time, no delay, nothing to make it linger. On a warm
+   cache it is gone in under a tenth of a second, and that is correct.
+
+   Painted with the theme already applied, because js/theme.js runs in
+   <head> ahead of this stylesheet — so somebody on dark never gets the
+   white flash this screen exists to prevent.
+   ═══════════════════════════════════════════════════════════════ */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;                 /* above the modal scrim (50) */
+  display: grid;
+  place-items: center;
+  background: var(--color-canvas);
+  padding: var(--space-4);
+}
+
+/* Removed rather than merely hidden, so it cannot come back and cannot
+   be tabbed into. The class exists for the fade only. */
+.boot.is-done {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-out;
+}
+
+.boot__inner { text-align: center; max-width: 30ch; }
+
+.boot__mark {
+  width: 56px;
+  height: 56px;
+  display: block;
+  margin: 0 auto var(--space-3);
+}
+.boot__mark-track { stroke: var(--color-track); fill: none; }
+.boot__mark-fill  { stroke: var(--color-accent); fill: none;
+                    transform-box: view-box; transform-origin: 50% 50%; }
+
+.boot__word {
+  font-size: var(--type-title);
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+/* The honest line, first on screen rather than buried in a footer. */
+.boot__lede {
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* The ONLY timed thing on this screen, and it admits a failure rather
+   than staging a performance: if scripts never arrived, six seconds in
+   the reader is told so and given something to do. Hidden by default,
+   and it never appears on a boot that worked. */
+.boot__slow {
+  font-size: var(--type-caption);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: var(--space-3) 0 0;
+  opacity: 0;
+  animation: boot-slow 1ms linear 6s forwards;
+}
+@keyframes boot-slow { to { opacity: 1; } }
+
+/* The arc turns once while waiting — the only motion, and it carries
+   no information, so removing it costs nothing. */
+@media (prefers-reduced-motion: no-preference) {
+  .boot__mark { animation: boot-turn 1.6s cubic-bezier(.4,0,.2,1) infinite; }
+}
+@keyframes boot-turn { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot.is-done { transition: none; }
+  /* The slow line still appears — it is information, not decoration,
+     and somebody who disabled motion still needs to know it stalled. */
+  .boot__slow { animation-duration: 1ms; }
+}
