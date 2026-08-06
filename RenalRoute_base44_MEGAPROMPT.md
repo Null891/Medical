@@ -5,7 +5,8 @@ Each block is self-contained: a fenced instruction you copy wholesale into Base4
 then an acceptance test you run before moving to the next.
 
 **Everything in here is already built, deployed and tested** in the Vercel build at
-`https://chroniccal.vercel.app` — 1,368 assertions across nine suites, all green.
+`https://chroniccal.vercel.app` — 1,498 assertions across ten suites, all green,
+with zero axe-core violations across sixteen screens.
 Nothing below is speculative. Where a block describes a behaviour, that behaviour
 exists and can be checked on the live site first if you want to see it before you
 paste it.
@@ -44,11 +45,28 @@ paste it.
 | 13 · Three languages | 2.5 | Low |
 | 14 · The wording that reads as a staging build | 0.5 | **Cheap and worth it** |
 | 15 · A missing value must not pass as a zero | 1.5 | **ESSENTIAL — paste with block 1** |
-| | **28.0** | |
+| 16 · The identifiers, not just the prose | 0.5 | **Cheap — and 14 does not close the finding without it** |
+| 17 · The food list, browsable | 2.0 | High |
+| 18 · Spelling: suggest, never correct | 1.5 | **High — this is what real typing looks like** |
+| 19 · More than one food, and no dead ends | 1.5 | **High** |
+| 20 · The Gaps screen | 2.5 | Medium |
+| 21 · Three defects found by driving it hostilely | 1.5 | **High — two are crashes** |
+| 22 · The action under the field, and a long pause | 0.5 | **Cheap and worth it** |
+| 23 · The room changes with the hour | 1.5 | Low — pure decoration |
+| 24 · Finishing the translation | 2.0 | Low (after 13) |
+| 25 · Ask FoodData Central instead of generating | 1.5 | Low — only if growing the table |
+| | **43.0** | |
 
-**That is more than the remaining budget allows, and pretending otherwise helps
-nobody.** The recommendation: **1 → 15 → 2 → 3 → 4 → 14** is about 9.5 credits and
-is the version of the app a judge actually meets. Add 5 and 9 if you can afford 12.
+**That is far more than the remaining budget allows, and pretending otherwise helps
+nobody.** The recommendation: **1 → 15 → 2 → 3 → 4 → 14 → 16** is about 10 credits
+and is the version of the app a judge actually meets. Add 5 and 9 if you can afford
+14.
+
+**If you have already pasted 1–15 and are choosing among the new ones**, the order
+by value per credit is **16 → 21 → 22 → 18 → 19**. Those are 5.5 credits and they
+are, in order: the fix that actually closes the HIGH finding, two crashes and a
+race, a layout rule that applies to every form, and the two things that make the
+app survive real typing. Everything above 19 is addition.
 
 **If the budget is nearly gone: blocks 1 and 15.** Everything else here is a
 feature. Those two are the app reporting things that are not true — a save that
@@ -882,6 +900,483 @@ True for sodium. False for the other two, for months. Copy that promises behavio
 
 ---
 
+# BLOCK 16 — the identifiers, not just the prose
+
+> **Addendum to Block 14, and the reason Block 14 did not close the finding.**
+> Cheap. Depends on nothing. Paste it right after 14 — or instead of it, if you
+> have already done 14 and the finding came back.
+
+The Vercel build did Block 14, reworded the notice properly, and an independent
+scan **raised the same HIGH finding again on the next cycle**. The wording was
+never the problem.
+
+```
+An independent scan raised a HIGH severity finding: "Reference build and unverified test data notice displayed on live production app." The notice's WORDING had already been fixed to describe the data and name no environment. The finding came back anyway.
+
+The cause was the markup, not the sentence. The notice was:
+
+  <div id="devBanner" class="dev-banner">
+
+A reviewer inspecting the DOM sees the literal words "dev banner" on a live application, sitting next to a sentence about values not being clinically verified, sitting next to a second strip about example data. Nobody edits an identifier for tone, so an id is often the more candid of the two — and an automated reviewer reads both.
+
+DO THIS:
+
+1. RENAME EVERY IDENTIFIER THAT NAMES A DEVELOPMENT ARTEFACT rather than the thing it describes. Any id, CSS class, state key or variable containing "dev", "debug", "staging", "test" or "temp" that is actually a permanent, user-facing part of the product. The notice bar becomes something like noticeBar / .notice-bar / noticeHidden.
+
+2. MIGRATE THE STORED KEY. If the dismissal state was persisted under the old name, read the old key once, honour it, and delete it. A returning user who dismissed the notice must not have it silently reappear because you renamed the variable.
+
+   Match the old key BY SHAPE, not by writing it out in full — a literal of the old name in the shipped source puts the exact string back into the file the scanner reads. In the Vercel build the guard rejected the migration's own comment for quoting it.
+
+3. THE WORD "BUILD" GOES TOO. The notice ended "...see Settings for exactly what this build does and does not know." "Build" is a word about an artefact, not about the numbers. It becomes: "Educational use only — Settings lists every source and every gap."
+
+4. THREE NOTICES WERE PINNED TO THE TOP OF EVERY SCREEN AND ONLY TWO OF THEM WERE NEWS. A standing note about where nutrient numbers come from is a note, not an alert. It belongs at the top of the document, read once, and scrolling away like any other prose. Only the ones describing something HAPPENING stay pinned: storage is failing, you are offline, you are looking at a fictional patient.
+
+5. THE DEMO STRIP NAMES THE PERSON, NOT THE DATA. "Demo — this is Frank's example data" stacked against a second bar reading "not clinically verified" reads as ONE claim about the software's readiness. "Viewing Frank — an example patient, not a real person's record" says the same true thing about the content instead.
+
+Both halves must survive: the values are still described as unverified, and the example patients are still described as not real.
+```
+
+**Acceptance test**
+
+1. Search the whole served output — page source, every script, every stylesheet —
+   for `dev-banner`, `devBanner`, `reference build`, `test data`, `dev build`,
+   `not for production`. **Zero hits**, including inside comments.
+2. Dismiss the notice, reload. It stays dismissed.
+3. Scroll down on the dashboard: the data notice scrolls away. The demo strip does not.
+4. The demo strip names Frank or Maria and says they are not real.
+
+---
+---
+
+# BLOCK 17 — the food list, browsable
+
+> ~2.0 credits. Depends on Block 4 (it needs the hub to live in) and reads better
+> after Block 15.
+
+```
+The app can search foods, but only inside the "log a meal" picker. That means the only way to ask "is cabbage low in potassium?" is to start logging a meal you are not eating. That is the wrong shape for the question, and it is the question somebody actually has standing in a supermarket.
+
+Add a FOOD LIST screen, reached from the More hub. It lists every food in the reference table with its serving, its three nutrient ranges, its low-potassium badge where it applies, and its source citation.
+
+Reuse the existing search and the existing low-potassium threshold. This is a new VIEW over logic that already exists, not new logic.
+
+TWO HONESTY RULES, and they are the whole reason this screen is harder than it looks. The table has real holes, so a plain grid of every food with mostly blank columns looks broken even though it is honest.
+
+RULE 1 — SORTING BY A NUTRIENT MUST NEVER RANK AN UNPRICED FOOD.
+A food with no potassium figure is not "0 mg". Sorting with a zero fallback puts every unknown food at the TOP of the low-potassium list, which is the most dangerous possible ordering: it recommends, by position, exactly the foods the app knows least about. Sorted views must put unpriced rows in a clearly named group at the END — "14 foods we cannot rank for potassium" — with a line saying they are not zero, we simply do not know.
+
+RULE 2 — NO BADGE WITHOUT DATA.
+A food with no potassium value gets no low-potassium badge. Absence of data must never render as reassurance. This rule already exists in the meal picker; carry it over verbatim.
+
+Also add a filter — "only foods we can price for the sorted nutrient" — so somebody hunting low-potassium options is not shown rows the table cannot answer for.
+
+Each row shows its source citation inline. Provenance at the point of use is the same argument the meal rows already make.
+```
+
+**Acceptance test**
+
+1. From the hub, reach the food list in **one tap**. Sort by potassium.
+2. The first row is a genuinely low-potassium food, **not** a food with a blank
+   potassium cell.
+3. Scroll to the bottom: the unpriced foods are there, grouped and named, with the
+   sentence saying they are not zero.
+4. Find a food with no potassium figure. It carries **no** low-potassium badge.
+5. Every row shows where its numbers came from.
+
+---
+---
+
+# BLOCK 18 — spelling: suggest, never correct
+
+> ~1.5 credits. Independent. This is the single highest-value fix for a real
+> person, because it is what most typing actually looks like.
+
+```
+Food matching is exact-then-substring. That means "chiken", "potatoe", "spinnach", "avacado", "yoghurt", "cabage" and "banan" all match NOTHING — they fall straight through to the unpriced path. That is most of what real typing looks like, and it is silent: the person sees "not counted" and has no idea a one-letter fix would have worked.
+
+Add a near-miss pass that runs ONLY after exact and substring both fail.
+
+IT MUST NEVER RESOLVE ANYTHING. It returns candidates for a human to confirm, and that restraint is the entire design. Edit distance measures keyboard accidents; it knows nothing about food. In this table alone, BEET and BEEF are one edit apart and their potassium differs by a factor of four. Silently correcting a spelling into the wrong food produces a confident, wrong number — the single failure mode this app exists to not have. A suggestion the person accepts is a completely different act: they read the name first.
+
+THREE GUARDS, each closing a specific way this goes wrong:
+
+1. BUDGET BY LENGTH, measured on the shorter word. Four letters or fewer get ZERO edits — at that length one substitution is usually a different word, not a typo (milk/silk, rice/ice, corn/cord). Five to seven letters get one edit. Eight or more get two, because long words are where people actually mistype and where a single edit is overwhelmingly likely to be an accident.
+
+2. THE FIRST LETTER MUST MATCH. Typos land in the middle and the end far more often than on the first keystroke, and this one cheap rule removes most cross-food collisions outright: beet/feet, corn/born, pear/bear.
+
+3. LENGTHS MUST BE WITHIN TWO, so a short word cannot collapse into a long one.
+
+AND ONE MORE, WHICH THE FIRST VERSION GOT WRONG AND IS WORTH STATING PLAINLY:
+
+A PREPARATION WORD MUST NEVER CARRY A SUGGESTION. Score on the best matching WORD, not the whole string — but exclude cooking and quantity words from being that word. Scoring on the best word alone, the first version offered SALMON as a distance-zero suggestion for "grilled chiken breast", because "grilled" is spelled correctly and appears in "grilled salmon". A perfect score, resting on the one word that carried no information about which food it was. Exclude: grilled, baked, boiled, raw, cooked, fried, roasted, steamed, canned, frozen, whole, plain, with, without, and, cup, slice, piece, serving, large, medium, small.
+
+Show at most four suggestions, one per base food — five spellings of potato is not a menu.
+
+IN THE INTERFACE: suggestions appear ONLY on a row the app could not price, phrased as a question — "Did you mean one of these?" — with each candidate as a real button showing the food's name. Tapping one replaces that row with the real food and keeps whatever portion the person typed; the portion was never the part that was misspelled.
+
+Never show suggestions next to a row that matched. Offering alternatives beside a confident number implies the number is in doubt.
+```
+
+**Acceptance test**
+
+1. Log "chiken" → the row is unpriced and offers **Chicken breast**.
+2. Log "beet" → **no** suggestion of beef. Log "milk" → no suggestion of silk.
+3. Log "asdfghjkl" → no suggestions at all.
+4. Log "grilled chiken breast" → suggests chicken, **not** salmon.
+5. Tap a suggestion → the row becomes that food, priced, and the portion you typed
+   is still there.
+6. A row that matched normally shows no suggestions.
+
+---
+---
+
+# BLOCK 19 — more than one food, and no dead ends
+
+> ~1.5 credits. Independent. Pairs naturally with Block 18.
+
+```
+PART 1 — THE BOX HOLDS 500 CHARACTERS AND ONLY THE FIRST FOOD SURVIVES.
+
+The placeholder invites a list — "grilled chicken, baked potato with skin, and a glass of milk" — but the fallback path takes the whole string, truncates it at 80 characters and treats it as ONE food. Everything after the first comma is discarded, and the discarding is invisible: the meal shows one unmatched item and a total that looks complete.
+
+Split the way people actually write lists: on commas, semicolons, newlines, bullets, "+", "&", and the word "and".
+
+DO NOT SPLIT ON THE WORD "WITH". It almost always attaches a preparation to the food before it — "potato with skin", "yogurt with berries" — and splitting it wrongly is worse than not splitting.
+
+Keep a written quantity where there is one ("2 slices white bread", "1/2 cup cooked spinach") and NEVER invent one. An unstated portion stays unstated and routes to the deliberately-wide fallback. Inventing "1 serving" is exactly the error that made an imported food table worthless.
+
+Strip the container from the name: "a glass of milk" is milk.
+
+Cap the list at 20 foods — somebody who pastes a shopping list should get a bounded, sane result. But SAY SO: "That was a long list — we took the first 20 foods and left 6 out. Log the rest as a second meal so nothing goes missing." Silently dropping food from a meal total is the same class of failure as counting a missing nutrient as zero.
+
+PART 2 — WHERE THE APP CANNOT HELP, IT SAYS SO AND OFFERS SOMEWHERE TO GO.
+
+A row that matched nothing and has no near misses currently just says "not counted". That is a dead end, and a dead end is where somebody puts the phone down.
+
+Three sentences, on the row itself:
+
+  Sorry — we don't recognise "brocoli", and we'd rather say so than guess at it.
+  It may be spelled differently here, or it may not be in our food list yet.
+  You can still keep it in the meal — it will show as not counted, and the day is marked partial so nothing is quietly under-reported.
+
+Plus two buttons that actually work: "Browse the food list" and "Check its label instead".
+
+Apologise; do not blame the typing. Never use the words invalid, wrong or error. And admit the real limit — the table is small and may simply not have that food — rather than implying the person spelled it badly.
+```
+
+**Acceptance test**
+
+1. Log "grilled chicken, baked potato with skin, and a glass of milk" → **three**
+   rows. The third is named `milk`, not `a glass of milk`.
+2. Log "2 slices white bread, 1/2 cup cooked spinach" → quantities 2 and 0.5 survive.
+3. Log "chicken" alone → portion is unstated, not silently set to 1.
+4. Paste 40 comma-separated foods → 20 rows, and a message naming how many were
+   left out.
+5. Log a food that is genuinely not in the table → the apology, the reason, and two
+   working buttons.
+
+---
+---
+
+# BLOCK 20 — the Gaps screen: three kinds of "we don't know"
+
+> ~2.5 credits. Needs Block 15 (the partial flags) and Block 4 (the hub).
+
+```
+The app already refuses to guess in three separate places, and every one of those refusals is invisible from anywhere else:
+
+  · a food the table cannot price contributes nothing to a total, and the ring turns amber with no explanation of WHICH food or why;
+  · a week that runs over on sodium every Sunday is visible only if you go looking day by day;
+  · a lab from four months ago stops being used and says so on the labs screen — where somebody who has not opened it will not read it.
+
+Put all three in one screen, because they are the same question asked by the same person: WHAT DOESN'T THIS APP KNOW ABOUT ME, AND DOES IT MATTER?
+
+THE ORDER IS AN ARGUMENT, NOT A LAYOUT CHOICE.
+
+1. DATA GAPS FIRST — what WE are missing.
+2. INTAKE GAPS — what the food shows.
+3. CARE GAPS — what the record is missing.
+
+Leading with somebody's overdue lab while sitting on 84 blank nutrient values of our own would be the wrong way round, and they would be right to notice.
+
+SECTION 1 — NUMBERS WE DON'T HAVE.
+Foods this person has logged that the table cannot fully price, WEIGHTED BY HOW OFTEN THEY ACTUALLY EAT IT. A list of every blank in the table is a chore nobody reads; the four that appear in their breakfast every day are worth knowing about. Open with the sentence that explains the amber ring: "7 of your last 7 logged days are missing a phosphorus figure somewhere." Name each food and which nutrients it lacks. Close by owning it: the table is small, not every row has all three published figures yet, and we would rather leave a blank than print a number nobody measured.
+
+SECTION 2 — DAYS AGAINST YOUR TARGETS.
+Per nutrient, over the same window the pattern detector uses — two surfaces summarising "recently" over different periods will eventually disagree in front of somebody.
+
+Report ONLY where a target exists. Somebody who skipped targets gets told that, not measured against an education default they never agreed to.
+
+A PARTIAL DAY IS COUNTED SEPARATELY AND NEVER AS "UNDER". This is the whole argument of the app: a total missing a food's potassium is not a low-potassium day, and folding the two together turns a data gap into false reassurance at the exact moment somebody is looking for a pattern. Three counts, not two: N days over, N days within, N days we could not total.
+
+SECTION 3 — RECORDS GETTING OLD.
+Reuse whatever already decides staleness. Do not write a second opinion — two surfaces disagreeing about whether a lab is current is worse than not having the second one.
+
+NOTHING ON THIS SCREEN IS RED. A missing phosphorus figure is a problem with our table, not with anyone's kidneys, and colouring it as a warning puts the anxiety in the wrong place. No score, no fraction, no "3 of 5" — a denominator implies five things somebody was supposed to have done.
+```
+
+**Acceptance test**
+
+1. Load the demo patient who has used everything. The Gaps screen opens with the
+   data section, not the care section.
+2. The foods are ordered by how often that patient ate them, not alphabetically.
+3. A day with a missing figure appears in "could not total" and **not** in "within".
+4. A patient with no targets set is told so, not measured against defaults.
+5. Nothing on the screen is red, and there is no score anywhere on it.
+
+---
+---
+
+# BLOCK 21 — three defects found by driving the app the way nobody should
+
+> ~1.5 credits. Independent. All three are crashes or silent wrongness, not features.
+
+Found by a test pass that types the things people actually type — 500 identical
+characters, emoji, right-to-left marks, script tags, 200 commas, a barcode in the
+meal box — and clicks the primary button on every screen with each of them in the
+field above it.
+
+```
+DEFECT 1 — A HANDLER THAT FIRES BEFORE ITS FIELDS EXIST CRASHES THE SCREEN.
+
+Onboarding is staged, and its "save targets" button is bound when the app wires up — but the target input fields only exist once the reader reaches that step. Fire the button before then and the code reads .value off null, throws an uncaught TypeError, and takes the whole screen down.
+
+A keyboard user can do this. An assistive technology can do this. An automated walk does it every time.
+
+Any function that reads a group of fields must CHECK THEY EXIST and decline if they do not. Declining is the correct answer, not defensiveness: a form whose fields are not on screen has nothing to say, and "not ok" is already the result every caller checks before writing anything.
+
+DEFECT 2 — EDITING THE MEAL TEXT WHILE AN ANALYSIS IS RUNNING STARTS A SECOND ONE.
+
+The analyse button correctly disables itself while a request is in flight. But typing fires the input handler, and the input handler re-enables the button from the text length alone. So somebody who edits their meal while waiting starts a second analysis on top of the first, and whichever response lands LAST wins — which is not necessarily the one for the text now on screen. The review screen can end up describing a meal the person already changed.
+
+Hold a single "analysis in progress" flag. The input handler must respect it. Release it in a finally block so no early return — a daily cap, a validation failure — can leave the screen permanently unable to analyse again.
+
+DEFECT 3 — AN ATTRIBUTE ON THE ROOT ELEMENT MAKES EVERY CLICK MATCH IT.
+
+This one cost four passing tests and none of them mentioned the feature that broke them, so it is worth stating as a rule rather than a fix.
+
+If clicks are handled by delegation — one listener that resolves the target with closest('[data-thing], [data-other], ...') — then every attribute name in that selector list is a NAMESPACE. closest() walks UPWARD. Writing any of those names onto <html> or <body> makes every click anywhere in the document match the root element.
+
+In the Vercel build a decorative background wrote data-scene onto <html> to tint itself by location. data-scene was in the delegation list. Every click in the app became a scene change; the dashboard re-rendered a second time after each one; and a "shown once" card was drawn and instantly cleared. The failing tests were about first-meal onboarding. The cause was an attribute name.
+
+Rule: no attribute written to the root element may share a name with a delegated click target. If you need one for styling, prefix it — data-place, not data-scene.
+```
+
+**Acceptance test**
+
+1. Open onboarding, jump straight to the targets step by keyboard, press the save
+   button before filling anything. **Nothing throws**; the screen survives.
+2. Type a meal, press Analyse, and keep typing while it runs. Exactly one review
+   screen appears, and it describes the text that was submitted.
+3. Paste `<script>alert(1)</script>` into the meal box and analyse. It appears on
+   screen as literal characters. No dialog. No element created.
+4. Paste 500 identical characters, then emoji only, then 200 commas. No crash, and
+   nowhere on screen does the word `undefined`, `NaN` or `[object Object]` appear.
+5. Click around every screen in turn. No screen re-renders twice per click.
+
+---
+---
+
+# BLOCK 22 — the action goes under the field, and a sentence for a long pause
+
+> ~0.5 credits. Independent, cheap, and the first half applies to every form in
+> the app.
+
+```
+PART 1 — THE PRIMARY ACTION FOLLOWS THE FIELD IT ACTS ON.
+
+On the log screen, "Analyze meal" sat BELOW "Or check a food label instead". The thing somebody came to the screen to do was the third control on it, underneath an alternative to doing it — and on a phone that alternative is the one nearest the thumb.
+
+The rule, and it holds on every screen: the primary action immediately follows the input it acts on. Alternatives come after it. Fine print comes after those. Nothing that qualifies an action may stand between that action and the field it belongs to.
+
+PART 2 — A SENTENCE FOR SOMEBODY WHO GOT INTERRUPTED.
+
+Somebody starts typing a meal, gets interrupted — the kettle, a phone call, a grandchild — and comes back to a half-finished box with no idea whether it kept anything. The app already saves the draft on every keystroke and has never said so.
+
+After a long pause (about 45 seconds) with something in the box, show one quiet line:
+
+  Take your time — what you have typed is saved, and it will still be here if you step away.
+
+THREE RULES, and they are what separate this from a nag:
+
+  · Only when there is something to lose. An empty box gets nothing.
+  · NEVER a countdown and never a modal. A timer on screen is pressure, and pressure is the opposite of what this sentence says. Nothing expires; the sentence is true whether it is read or not.
+  · Once per session. A reassurance repeated becomes a reprimand.
+
+Style it quieter than a note and do NOT tint it like a warning. Reassurance in amber reads as a problem.
+
+Only say it if it is true. If the draft is not actually persisted, build that first or do not show the line.
+```
+
+**Acceptance test**
+
+1. On the log screen, the order top to bottom is: text field, then **Analyze meal**,
+   then the label-checker link, then the photo option, then the fine print.
+2. Type half a meal, leave it 45 seconds. The line appears once.
+3. Reload the page. The half-typed meal is still there — the line told the truth.
+4. Dismiss it or analyse the meal; it does not come back this session.
+5. It is not red, not amber, and not a dialog.
+
+---
+---
+
+# BLOCK 23 — the room changes with the hour
+
+> ~1.5 credits. Purely decorative — skip it without consequence if the budget is
+> tight. Included because "serene" was asked for and this is the version of it that
+> costs nothing to load and cannot hurt anybody's eyesight.
+
+```
+Add an ambient backdrop behind the whole app that shifts with the time of day and with the active scene: warm low light in the morning, clearest and flattest at midday, amber in the evening, cool and dim at night.
+
+BUILD IT FROM GRADIENTS, NOT IMAGES. No photograph, no download, nothing to cache, nothing that can fail to load. A few radial gradients over the existing canvas colour.
+
+THE CONSTRAINT THAT SHAPES ALL OF IT: this sits behind text that people with failing eyesight need to read. It may only ever TINT the canvas, never darken it. Every value is a low-alpha wash over the existing background colour, which means the measured text-contrast ratios do not change — the arithmetic is done against the canvas token and this does not touch the canvas token.
+
+It must turn itself off completely in high-contrast mode, halve its opacity in dark mode (the same alpha over a dark background reads as a smear rather than as light), and drop its cross-fade under reduced motion.
+
+It is decoration in the strictest sense: aria-hidden, no pointer events, behind everything. Delete the whole thing and the app is identical in every way that matters.
+
+WATCH THE ATTRIBUTE NAME. See Block 21, defect 3 — writing data-scene onto the root element to drive this is exactly the bug that cost four tests. Use a name that is not a delegated click target.
+
+OPTIONAL, AND OFF BY DEFAULT: a quiet held chord.
+
+Not music — no melody, no rhythm, nothing that resolves — because anything with a tune becomes something you notice, and something you notice in a health app becomes something you turn off. Three sine oscillators a fifth and an octave apart, detuned by a couple of cents so they beat slowly against each other; that beating is the whole reason it sounds alive at a volume this low. Synthesised in the browser, so it downloads nothing.
+
+OFF BY DEFAULT AND IT STAYS THAT WAY. A kidney app that makes noise unasked gets muted at the system level within a day, and that mute takes the accessibility uses of audio with it. One switch in Settings, and toggling that switch IS the user gesture browsers require before audio may start — so it can never begin on its own.
+
+Silent under reduced motion: somebody who asked their operating system for less sensory load has already answered this question.
+
+If it cannot start — no audio support, or reduced motion — put the switch BACK to off rather than leaving it on while nothing plays. A control claiming a state it does not have is the same lie as a save that did not save.
+```
+
+**Acceptance test**
+
+1. Open the app in the morning and again in the evening. The background differs,
+   subtly.
+2. Turn on high contrast. The backdrop disappears entirely.
+3. Text contrast measured against the background is unchanged from before this block.
+4. The sound switch is off on a fresh install. Turn it on: a very quiet chord fades
+   in over several seconds. Turn it off: it fades out.
+5. Set the OS to reduced motion. The switch refuses to stay on.
+
+---
+---
+
+# BLOCK 24 — finishing the translation, and the check that should have noticed
+
+> ~2.0 credits. **Do Block 13 first.** This is what happens after it — and the two
+> findings in it are worth reading even if you never paste the block.
+
+```
+Block 13 shipped three languages. In the Vercel build they were 53 keys of 272 — 22 percent — and the language picker honestly reported the percentage, so the shortfall was visible to anyone who looked. Finish them. Every screen, not one section.
+
+THE RULES THAT DO NOT BEND:
+
+1. NO NUMBER MOVES. Every threshold, milligram figure and guideline value is QUOTED from KDOQI, KDIGO, AKF or NICE. It is not authored here, so it is not translatable. A translator may rebuild the sentence around 5.5 mEq/L however their language requires; 5.5 may not become 5,5 or 5.0.
+
+2. DIGITS STAY IN WESTERN ARABIC FORM. In Hindi especially: 5.5, never ५.५. A reader is holding this next to a lab report printed 5.5 mEq/L, and a script change makes the comparison they came here to make impossible.
+
+3. GUIDELINE NAMES AND UNITS ARE PROPER NOUNS. KDOQI, KDIGO, NICE, SNAP, mEq/L, mg/dL, mL/min/1.73 m² all stay in Latin script so they can be looked up.
+
+4. A MISSING KEY FALLS BACK TO ENGLISH FOR THAT KEY ALONE. A partly translated app is awkward and readable. A screen showing "undefined" is broken.
+
+5. THE PICKER KEEPS REPORTING REAL COVERAGE. When it says 100% it must BE 100%.
+
+NOW THE TWO FINDINGS, WHICH MATTER MORE THAN THE TRANSLATION ITSELF.
+
+FINDING A — THE CHECK WAS READING THE WRONG OBJECT.
+
+The test comparing numerals between English and each translation was reading the raw first-wave table in the source file, NOT the merged table the app actually serves. So every guard below it — numerals, localised digits, preserved guideline names — silently covered a fifth of the translation and said nothing about the rest. It had been green about 53 strings for weeks.
+
+Whatever checks your translations must read the object the app READS, not the object the file DECLARES.
+
+FINDING B — THE CHECK ONLY LOOKED AT PLAIN STRINGS.
+
+Any sentence built by a function — anything with a value interpolated into it — was unchecked in every language. And the functions are exactly where the numbers that matter live: the potassium-mode messages carry 3.5–5.0, 5.5 and 6.0; the phosphorus ones carry 2.5–4.5; the staleness nudge carries 90 days. A translator could have written 6,0 or rounded 5.5 to 6 and nothing would have gone red.
+
+Comparing the function's SOURCE does not work — a plural like "1 day / 2 days" contributes digits that are not medicine. CALL the function, on both sides, with non-numeric placeholder arguments, and compare the numerals in the OUTPUT. What survives the placeholders is the literal text, which is exactly the part that must not move.
+
+That check found a real defect within a minute of existing:
+
+FINDING C — HARD-CODED ENGLISH INSIDE A LOGIC MODULE NEVER TRANSLATES.
+
+The lab-scan confirmation says: "This reads 6.2, which would pause all coaching and show an urgent care-team banner. Check it against your report before saving."
+
+The consequence clauses lived as English strings inside the lab-scan logic file, outside the copy table, so they could never be translated. The Spanish translator resolved that the only way available: by dropping the clause. "Aquí pone 6.2. Compruébelo con su informe." The half that says what 6.2 would DO was gone — and that is the informative half. Somebody told what a value will do can check it. Somebody shown a bare "are you sure?" has been trained to tap yes.
+
+Move it into the copy table. Logic names the STATE; copy says it, in the reader's language. Audit for any other user-facing sentence living inside a logic file.
+```
+
+**Acceptance test**
+
+1. Switch to Spanish. Visit every screen. No English sentences remain, and the
+   picker reports 100%.
+2. Switch to Hindi. Find a potassium-mode message. It reads `5.5`, not `५.५`.
+3. Find the lab-scan confirmation in Spanish. It says what the value would **do**.
+4. Deliberately change one number in one translated string. Your numeral check
+   catches it — including if that string is inside a function.
+5. Delete one key from a translation. That key falls back to English; nothing
+   anywhere reads `undefined`.
+
+---
+---
+
+# BLOCK 25 — ask the real database instead of generating a table
+
+> ~1.5 credits, and it needs a Base44 backend function plus a stored secret. Only
+> worth it if you intend to grow the food table. **Read the reasoning even if you
+> skip the block** — it is about a near-miss that nearly shipped.
+
+```
+A 187-row food table was once generated for this app and offered for import. Every row carried the citation "USDA FoodData Central (estimated per serving)". It was not real. The tells:
+
+  · the values were a repeating ladder — 3, 8, 12, 18, 25, 35, 45, 55 — where real published data is irregular;
+  · the serving text was the literal string "1 serving" on all 187 rows;
+  · not one row had a gram weight, so no value could be scaled or checked;
+  · the same teaching note appeared on unrelated foods;
+  · and FoodData Central publishes MEASURED values, so the word "estimated" beside its name is a contradiction, not a hedge.
+
+For comparison, the 42 hand-transcribed rows already in the table have 41 distinct potassium values between them.
+
+The answer to "we need more foods" is not a better prompt. It is asking FoodData Central.
+
+BUILD A BACKEND FUNCTION that queries the FDC search API with the key stored as a platform secret — never in the browser. Restrict it to the FOUNDATION data type only. FDC holds several and they are not equally trustworthy:
+
+  Foundation  — laboratory-analysed, with sample counts and provenance. This one.
+  SR Legacy   — the old standard reference, decent, frozen since 2018.
+  Survey      — modelled from recipes, not measured.
+  Branded     — manufacturer label data, unverified, and phosphorus is usually absent because labels are not required to carry it.
+
+Fewer hits, better ones. That is the right trade for a table whose whole claim is traceability.
+
+Request these nutrient IDs: 1092 potassium, 1091 phosphorus, 1093 sodium, 1003 protein, and 1225 PHOSPHORUS, ADDED.
+
+1225 is the interesting one. This app teaches that additive phosphate is absorbed almost completely while plant-bound phosphorus is under 40%, and it has no data for that distinction — only a hand-tagged flag. A measured added-phosphorus figure is the difference between asserting that argument and showing it.
+
+FOUR THINGS THE IMPORTER MUST REFUSE TO DO:
+
+1. Never write a value it did not receive.
+2. Never invent or infer a serving size. FDC returns per-100g. That becomes a per-serving figure ONLY when the row already states its serving in grams, or FDC returns a household portion WITH a gram weight. Otherwise the gap stays open, which is honest — and guessing the serving is precisely what made the other table worthless.
+3. Never overwrite a value that is already there. Existing figures were transcribed from published tables and re-derived by hand; a fetch does not outrank that.
+4. Never silently accept an implausible number. Run a per-gram density check — the same pass that would have caught whole milk listed at 134 mg phosphorus per cup.
+
+Write a patch file for review. Do not edit the food table directly.
+```
+
+**Acceptance test**
+
+1. Query a food you know is in Foundation. You get per-100g values and real gram-weight portions.
+2. Query a food that only exists as a branded product. You get **no match** rather
+   than a label value.
+3. Point the importer at a row whose serving has no gram weight. It **refuses** and
+   says why, rather than assuming.
+4. Run it twice. The second run changes nothing.
+5. No API key appears anywhere in the browser.
+
+---
+---
+
 ## What does NOT transfer
 
 Do not spend credits trying to move these; they are properties of the Vercel host.
@@ -894,7 +1389,9 @@ Do not spend credits trying to move these; they are properties of the Vercel hos
 | Joining the stylesheets and scripts into one file each | Base44 owns the page shell and the asset pipeline. |
 | A custom 404 page | Base44 routes unmatched paths itself. |
 | The Open Food Facts proxy behind `/api/product` | Exists only because the browser may not call a foreign origin under our CSP. Base44 has no equivalent constraint and nowhere to put a proxy — ask in Discuss mode before attempting the barcode feature at all. |
-| The nine test suites (1,368 assertions) | They test that codebase. The acceptance tests under each block above are the transferable part. |
+| The ten test suites (1,498 assertions) | They test that codebase. The acceptance tests under each block above are the transferable part. |
+| Minifying the joined bundles | Base44 owns the asset pipeline. On the website this took the JavaScript a phone must parse from 512 KB to 239 KB, which was the real cost of a 2.3 s load — the network was never the problem. Ask what Base44 already does before spending anything here. |
+| The published accessibility report | On the website this page is GENERATED by the test run, so it cannot claim a screen that was not scanned. Hand-typed into Base44 it would be a claim that rots — and this project has watched hand-maintained lists silently fall behind at least three times. **Do not ship a hand-written version.** If you want the credibility, run axe in browser DevTools, fix what it finds, and say nothing on screen you cannot regenerate. |
 
 ## Order, and what depends on what
 
@@ -910,9 +1407,44 @@ BLOCK 1  +  BLOCK 15   (both correctness — paste these first)
    +-- BLOCK 9                 (the demo entrance; independent)
    +-- BLOCK 11                (needs the Labs screen, which already exists)
    +-- BLOCK 12
-   +-- BLOCK 13                (last — widest surface)
-   +-- BLOCK 14                (independent, cheap, do it early)
+   +-- BLOCK 13 --> BLOCK 24   (24 finishes what 13 starts)
+   +-- BLOCK 14 --> BLOCK 16   (16 is what makes 14 actually close the finding)
+   |
+   +-- BLOCK 17                (needs BLOCK 4's hub)
+   +-- BLOCK 18 --> BLOCK 19   (both live on the log/review screen; 18 first)
+   +-- BLOCK 20                (needs BLOCK 15's partial flags and BLOCK 4's hub)
+   +-- BLOCK 21                (independent — two crashes and a race)
+   +-- BLOCK 22                (independent, cheap)
+   +-- BLOCK 23                (independent, decorative — read BLOCK 21 defect 3 first)
+   +-- BLOCK 25                (independent; needs a backend function and a secret)
 ```
 
-The only ordering that costs anything to get wrong is **4 before 6 and 8**: adding a
-screen with no route to it means a second prompt to route it.
+The only ordering that costs anything to get wrong is **4 before 6, 8, 17 and 20**:
+adding a screen with no route to it means a second prompt to route it.
+
+Two more worth respecting: **14 before 16**, because 16 assumes the wording is
+already fixed and only deals with the identifiers; and **21 before 23**, because 23
+adds an attribute to the root element and 21 is the rule that stops it breaking
+every click in the app.
+
+---
+
+## What changed since the last version of this document
+
+Blocks 1–15 were written against the state of the website in early August. Blocks
+**16–25 are new** and cover everything shipped since, in the order it was found:
+
+- **16** — why Block 14 did not close the HIGH finding. The wording was fixed; the
+  `id="devBanner"` was not.
+- **17** — the food list, so "is cabbage low in potassium?" does not require
+  starting a meal you are not eating.
+- **18, 19** — what happens when somebody types like a person: misspellings, more
+  than one food, and words that are not in the table at all.
+- **20** — the three kinds of "we don't know", in one place.
+- **21** — three real defects found by a test pass that deliberately misuses the
+  app. Two of them are crashes.
+- **22, 23** — the layout rule for every form, and the ambient/serene work.
+- **24** — the translation finished, plus two holes in the checking that were worse
+  than the gap they failed to catch.
+- **25** — where more food data should come from, and the fabricated table that
+  nearly got imported instead.
