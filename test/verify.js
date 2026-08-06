@@ -37,6 +37,26 @@ vm.runInContext('I18N.apply("en");', sandbox);
 const { Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, Vitals, I18N, COPY_EN,
         COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS } =
   vm.runInContext('({ Store, Clinical, Resolve, Cards, LabScan, Plan, Backup, Vitals, I18N, COPY_EN, COPY_ES, COPY_ZH, COPY_HI, RECIPES, ANCHOR_FOODS, ANCHOR_STATS })', sandbox);
+
+/* ── THE TABLE THE APP ACTUALLY USES ──
+   COPY_ES is the raw first-wave literal in that file. It is NOT what
+   I18N serves: each language file registers a DEEP MERGE of its waves
+   into COPY_TABLES, and the app reads COPY_TABLES.
+
+   Testing the raw literal meant every guard below — numerals, localised
+   digits, preserved guideline names — silently covered only the 53 keys
+   of the first wave and none of the 219 added since. The suite was green
+   about a fifth of the translation and said nothing about the rest,
+   which is the same shape as a check that cannot fail.
+
+   These are read from the registry, so they are the strings a Spanish,
+   Chinese or Hindi reader will actually see. */
+const REGISTERED = vm.runInContext('(typeof COPY_TABLES !== "undefined" ? COPY_TABLES : {})', sandbox);
+const TABLES = {
+  Spanish: REGISTERED.es || COPY_ES,
+  Chinese: REGISTERED.zh || COPY_ZH,
+  Hindi:   REGISTERED.hi || COPY_HI
+};
 Store.load();
 
 let pass = 0, fail = 0;
@@ -313,7 +333,7 @@ console.log('\n═══ TRANSLATION NEVER MOVES A NUMBER ═══');
     });
   }
 
-  [['Spanish', COPY_ES], ['Chinese', COPY_ZH], ['Hindi', COPY_HI]].forEach(([name, table]) => {
+  [['Spanish', TABLES.Spanish], ['Chinese', TABLES.Chinese], ['Hindi', TABLES.Hindi]].forEach(([name, table]) => {
     const pairs = [];
     walk(COPY_EN, table, '', pairs);
     check(`${name}: there is something to check`, pairs.length > 20, true);
@@ -334,7 +354,7 @@ console.log('\n═══ TRANSLATION NEVER MOVES A NUMBER ═══');
 
   /* Guideline names are proper nouns and must not be translated either:
      a reader checking KDOQI against a source needs the string to match. */
-  [['Spanish', COPY_ES], ['Chinese', COPY_ZH], ['Hindi', COPY_HI]].forEach(([name, table]) => {
+  [['Spanish', TABLES.Spanish], ['Chinese', TABLES.Chinese], ['Hindi', TABLES.Hindi]].forEach(([name, table]) => {
     const pairs = [];
     walk(COPY_EN, table, '', pairs);
     const lost = pairs.filter(([, en, tr]) =>
@@ -342,11 +362,72 @@ console.log('\n═══ TRANSLATION NEVER MOVES A NUMBER ═══');
         en.indexOf(t) !== -1 && tr.indexOf(t) === -1)).map(([p]) => p);
     check(`${name}: guideline names and units are preserved`, lost.join(', ') || 'none', 'none');
   });
+
+  /* ═══ THE HOLE IN THE CHECK ABOVE ═══
+     walk() only pairs STRINGS and array entries. Every sentence built by
+     a function was therefore never compared in any language — and the
+     functions are where the most consequential numbers live: kMode
+     carries 3.5-5.0, 5.5 and 6.0, pMode carries 2.5-4.5, staleNudge
+     carries 90 days, egfrEducation carries the KDIGO band. A translator
+     could have written 6,0 or rounded 5.5 to 6 in any of those and the
+     suite would have stayed green.
+
+     Comparing function SOURCE does not work: `n === 1 ? 'day' : 'days'`
+     contributes a 1 that has nothing to do with medicine, and a
+     translation that restructures the plural legitimately changes those
+     digits. So the functions are CALLED, with non-numeric placeholder
+     arguments, and the numerals in the OUTPUT are compared. What is left
+     after the placeholders is exactly the literal text — which is the
+     part that must not move. */
+  const PLACEHOLDER = ['«1»', '«2»', '«3»', '«4»',
+                       '«5»', '«6»', '«7»', '«8»'];
+
+  function fnPairs(en, tr, path, out) {
+    if (!tr) return;
+    Object.keys(tr).forEach(k => {
+      const e = en ? en[k] : undefined;
+      const t = tr[k];
+      const pth = path ? path + '.' + k : k;
+      if (t && typeof t === 'object' && !Array.isArray(t) && typeof t !== 'function') {
+        fnPairs(e || {}, t, pth, out);
+      } else if (typeof t === 'function' && typeof e === 'function') {
+        out.push([pth, e, t]);
+      }
+    });
+  }
+
+  [['Spanish', TABLES.Spanish], ['Chinese', TABLES.Chinese], ['Hindi', TABLES.Hindi]].forEach(([name, table]) => {
+    const fns = [];
+    fnPairs(COPY_EN, table, '', fns);
+    check(`${name}: there are sentence-building functions to check`, fns.length > 10, true);
+
+    const drifted = [];
+    fns.forEach(([pth, e, t]) => {
+      const args = PLACEHOLDER.slice(0, Math.max(e.length, t.length));
+      let a, b;
+      /* Some take an array or branch on numeric comparisons. If either
+         side throws, skip the pair rather than reporting a translation
+         fault that is really a calling-convention mismatch — but only if
+         BOTH throw, because one throwing alone is a real difference. */
+      try { a = String(e.apply(null, args)); } catch (err) { a = null; }
+      try { b = String(t.apply(null, args)); } catch (err) { b = null; }
+      if (a === null || b === null) {
+        if ((a === null) !== (b === null)) drifted.push(pth + ' (one side threw)');
+        return;
+      }
+      const na = numerals(a), nb = numerals(b);
+      if (!na.every(n => nb.indexOf(n) !== -1)) {
+        drifted.push(`${pth} [EN ${na.join(' ')} | ${name} ${nb.join(' ')}]`);
+      }
+    });
+    check(`${name}: every number inside a generated sentence survives too`,
+      drifted.join(' ; ') || 'none', 'none');
+  });
 }
 
 console.log('\n═══ FALLBACK IS PER KEY, NOT PER LANGUAGE ═══');
 {
-  const merged = I18N.merge(COPY_EN, COPY_ES);
+  const merged = I18N.merge(COPY_EN, TABLES.Spanish);
 
   check('a translated key comes through', merged.consentButton, COPY_ES.consentButton);
   /* A key with no translation must fall back to ENGLISH, not to
@@ -378,7 +459,15 @@ console.log('\n═══ FALLBACK IS PER KEY, NOT PER LANGUAGE ═══');
   // Coverage is reported honestly rather than rounded up to "done".
   ['es', 'zh', 'hi'].forEach(code => {
     const cov = I18N.coverage(code);
-    check(`${code} coverage is reported`, cov.pct > 0 && cov.pct < 100, true);
+    /* This required pct < 100 — it encoded "the translation is
+       unfinished" as a rule, so finishing it turned the suite red. What
+       the check is actually for is that the number is REAL: reported,
+       in range, and matching the table rather than rounded up to
+       flatter. All three languages are now complete, and the picker
+       must be able to say so. */
+    check(`${code} coverage is reported`, cov.pct > 0 && cov.pct <= 100, true);
+    check(`  ...and ${code} matches the table it describes`,
+      cov.keys === I18N.countKeys(TABLES[{ es: 'Spanish', zh: 'Chinese', hi: 'Hindi' }[code]]), true);
   });
 
   // Speech tags are full BCP-47, not the two-letter code.
@@ -797,8 +886,14 @@ console.log('\n═══ LAB SCAN — THE GATE IS ON THE BOUNDARY ═══');
       const c = LabScan.needsConfirm('k', v);
       check(`K ${v} is gated`, !!c, true);
       check(`  ...and identifies it as ${mode}`, c && c.mode, mode);
-      check('  ...and names the consequence in plain words',
-        !!(c && c.consequence && c.consequence.length > 10), true);
+      /* The wording moved into COPY so it translates; the module now
+         returns only the MODE. What still has to hold is that every mode
+         it can return HAS a sentence — a gate that says "this reads 6.1"
+         and then nothing about what 6.1 would do is the version that
+         trains people to tap yes. */
+      check('  ...and there is a plain-words consequence for that mode',
+        !!(c && COPY_EN.labScan.consequence[c.mode] &&
+           COPY_EN.labScan.consequence[c.mode].length > 10), true);
     });
   check('P 4.9 is gated', (LabScan.needsConfirm('p', 4.9) || {}).mode, 'caution');
   check('P 1.1 is gated', (LabScan.needsConfirm('p', 1.1) || {}).mode, 'below_range');

@@ -70,18 +70,23 @@ const LabScan = (() => {
      any state other than normal. Those are exactly the readings where a
      misread decimal changes what the app does rather than only what it
      displays. */
-  const CONSEQUENCE = {
-    paused:      'pause all coaching and show an urgent care-team banner',
-    restricted:  'switch to restricted mode and stop offering food swaps',
-    caution:     'switch to caution mode',
-    low:         'stop all restriction-toned guidance',
-    below_range: 'flag phosphorus as below the typical range'
-  };
+  /* The SENTENCES used to live here, in English, hard-coded — and being
+     outside COPY they never translated. A Spanish reader got either an
+     English clause inside a Spanish sentence, or (what the translator
+     actually did) no clause at all: "This reads 6.2" with the half that
+     says what 6.2 would DO silently removed. That is the informative
+     half. Somebody told what a value will do can check it; somebody
+     shown a bare "are you sure?" has been trained to tap yes.
 
+     So this returns the MODE and the view looks up the wording. Logic
+     names the state, copy says it, and it says it in whatever language
+     the reader chose. Found by the numeral guard in test/verify.js once
+     it was extended to call generated sentences rather than only
+     comparing plain strings. */
   function needsConfirm(key, value) {
     const mode = wouldBeMode(key, value);
     if (!mode || mode === 'normal') return null;
-    return { mode, consequence: CONSEQUENCE[mode] || null };
+    return { mode };
   }
 
   /* Rows for the UI: what was read, whether it is plausible at all, and
@@ -113,5 +118,5 @@ const LabScan = (() => {
       !r.found || !r.valid || !r.confirm || confirmed.indexOf(r.field.key) !== -1);
   }
 
-  return { FIELDS, wouldBeMode, needsConfirm, review, ready, CONSEQUENCE };
+  return { FIELDS, wouldBeMode, needsConfirm, review, ready };
 })();

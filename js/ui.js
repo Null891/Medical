@@ -2383,7 +2383,7 @@ const UI = (() => {
         <span class="scanrow__value">${esc(String(r.value))} ${esc(r.field.unit)}</span>
         ${r.confirm ? (done
           ? `<p class="note scanrow__ok">${esc(COPY.labScan.confirmed)}</p>`
-          : `<p class="note">${esc(COPY.labScan.gate(r.value, r.confirm.consequence))}</p>
+          : `<p class="note">${esc(COPY.labScan.gate(r.value, COPY.labScan.consequence[r.confirm.mode] || ''))}</p>
              <button type="button" class="btn btn--secondary" data-scanok="${esc(r.field.key)}">${esc(COPY.labScan.gateButton)}</button>`)
           : ''}
       </div>`;

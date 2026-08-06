@@ -431,6 +431,16 @@ const COPY_EN = {
        shown a bare "are you sure?" has been trained to tap yes. */
     gate: (v, consequence) =>
       `This reads ${v}, which would ${consequence}. Check it against your report before saving.`,
+    /* Moved out of js/labscan.js, where they were hard-coded English and
+       therefore never translated. Keyed by the guidance mode the value
+       would put the app into. */
+    consequence: {
+      paused:      'pause all coaching and show an urgent care-team banner',
+      restricted:  'switch to restricted mode and stop offering food swaps',
+      caution:     'switch to caution mode',
+      low:         'stop all restriction-toned guidance',
+      below_range: 'flag phosphorus as below the typical range'
+    },
     gateButton: 'It matches my report',
     confirmed: 'Confirmed against your report.',
     /* Units are reported, never converted. Phosphorus in mmol/L differs
