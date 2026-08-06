@@ -578,10 +578,97 @@ const Motion = (() => {
     if (typeof setInterval !== 'undefined') setInterval(() => daylight(), 600000);
   }
 
+  /* ═══════════ AMBIENT SOUNDSCAPE ═══════════
+     A held chord, very quiet, that fades in and stays. Not music — no
+     melody, no rhythm, nothing that resolves — because anything with a
+     tune becomes something you notice, and something you notice in a
+     health app becomes something you turn off.
+
+     OFF BY DEFAULT, and it stays that way. The whole argument for the
+     one-note chime above applies here with more force: a kidney app
+     that makes noise unasked gets muted at the system level within a
+     day, and that mute takes the accessibility uses of audio with it.
+
+     SYNTHESISED, so it costs nothing to download and there is no asset
+     to cache, no media-src to widen, no file that can 404. Three sine
+     oscillators a fifth and an octave apart, detuned by a couple of
+     cents so they beat slowly against each other rather than sitting
+     dead still — that beating is the whole reason it sounds alive at a
+     volume this low.
+
+     GESTURE-GATED BY CONSTRUCTION. Browsers suspend audio until a user
+     gesture, and Permissions-Policy on this site sets autoplay=(), so
+     this cannot start on its own even if somebody wired it wrongly. It
+     is started from the Settings toggle, which is a gesture.
+
+     REDUCED MOTION SILENCES IT. Somebody who has asked their operating
+     system for less sensory load has answered this question already. */
+  let ambientNodes = null;
+
+  const AMBIENT_HZ = [110, 164.81, 220];    // A2, E3, A3 — open fifth
+  const AMBIENT_GAIN = 0.014;               // barely there, on purpose
+
+  function ambientStop() {
+    if (!ambientNodes) return;
+    try {
+      const t = audioCtx.currentTime;
+      ambientNodes.gain.gain.cancelScheduledValues(t);
+      ambientNodes.gain.gain.setValueAtTime(ambientNodes.gain.gain.value || 0.0001, t);
+      ambientNodes.gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+      ambientNodes.oscs.forEach(o => o.stop(t + 1.3));
+    } catch (e) { /* never load-bearing */ }
+    ambientNodes = null;
+  }
+
+  function ambient(enabled) {
+    if (typeof window === 'undefined') return false;
+    if (!enabled) { ambientStop(); return false; }
+    if (reduced()) return false;              // they already answered this
+    if (ambientNodes) return true;
+
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return false;
+    try {
+      audioCtx = audioCtx || new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t = audioCtx.currentTime;
+
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      // Twelve seconds to arrive. A fade this slow is not perceived as
+      // something starting, which is the point.
+      gain.gain.exponentialRampToValueAtTime(AMBIENT_GAIN, t + 12);
+
+      /* A gentle low-pass, because unfiltered sines at this pitch still
+         carry an edge on phone speakers that reads as a hum. */
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(700, t);
+
+      const oscs = AMBIENT_HZ.map((hz, i) => {
+        const o = audioCtx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(hz, t);
+        o.detune.setValueAtTime((i - 1) * 3, t);   // slow beating
+        o.connect(filter);
+        o.start(t);
+        return o;
+      });
+
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      ambientNodes = { oscs, gain, filter };
+      return true;
+    } catch (e) {
+      return false;                          // audio is never load-bearing
+    }
+  }
+
   return {
     ripple, ringsAcknowledge, bloom, morph,
     loaderHtml, livingChart, setScreen, init,
-    haptic, chime, daylight, magnetic, parallax, scrollReveal, rearmReveal, depth,
-    HAPTIC, MAGNET_MAX, TILT_MAX, FACTS, reduced
+    haptic, chime, ambient, ambientStop, daylight, magnetic, parallax,
+    scrollReveal, rearmReveal, depth,
+    HAPTIC, MAGNET_MAX, TILT_MAX, FACTS, reduced, AMBIENT_HZ
   };
 })();

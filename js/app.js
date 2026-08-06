@@ -35,6 +35,25 @@
     document.getElementById('noticeBar').hidden = true;
   }
 
+  /* Time of day on the root element, for the ambient backdrop to key
+     off. An attribute rather than a class so the stylesheet can select
+     it the same way it selects theme and contrast, and re-read on an
+     interval so somebody who leaves the app open across dusk is not
+     stuck in the afternoon. Nothing but decoration reads it.
+
+     data-place, NOT data-scene: UI's delegated click handler resolves
+     targets with closest('[data-scene], …'), so that name on <html>
+     turns every click in the app into a scene change. See the note in
+     css/refine.css beside the rules that use it. */
+  if (typeof Scenes !== 'undefined') {
+    const paintPlace = () => {
+      document.documentElement.setAttribute('data-daypart', Scenes.dayPart());
+      document.documentElement.setAttribute('data-place', Scenes.current().key);
+    };
+    paintPlace();
+    setInterval(paintPlace, 10 * 60 * 1000);
+  }
+
   UI.wire();
 
   /* Home-screen shortcuts. The manifest declares four; each opens

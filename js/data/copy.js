@@ -562,6 +562,11 @@ const COPY_EN = {
   /* Said once, after a long pause, and only when there is something in
      the box to lose. Every clause is literally true: the draft is
      written to storage on every keystroke, and nothing here expires. */
+  ambientNote:
+    'Synthesised in the browser, so it downloads nothing. It will not start on its own — ' +
+    'and it stays silent if you have asked your device for reduced motion.',
+  ambientUnavailable: 'This browser will not play background sound.',
+
   takeYourTime:
     'Take your time — what you have typed is saved, and it will still be here if you step away.',
 

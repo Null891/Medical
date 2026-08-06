@@ -1363,3 +1363,91 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* ═══════════ AMBIENT BACKDROP ═══════════
+   A very soft wash behind the whole app that shifts with the time of
+   day and the active scene. Pure CSS gradients — no image, no download,
+   nothing to cache, nothing that can 404, and no widening of img-src.
+
+   THE CONSTRAINT THAT SHAPES ALL OF IT: this sits behind text that
+   people with failing eyesight need to read, so it may only ever tint
+   the canvas, never darken it. Every value below is a low-alpha wash
+   over the existing canvas token, which means the measured contrast
+   pairs in test/sweep.js stay exactly as measured — the arithmetic is
+   done against --color-canvas and this does not change --color-canvas.
+
+   It is decoration in the strictest sense: remove this whole block and
+   the app is identical in every way that matters. */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;                 /* behind everything, including the shell */
+  pointer-events: none;
+  background: transparent;
+  transition: background 2400ms ease;
+}
+
+/* Morning — low warm light from the upper left, the way early sun
+   actually falls into a room. */
+:root[data-daypart="morning"] .ambient {
+  background:
+    radial-gradient(120% 80% at 12% 0%, rgba(224, 158, 92, .10), transparent 62%),
+    radial-gradient(90% 70% at 92% 8%, rgba(233, 200, 160, .07), transparent 60%);
+}
+
+/* Midday — clearest and flattest. The reading part of the day gets the
+   least interference. */
+:root[data-daypart="midday"] .ambient {
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 247, 232, .10), transparent 70%);
+}
+
+/* Evening — amber, settling toward the horizon. */
+:root[data-daypart="evening"] .ambient {
+  background:
+    radial-gradient(110% 75% at 88% 6%, rgba(210, 124, 74, .11), transparent 62%),
+    radial-gradient(100% 60% at 8% 96%, rgba(140, 112, 150, .07), transparent 66%);
+}
+
+/* Night — cool and dim, and this is the one that most needs to stay a
+   tint. Somebody logging a late meal is often the person who least
+   wants to fight the screen. */
+:root[data-daypart="night"] .ambient {
+  background:
+    radial-gradient(120% 80% at 50% 100%, rgba(74, 92, 132, .10), transparent 66%);
+}
+
+/* The scene adds a hint on top, never replaces. Standing in a shop is a
+   different kind of moment from sitting at your own table, and this is
+   the smallest way to say so.
+
+   NAMED data-place AND NOT data-scene, which is not fussiness. The
+   delegated click handler in js/ui.js resolves targets with
+   closest('[data-scene], …'), so writing data-scene onto <html> makes
+   EVERY click anywhere in the document match the root element and fire
+   as a scene change. It did exactly that: four end-to-end assertions
+   went red because saving a meal re-rendered Home a second time and the
+   once-only first-meal card was drawn and then immediately cleared.
+
+   A delegation selector is a namespace. Anything on the root element
+   shares it with every click in the app. */
+:root[data-place="store"] .ambient    { filter: saturate(1.06); }
+:root[data-place="restaurant"] .ambient { filter: saturate(1.1) brightness(1.02); }
+:root[data-place="clinic"] .ambient   { filter: saturate(.88); }
+
+/* In dark mode the washes are halved again: the same alpha over a dark
+   canvas reads as a smear rather than as light. */
+@media (prefers-color-scheme: dark) {
+  .ambient { opacity: .5; }
+}
+:root[data-theme="dark"] .ambient { opacity: .5; }
+:root[data-theme="light"] .ambient { opacity: 1; }
+
+/* Two ways this turns itself off entirely, and both are answers the
+   person has already given. High contrast means every non-essential
+   tint is in the way; reduced motion means no 2.4-second cross-fade. */
+:root[data-contrast="high"] .ambient { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient { transition: none; }
+}

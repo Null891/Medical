@@ -3318,6 +3318,7 @@ const UI = (() => {
       }
       if (el.dataset.scene) {
         const s = Scenes.set(el.dataset.scene);
+        document.documentElement.setAttribute('data-place', el.dataset.scene);
         // Choosing one answers the question the picker asked, so it
         // closes behind you rather than sitting open over the rings.
         scenesOpen = false;
@@ -3672,6 +3673,31 @@ const UI = (() => {
       Store.setSetting('sound', snd.checked);
       if (snd.checked && typeof Motion !== 'undefined') Motion.chime(true);
     });
+
+    /* The ambient chord. Toggling it IS the user gesture browsers require
+       before audio may start, which is why it can only ever be switched
+       on from here and never restored silently at boot.
+
+       If Motion declines — no WebAudio, or reduced motion already asked
+       for less sensory load — the switch goes back to off rather than
+       sitting on while nothing plays. A control claiming a state it does
+       not have is the same lie as a save that did not save. */
+    const amb = $('#ambientToggle');
+    if (amb) {
+      amb.checked = !!Store.settings().ambientSound;
+      $('#ambientNote').textContent = COPY.ambientNote;
+      amb.addEventListener('change', () => {
+        const want = amb.checked;
+        const running = (typeof Motion !== 'undefined') ? Motion.ambient(want) : false;
+        if (want && !running) {
+          amb.checked = false;
+          Store.setSetting('ambientSound', false);
+          toast(COPY.ambientUnavailable);
+          return;
+        }
+        Store.setSetting('ambientSound', want);
+      });
+    }
 
     const hc = $('#highContrastToggle');
     hc.checked = !!Store.settings().highContrast;

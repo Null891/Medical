@@ -164,6 +164,20 @@
      landmark region, which axe flags on every screen: content a screen
      reader user cannot reach by jumping between landmarks. role="status"
      and role="note" describe what they ARE, but neither is a landmark. -->
+<!-- The ambient backdrop. Decoration in the strictest sense: it is
+     aria-hidden, it takes no pointer events, it sits at z-index -1, and
+     removing it changes nothing about what the app does or says. Every
+     value in it is a low-alpha wash over the canvas token, so the
+     contrast pairs measured in test/sweep.js are unaffected. -->
+
+
+<!-- The ambient backdrop. Decoration in the strictest sense: aria-hidden,
+     no pointer events, z-index -1, and removing it changes nothing about
+     what the app does or says. Every value in it is a low-alpha wash over
+     the canvas token, so the contrast pairs measured in test/sweep.js are
+     unaffected. -->
+<div class="ambient" id="ambient" aria-hidden="true"></div>
+
 <header role="banner" aria-label="Site notices">
 
 <!-- ═══════════ STORAGE FAILURE ═══════════
@@ -862,6 +876,16 @@
           <input type="checkbox" id="soundToggle">
           <span>Sound — a short tone when a meal is saved</span>
         </label>
+
+        <!-- Both off by default. A health app that makes noise unasked
+             gets muted at the system level within a day, and that mute
+             takes the accessibility uses of audio with it. Synthesised,
+             so neither costs a download. -->
+        <label class="switch mt-2">
+          <input type="checkbox" id="ambientToggle">
+          <span>Quiet background sound — a low held chord while the app is open</span>
+        </label>
+        <p class="note" id="ambientNote"></p>
       </div>
 
       <!-- Your data: take it with you, or get rid of it. Separate from

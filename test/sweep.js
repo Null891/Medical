@@ -321,6 +321,52 @@ console.log('\n═══ 0-404. A MISTYPED URL IS NOT A DEAD END ═══');
     !/\b(invalid|forbidden|illegal|error 404)\b/i.test(nf), '');
 }
 
+console.log('\n═══ 0b. DELEGATION SELECTORS ARE A NAMESPACE ═══');
+
+/* The delegated click handler resolves targets with
+   closest('[data-delete-meal],[data-remove-item],...'). Every attribute
+   in that list is a name that MUST NOT appear on an ancestor of the
+   whole app: closest() walks upward, so the same attribute on <html> or
+   <body> matches every click anywhere in the document.
+
+   Not hypothetical. The ambient backdrop set data-scene on the root
+   element so it could tint itself by place, and data-scene is in the
+   delegation list. Every click in the app became a scene change, Home
+   re-rendered a second time after each one, and the once-only
+   first-meal card was drawn and instantly cleared. Four end-to-end
+   assertions went red and not one of them mentioned scenes.
+
+   So: collect the delegated names, collect every attribute written onto
+   documentElement, and fail if they intersect. */
+{
+  const uiSrc = read('js/ui.js');
+  const appSrc = read('js/app.js');
+
+  const delegated = new Set();
+  const closeRe = /closest\(([\s\S]{0,400}?)\)/g;
+  let cm;
+  while ((cm = closeRe.exec(uiSrc))) {
+    (cm[1].match(/data-[a-z-]+/g) || []).forEach(a => delegated.add(a));
+  }
+
+  check('the delegated click-target list was found', delegated.size > 5,
+    'parsed ' + delegated.size + ' delegated attributes');
+
+  const onRoot = new Set();
+  [uiSrc, appSrc].forEach(src => {
+    const re = /documentElement\.setAttribute\(\s*'([^']+)'/g;
+    let m;
+    while ((m = re.exec(src))) onRoot.add(m[1]);
+  });
+  check('  ...and the attributes written to <html> were found', onRoot.size > 0,
+    Array.from(onRoot).join(', '));
+
+  const clash = Array.from(onRoot).filter(a => delegated.has(a));
+  check('  ...and none of them is also a delegated click target',
+    clash.length === 0,
+    clash.join(', ') + ' on <html> makes every click in the app match it');
+}
+
 console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT ═══');
 
 /* An independent pro scan raised a HIGH on the old wording — "Reference
