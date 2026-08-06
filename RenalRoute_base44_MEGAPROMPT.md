@@ -11,6 +11,10 @@ Nothing below is speculative. Where a block describes a behaviour, that behaviou
 exists and can be checked on the live site first if you want to see it before you
 paste it.
 
+**Building from scratch instead?** `RenalRoute_BUILD_50_PROMPTS.md` is the whole
+application as fifty prompts, start to finish, with no assumption that anything
+exists yet. This document patches; that one builds.
+
 ---
 
 ## How to paste
