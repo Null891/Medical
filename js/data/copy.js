@@ -572,6 +572,33 @@ const COPY_EN = {
   /* Said once, after a long pause, and only when there is something in
      the box to lose. Every clause is literally true: the draft is
      written to storage on every keystroke, and nothing here expires. */
+  /* ── The accessibility report ──
+     Written as a claim somebody can check, not a badge. It names the
+     tool, the version, the standard, the date, and what was NOT covered
+     and why — a report listing only what passed is the same brochure
+     problem the references screen exists to avoid. */
+  a11yReport: {
+    title: 'Accessibility report',
+    lede:
+      'This app runs axe-core against every screen on every test run, and publishes the result. ' +
+      'The figures below come from that run, not from a claim typed by hand.',
+    line: (version, screens, n) =>
+      `axe-core ${version} · ${screens} screens · ${n} serious or critical violations.`,
+    dated: (d) => `These results produced ${d}.`,
+    perScreen: 'no violations',
+    whyPublished:
+      'Public accessibility scanners cannot check most of this app. Almost every screen sits behind ' +
+      'a consent gate they never pass, and their usual method — injecting the scanner into the page — ' +
+      'is blocked by our Content-Security-Policy. We could unblock them by allowing inline scripts. ' +
+      'We will not: that policy is what makes a script pasted into a meal note harmless, and weakening ' +
+      'a real defence to satisfy a tool that measures defences is backwards.',
+    notCovered:
+      'Two things this run cannot check, stated rather than glossed: colour contrast and rendered ' +
+      'tap-target size both need a browser that lays the page out. Both are measured separately — ' +
+      'contrast arithmetically from the colour tokens, tap targets from their declared sizes.',
+    unavailable: 'The report has not been generated yet. Run the test suite to produce it.'
+  },
+
   ambientNote:
     'Synthesised in the browser, so it downloads nothing. It will not start on its own — ' +
     'and it stays silent if you have asked your device for reduced motion.',

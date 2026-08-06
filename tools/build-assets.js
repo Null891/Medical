@@ -104,7 +104,7 @@ const CSS_ORDER = [
 const JS_ORDER = [
   // data
   'js/data/copy.js', 'js/i18n.js', 'js/data/references.js',
-  'js/data/recipes.js', 'js/data/anchor-foods.js',
+  'js/data/recipes.js', 'js/data/anchor-foods.js', 'js/data/a11y-report.js',
   // logic
   'js/store.js', 'js/clinical.js', 'js/resolve.js', 'js/llm.js',
   'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/vitals.js',

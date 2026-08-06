@@ -3206,10 +3206,37 @@ const UI = (() => {
   /* ═══════════ learn cards ═══════════ */
 
   function showLearn(key) {
+    /* The accessibility report is a learn card whose body is DATA, not
+       prose. It reads from js/data/a11y-report.js, which test/a11y.js
+       regenerates on every run — so this screen cannot claim a screen
+       that was not scanned, a version that was not used, or a date it
+       did not happen on. If the file is absent it says so rather than
+       rendering an empty page that looks like a pass. */
+    if (key === 'a11y') { showA11yReport(); return; }
+
     const c = COPY.learn[key];
     if (!c) return;
     $('#learnBody').innerHTML =
       `<h1 class="h1">${esc(c.title)}</h1>` + c.body.map(p => `<p>${esc(p)}</p>`).join('');
+    go('learn');
+  }
+
+  function showA11yReport() {
+    const c = COPY.a11yReport;
+    const r = (typeof A11Y_REPORT !== 'undefined') ? A11Y_REPORT : null;
+
+    $('#learnBody').innerHTML =
+      `<h1 class="h1">${esc(c.title)}</h1>` +
+      (!r
+        ? `<p>${esc(c.unavailable)}</p>`
+        : `<p>${esc(c.lede)}</p>
+           <p class="a11yline"><strong>${esc(c.line(r.version, r.screensScanned, r.seriousViolations))}</strong></p>
+           <p class="note">${esc(c.dated(r.generated))} ${esc(r.standard)}.</p>
+           <ul class="gaplist">${r.screens.map(name =>
+             `<li class="gaplist__row"><span class="gaplist__name">${esc(name)}</span>
+                <span class="gaplist__what">${esc(c.perScreen)}</span></li>`).join('')}</ul>
+           <p>${esc(c.whyPublished)}</p>
+           <p class="note">${esc(c.notCovered)}</p>`);
     go('learn');
   }
 
