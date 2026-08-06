@@ -110,7 +110,7 @@ const JS_ORDER = [
   'js/cards.js', 'js/rings.js', 'js/trends.js', 'js/vitals.js',
   'js/demo-auth.js', 'js/install.js', 'js/backup.js', 'js/meds.js',
   'js/plan.js', 'js/labscan.js', 'js/motion.js', 'js/scenes.js',
-  'js/orbit.js', 'js/insights.js', 'js/checklist.js', 'js/passport.js',
+  'js/orbit.js', 'js/insights.js', 'js/checklist.js', 'js/gaps.js', 'js/passport.js',
   'js/exporter.js',
   // view, then bootstrap — app.js reads every module above it
   'js/ui.js', 'js/seed.js', 'js/app.js'

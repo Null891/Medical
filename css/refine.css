@@ -1313,3 +1313,53 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
   padding-top: var(--space-3);
   border-top: 2px solid var(--color-hairline);
 }
+
+/* ═══════════ GAPS ═══════════
+   Three sections of "we don't know", and the visual job is to make them
+   readable without making them alarming. Nothing here is red. A missing
+   phosphorus figure is not a problem with the person's kidneys, it is a
+   problem with our table, and colouring it as a warning would put the
+   anxiety in the wrong place. */
+.gaplist { list-style: none; margin: var(--space-3) 0 0; padding: 0; }
+
+.gaplist__row {
+  display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2);
+  align-items: baseline; justify-content: space-between;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.gaplist__row:last-child { border-bottom: 0; }
+
+.gaplist__name { font-weight: 560; }
+
+/* The reason sits to the right and reads quieter than the food, because
+   the food is what somebody is scanning for. */
+.gaplist__what {
+  color: var(--color-text-secondary);
+  font-size: var(--type-caption);
+  text-align: right;
+}
+
+.gaprow { margin-top: var(--space-3); }
+.gaprow:first-child { margin-top: 0; }
+.gaprow__counts {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: var(--space-2) 0 0;
+}
+
+/* Stack the label above its reason once there is not room for both on a
+   line — at 320px a right-aligned fragment beside a long food name
+   wraps into an unreadable column two words wide. */
+@media (max-width: 380px) {
+  .gaplist__row { flex-direction: column; }
+  .gaplist__what { text-align: left; }
+}
+
+/* The "take your time" line. Quieter than a note, and deliberately not
+   tinted like a warning — it is reassurance, and reassurance in amber
+   reads as a problem. */
+.note--calm {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

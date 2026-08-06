@@ -472,9 +472,27 @@
           <span id="micLabel">Say it instead</span>
         </button>
         <p class="note" id="micNote" hidden>Speech is handled by your browser or phone, not by us.</p>
-        <button type="button" class="linkbtn linkbtn--block" data-nav="label">Or check a food label instead</button>
 
+        <!-- ═══════════ THE ACTION, DIRECTLY UNDER THE INPUT ═══════════
+             It used to sit below "Or check a food label instead", so the
+             thing somebody came here to do was the third control on the
+             screen, underneath an alternative to doing it. On a phone
+             that alternative is the one nearest the thumb.
+
+             The rule now, and it holds on every screen in this app: the
+             primary action follows the field it acts on. Alternatives
+             come after it, and fine print comes after those — nothing
+             that qualifies an action may stand between the action and
+             the input it belongs to. -->
         <button type="button" class="btn btn--primary btn--block" id="analyzeBtn" disabled>Analyze meal</button>
+
+        <!-- Appears only after a real pause, and only with something in
+             the box. role=status so it is announced gently rather than
+             interrupting; never a countdown, never a modal. -->
+        <p class="note note--calm" id="logIdle" role="status" hidden></p>
+
+        <!-- Alternatives, below the action. Both are still one tap. -->
+        <button type="button" class="linkbtn linkbtn--block" data-nav="label">Or check a food label instead</button>
 
         <!-- Photo path. The camera NAMES the food; the reference table
              prices it. capture="environment" opens the rear camera
@@ -698,6 +716,11 @@
         <button type="button" class="hub__card m-stone" data-nav="foods">
           <span class="hub__name">The food list</span>
           <span class="hub__what">Every food RenalRoute can price, sorted by whichever nutrient you are watching. For checking a food without logging a meal you are not eating.</span>
+        </button>
+
+        <button type="button" class="hub__card m-stone" data-nav="gaps">
+          <span class="hub__name">What we don't know</span>
+          <span class="hub__what">Three kinds of gap in one place: figures our food table is missing for things you eat, days that ran over your targets, and records that are getting old.</span>
         </button>
 
         <button type="button" class="hub__card m-stone" data-nav="passport">
@@ -987,6 +1010,20 @@
 
            a food with no potassium value gets no low-potassium badge,
            because absence of data must never read as reassurance. -->
+    <!-- ───────── GAPS ─────────
+         Three kinds of "we don't know", and the app's own missing data
+         comes first. Leading with what the reader has not done, while
+         sitting on eighty-four blanks of our own, would be a poor
+         look and a worse argument. -->
+    <section class="screen" id="scr-gaps" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="gapsBack">← Back</button>
+      <h1 class="h1" id="gapsTitle"></h1>
+      <p class="helper" id="gapsLede"></p>
+      <div id="gapsData"></div>
+      <div id="gapsIntake"></div>
+      <div id="gapsCare"></div>
+    </section>
+
     <section class="screen" id="scr-foods" hidden>
       <button type="button" class="linkbtn linkbtn--back" id="foodsBack">← Back</button>
       <h1 class="h1" id="foodsTitle"></h1>

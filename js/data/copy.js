@@ -94,6 +94,76 @@ const COPY_EN = {
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
     'Educational use only — Settings lists every source and every gap.',
 
+  /* ── Gaps ──
+     Three kinds of "we don't know", in one place, and the tone rule is
+     the same for all three: report the record, never grade the person.
+     Nothing here says "you should", nothing counts out of a
+     denominator, and the section about the app's own missing data comes
+     FIRST — it would be a poor look to lead with what the reader has
+     not done while sitting on eighty-four blanks of our own. */
+  gaps: {
+    title: 'What we don\'t know',
+    lede:
+      'Three different kinds of gap: numbers our food table is missing, days that ran over ' +
+      'your targets, and records that are getting old. None of it is a score.',
+    empty: 'Nothing to report — and that is a real answer, not an empty screen.',
+
+    data: {
+      title: 'Numbers we don\'t have',
+      lede:
+        'Foods you have logged that our table cannot fully price. These are not zeros. ' +
+        'A nutrient we do not have is left out of the total and the day is marked partial, ' +
+        'which is why a ring sometimes says "at least".',
+      none: 'Every food you have logged has all three figures. Nothing is being left out.',
+      food: (name, times) =>
+        `${name} — logged ${times} time${times === 1 ? '' : 's'}`,
+      /* Takes the list, not a pre-joined string, so it can put "and" in
+         the right place and get the plural right. Joining with commas
+         upstream produced "no potassium, sodium figure", which reads
+         like a fragment of a database rather than a sentence. */
+      missingList: (names) => {
+        const n = names.length;
+        const joined = n === 1 ? names[0]
+          : n === 2 ? `${names[0]} or ${names[1]}`
+          : `${names.slice(0, -1).join(', ')} or ${names[n - 1]}`;
+        return `no ${joined} figure${n === 1 ? '' : 's'}`;
+      },
+      affected: (days, logged, nutrient) =>
+        `${days} of your last ${logged} logged day${logged === 1 ? '' : 's'} are missing a ${nutrient.toLowerCase()} figure somewhere.`,
+      uncounted: (n) =>
+        `${n} item${n === 1 ? '' : 's'} could not be matched to any food at all, so nothing was counted for ${n === 1 ? 'it' : 'them'}.`,
+      /* The honest close: this is our limitation, and it is being worked
+         on rather than hidden. */
+      why:
+        'Our table holds 55 foods and not every one of them has all three published figures yet. ' +
+        'We would rather leave a blank than print a number nobody measured.'
+    },
+
+    intake: {
+      title: 'Days against your targets',
+      lede: (n) => `Your last ${n} days, per nutrient.`,
+      noTargets:
+        'No targets set, so there is nothing to measure days against. ' +
+        'You can add them in Settings, or ask your care team what yours are.',
+      noTarget: (label) => `No ${label.toLowerCase()} target set.`,
+      over: (n) => `${n} day${n === 1 ? '' : 's'} over`,
+      under: (n) => `${n} day${n === 1 ? '' : 's'} within`,
+      /* Kept apart from "under" on purpose. A day missing a figure is
+         not a day under target, and folding it in would turn a data gap
+         into reassurance at the exact moment somebody is looking for a
+         pattern. */
+      partial: (n) => `${n} day${n === 1 ? '' : 's'} we could not total`,
+      partialWhy: 'Counted separately — a day with a missing figure is not a day under target.',
+      none: 'Nothing logged in this window yet.'
+    },
+
+    care: {
+      title: 'Records getting old',
+      lede: 'What the app has, and when it last heard about it.',
+      none: 'Everything here is current.'
+    }
+  },
+
   /* The food table, browsable. Every string here has to hold one line:
      a gap is a gap, never a zero and never a reassurance. */
   foods: {
@@ -489,6 +559,12 @@ const COPY_EN = {
   photoMealLabel: 'Meal from a photo',
   emptyExtraction:
     "We didn't spot any foods in that. Try naming them one at a time — for example: chicken, rice, green beans.",
+  /* Said once, after a long pause, and only when there is something in
+     the box to lose. Every clause is literally true: the draft is
+     written to storage on every keystroke, and nothing here expires. */
+  takeYourTime:
+    'Take your time — what you have typed is saved, and it will still be here if you step away.',
+
   uncountedItem: "Not counted — we didn't have enough detail to estimate this item.",
 
   /* ── When the spelling is close but not close enough ──

@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'foods', 'kitchen', 'more'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'foods', 'gaps', 'kitchen', 'more'];
 
   /* ═══════════ the back button ═══════════
      This app had no history integration at all. Every screen change
@@ -94,9 +94,11 @@ const UI = (() => {
     if (name === 'kitchen') renderKitchen();
     if (name === 'more') renderMore();
     if (name === 'foods') renderFoods();
+    if (name === 'gaps') renderGaps();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
-        name !== 'passport' && name !== 'references' && name !== 'kitchen') {
+        name !== 'passport' && name !== 'references' && name !== 'kitchen' &&
+        name !== 'gaps' && name !== 'foods') {
       lastScreen = name;
       // Remember where someone was. Reopening an app mid-task and being
       // dumped back at the start is a small tax paid every single time;
@@ -1107,6 +1109,7 @@ const UI = (() => {
       Store.setSetting('mealDraft', '');   // the draft is spent
     }
     $('#logPending').hidden = true;
+    clearIdle();
     setPending('Breaking your meal down…');
     $('#logError').hidden = true;
     $('#photoBtn').disabled = false;
@@ -1818,6 +1821,136 @@ const UI = (() => {
       </p>
       ${f.source ? `<p class="foodrow__src">${esc(f.source)}</p>` : ''}
     </div>`;
+  }
+
+  /* ═══════════ "TAKE YOUR TIME" ═══════════
+     Somebody starts typing a meal, gets interrupted — the kettle, a
+     phone call, a grandchild — and comes back to a half-finished box
+     and no idea whether it kept anything. The honest reassurance is
+     available and was never said out loud: the draft IS saved on every
+     keystroke, and has been for a while.
+
+     THREE RULES, and they are what separate this from a nag.
+
+     · It only appears after a real pause, and only when there is
+       something to lose. An empty box gets nothing.
+     · It is never a countdown and never a modal. A timer on screen is
+       pressure, and pressure is the opposite of what this says. Nothing
+       expires; the sentence is true whether it is read or not.
+     · It says itself once. Dismissed, or the meal analysed, and it does
+       not come back this session — a reassurance repeated becomes a
+       reprimand.
+
+     Placed in the log flow because that is the only screen in the app
+     where somebody is composing something they could lose. */
+  const IDLE_MS = 45000;
+  let idleTimer = null, idleShown = false;
+
+  function noteIdle() {
+    if (idleShown) return;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      const box = $('#mealText');
+      const el = $('#logIdle');
+      if (!el || !box || !box.value.trim()) return;
+      // Gone from the screen while the timer ran — say nothing.
+      if ($('#log-input') && $('#log-input').hidden) return;
+      el.textContent = COPY.takeYourTime;
+      el.hidden = false;
+      idleShown = true;
+    }, IDLE_MS);
+  }
+
+  function clearIdle() {
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+    const el = $('#logIdle');
+    if (el) el.hidden = true;
+  }
+
+  /* ═══════════ GAPS ═══════════
+     Three sections, and the order carries an argument: what WE are
+     missing, then what the food shows, then what the record is missing.
+     Putting the person's overdue lab above our own eighty-four blank
+     nutrient values would be the wrong way round, and they would be
+     right to notice. */
+  function renderGaps() {
+    const c = COPY.gaps;
+    $('#gapsTitle').textContent = c.title;
+    $('#gapsLede').textContent = c.lede;
+
+    /* ── 1. what the table does not have ── */
+    const d = Gaps.dataGaps();
+    const nutrientLabel = (k) =>
+      (Gaps.NUTRIENTS.find(n => n.key === k) || { label: k }).label.toLowerCase();
+
+    const dataBody = d.foods.length || d.uncounted
+      ? `${d.worst && d.worst.days
+            ? `<p class="note">${esc(c.data.affected(d.worst.days, d.loggedDays, d.worst.label))}</p>`
+            : ''}
+         ${d.foods.length ? `<ul class="gaplist">${d.foods.slice(0, 12).map(f =>
+           `<li class="gaplist__row">
+              <span class="gaplist__name">${esc(c.data.food(f.row.food_name, f.times))}</span>
+              <span class="gaplist__what">${esc(c.data.missingList(
+                f.missing.map(nutrientLabel)))}</span>
+            </li>`).join('')}</ul>` : ''}
+         ${d.uncounted ? `<p class="note">${esc(c.data.uncounted(d.uncounted))}</p>` : ''}
+         <p class="note">${esc(c.data.why)}</p>`
+      : `<p class="note">${esc(c.data.none)}</p>`;
+
+    $('#gapsData').innerHTML =
+      `<section class="card m-paper">
+         <h2 class="h2">${esc(c.data.title)}</h2>
+         <p class="helper">${esc(c.data.lede)}</p>
+         ${dataBody}
+       </section>`;
+
+    /* ── 2. days against targets ──
+       Only where a target exists. Measuring somebody against an
+       education default they never agreed to is the same overreach the
+       rings already refuse. */
+    const i = Gaps.intakeGaps();
+    const intakeBody = !i.hasTargets
+      ? `<p class="note">${esc(c.intake.noTargets)}</p>`
+      : i.nutrients.map(n => {
+          if (!n.target) return `<p class="note">${esc(c.intake.noTarget(n.label))}</p>`;
+          if (!n.logged) return `<p class="note">${esc(n.label)}: ${esc(c.intake.none)}</p>`;
+          return `<div class="gaprow">
+            <h3 class="h3">${esc(n.label)}</h3>
+            <p class="gaprow__counts">
+              <span class="chip ${n.over ? 'chip--warn' : 'chip--ok'}">${esc(c.intake.over(n.over))}</span>
+              <span class="chip chip--ok">${esc(c.intake.under(n.under))}</span>
+              ${n.partial ? `<span class="chip chip--muted">${esc(c.intake.partial(n.partial))}</span>` : ''}
+            </p>
+          </div>`;
+        }).join('') +
+        (i.nutrients.some(n => n.partial)
+          ? `<p class="note">${esc(c.intake.partialWhy)}</p>` : '');
+
+    $('#gapsIntake').innerHTML =
+      `<section class="card m-paper">
+         <h2 class="h2">${esc(c.intake.title)}</h2>
+         <p class="helper">${esc(c.intake.lede(i.windowDays))}</p>
+         ${intakeBody}
+       </section>`;
+
+    /* ── 3. the record ──
+       Delegated to Checklist, which already phrases staleness as a fact
+       about a record rather than a failing, and which owns the
+       thresholds. A second opinion here would eventually disagree with
+       the first in front of somebody. */
+    const g = Gaps.careGaps();
+    $('#gapsCare').innerHTML =
+      `<section class="card m-paper">
+         <h2 class="h2">${esc(c.care.title)}</h2>
+         <p class="helper">${esc(c.care.lede)}</p>
+         ${g.rows.length
+           ? `<ul class="gaplist">${g.rows.map(r =>
+               `<li class="gaplist__row">
+                  <span class="gaplist__name">${esc(r.label)}</span>
+                  <span class="gaplist__what">${esc(r.detail || '')}</span>
+                </li>`).join('')}</ul>`
+           : `<p class="note">${esc(c.care.none)}</p>`}
+       </section>`;
   }
 
   function renderFoods() {
@@ -3311,8 +3444,9 @@ const UI = (() => {
        cleared the moment the meal is analysed or abandoned. */
     mt.addEventListener('input', () => {
       $('#mealCount').textContent = mt.value.length;
-      $('#analyzeBtn').disabled = mt.value.trim().length === 0;
+      $('#analyzeBtn').disabled = analyzing || mt.value.trim().length === 0;
       Store.setSetting('mealDraft', mt.value);
+      noteIdle();
     });
 
     const draftText = Store.settings().mealDraft;
@@ -3616,6 +3750,7 @@ const UI = (() => {
     /* The food list. Search re-renders as you type — the table is small
        enough that debouncing would add latency rather than remove it. */
     $('#foodsBack').addEventListener('click', () => go(lastScreen));
+    $('#gapsBack').addEventListener('click', () => go(lastScreen));
     $('#foodsSearch').addEventListener('input', renderFoods);
     $('#foodsPricedOnly').addEventListener('change', (e) => {
       foodsPricedOnly = e.target.checked;
