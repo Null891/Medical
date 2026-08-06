@@ -217,16 +217,113 @@ Items (JSON): ${itemsJson}`;
     }
   ];
 
+  /* ═══════════ SPLITTING A MEAL INTO FOODS ═══════════
+     The box holds 500 characters and the placeholder invites a list —
+     "grilled chicken, baked potato with skin, and a glass of milk" —
+     but the generic path took the whole string, truncated it at 80
+     characters and called it ONE food. Everything after the first comma
+     was silently discarded, and the discarding was invisible: the meal
+     showed one unmatched item and a total that looked complete.
+
+     So: split the way people actually write lists. Commas, semicolons,
+     newlines, bullets, "+", "&", and the word "and" — but NOT the word
+     "with", which almost always attaches a preparation to the food
+     before it ("potato with skin", "toast with butter" is the rarer
+     reading and splitting it wrongly is worse than not splitting).
+
+     The cap exists because a person who pastes two hundred commas
+     should get a bounded, sane result rather than two hundred rows.
+     Anything past the cap is reported, not dropped in silence — see
+     `overflow` below, which the UI surfaces. */
+  const MAX_ITEMS = 20;
+
+  const SPLIT_ON = /\s*(?:[,;\n\r•·]|\band\b|\+|&)\s*/i;
+
+  /* A leading quantity, if the person wrote one. Handles "2", "1/2",
+     "1.5", and the bare articles. Returns nulls rather than guessing —
+     an unstated portion routes to the deliberately-wide fallback, which
+     is the honest answer, and inventing "1 serving" here is exactly the
+     failure that made an imported food table worthless. */
+  const QTY = /^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d*\.?\d+))\s*([a-z]+)?\s+(.*)$/i;
+  const ARTICLE = /^(?:a|an|one|some|my|the)\s+(.*)$/i;
+
+  const UNIT_WORDS = /^(g|kg|mg|oz|lb|ml|l|cup|cups|glass|glasses|slice|slices|piece|pieces|tbsp|tsp|tablespoon|tablespoons|teaspoon|teaspoons|can|cans|bowl|bowls|plate|plates|handful|handfuls|large|medium|small|whole|half)$/i;
+
+  function parseFragment(raw) {
+    let text = String(raw || '').trim().replace(/\s+/g, ' ');
+    if (!text) return null;
+
+    let quantity = null, unit = null, portionText = '';
+
+    const q = text.match(QTY);
+    if (q) {
+      const [, num, maybeUnit, rest] = q;
+      const parsed = num.indexOf('/') === -1 ? parseFloat(num) : (() => {
+        const parts = num.split(/\s+/);
+        const frac = parts[parts.length - 1].split('/');
+        const whole = parts.length > 1 ? parseFloat(parts[0]) : 0;
+        return whole + (parseFloat(frac[0]) / parseFloat(frac[1]));
+      })();
+      if (isFinite(parsed) && parsed > 0 && rest.trim()) {
+        quantity = parsed;
+        if (maybeUnit && UNIT_WORDS.test(maybeUnit)) {
+          unit = maybeUnit.toLowerCase();
+          portionText = `${num} ${maybeUnit}`;
+          text = rest.trim();
+        } else {
+          portionText = num;
+          text = ((maybeUnit ? maybeUnit + ' ' : '') + rest).trim();
+        }
+      }
+    } else {
+      const a = text.match(ARTICLE);
+      if (a && a[1].trim()) text = a[1].trim();
+    }
+
+    // "of" survives the article strip: "a glass of milk" -> "glass of milk"
+    text = text.replace(/^(?:cup|glass|bowl|plate|slice|piece|handful)s?\s+of\s+/i, '');
+    text = text.trim();
+    if (!text || text.length < 2) return null;
+
+    return {
+      name: text.slice(0, 80),
+      portion_quantity: quantity,
+      portion_unit: unit,
+      portion_text: portionText,
+      modifiers: [],
+      resolvable: true
+    };
+  }
+
+  /* Exported because test/hostile.js drives it directly with the things
+     people actually paste, and because the UI needs the same splitting
+     when it explains what it did with a long entry. */
+  function splitFoods(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return { items: [], overflow: 0 };
+
+    const fragments = raw.split(SPLIT_ON)
+      .map(f => f.trim())
+      .filter(f => f.length >= 2);
+
+    const items = [];
+    let overflow = 0;
+    fragments.forEach(f => {
+      if (items.length >= MAX_ITEMS) { overflow++; return; }
+      const item = parseFragment(f);
+      if (item) items.push(item);
+    });
+    return { items, overflow };
+  }
+
   function cannedExtraction(text) {
     const hit = CANNED.find(c => c.test.test(text));
     if (hit) return JSON.parse(JSON.stringify(hit.out));
-    // Generic: treat the whole string as one item, portion unstated.
-    const clean = String(text).trim().replace(/\s+/g, ' ').slice(0, 80);
+
+    const { items, overflow } = splitFoods(text);
     return {
-      items: clean ? [{
-        name: clean, portion_quantity: null, portion_unit: null,
-        portion_text: '', modifiers: [], resolvable: true
-      }] : [],
+      items,
+      overflow,
       needs_clarification: false, clarification_question: null
     };
   }
@@ -528,6 +625,7 @@ Rules:
 
   return {
     extract, extractFromPhoto, extractLab, estimateUnmatched, probe, demoMode,
+    splitFoods, MAX_ITEMS,
     EXTRACTION_PROMPT, EXTRACTION_SCHEMA, FALLBACK_PROMPT, FALLBACK_SCHEMA,
     PHOTO_PROMPT, TIMEOUT_MS, PHOTO_TIMEOUT_MS,
     isAvailable: () => endpointAvailable

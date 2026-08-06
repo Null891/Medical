@@ -430,6 +430,38 @@ button { font: inherit; color: inherit; }
 .chip--tiny { padding: 2px 8px; font-size: 12px; margin-left: 6px; vertical-align: middle; }
 .chiprow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
+/* ── A chip that is a button ──
+   Spelling suggestions and the routes out of a dead end. They read as
+   chips because they are alternatives, but they DO something, so they
+   need the affordances a chip does not have: a pointer, a hover, a
+   focus ring, and a tap target a thumb can actually hit. 44px is the
+   floor this project has held since the first commit; a suggestion is
+   not exempt from it because it is small on screen. */
+.chip--pick {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  color: var(--color-accent);
+  background: var(--color-tint-accent);
+  border-color: var(--color-accent);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.chip--pick:hover { background: var(--color-surface); }
+.chip--pick:active { background: var(--color-tint-accent); }
+
+/* The block that holds them. Separated from the numbers above it,
+   because "did you mean" is a question about the row, not another fact
+   in it. */
+.itemrow__near {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-hairline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip--pick { transition: none; }
+}
+
 .provenance {
   display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap;
   margin-top: var(--space-3); padding-top: var(--space-3);

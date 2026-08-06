@@ -547,8 +547,25 @@ const UI = (() => {
     return placed;
   }
 
+  /* Reads the three target boxes, and REFUSES if they are not there.
+
+     They are not always there. The onboarding is staged, and the save
+     button is bound at wire() time for a container that only exists once
+     the reader has reached the targets step. Fire it before then — which
+     a keyboard user can do, an assistive technology can do, and an
+     automated walk absolutely does — and this read `.value` off null and
+     threw an uncaught TypeError, taking the whole screen with it.
+
+     Declining is the correct answer, not defensiveness for its own sake:
+     a form whose fields are not on screen has nothing to say, and `ok:
+     false` is already the contract every caller checks before writing
+     anything. Found by test/hostile.js clicking the primary button on
+     every screen with every kind of rubbish in the field above it. */
   function readTargets(sel) {
     const out = { ok: true, values: {} };
+    const present = ['k', 'p', 'na'].every(k => $(`${sel} [data-tf="${k}"]`));
+    if (!present) return { ok: false, values: {} };
+
     ['k', 'p', 'na'].forEach(k => {
       const input = $(`${sel} [data-tf="${k}"]`);
       const errEl = $(`${sel} [data-err="${k}"]`);
@@ -1097,7 +1114,24 @@ const UI = (() => {
     showLogStep('log-input');
   }
 
+  /* ── one analysis at a time ──
+     The button disables itself while a request is in flight, which
+     stops the obvious double-tap. It did NOT stop the real one: typing
+     fires the input handler, the input handler re-enables the button
+     from the text length alone, and a person who edits their meal while
+     waiting starts a second analysis over the top of the first. Whichever
+     response lands last wins, and it is not necessarily the one for the
+     text now on screen — so the review could describe a meal the person
+     had already changed.
+
+     A flag rather than a cancellation: there is nothing to cancel that
+     matters, and the honest behaviour is to let the first request finish
+     for the text it was given. */
+  let analyzing = false;
+
   async function analyze(text, isRetryOfClarify) {
+    if (analyzing) return;
+    analyzing = true;
     $('#logError').hidden = true;
     $('#logPending').hidden = false;
     $('#analyzeBtn').disabled = true;
@@ -1107,6 +1141,7 @@ const UI = (() => {
     if (!isRetryOfClarify) {
       if (!Store.canAnalyze()) {
         $('#logPending').hidden = true;
+        analyzing = false;
         showError(COPY.capReached);
         return;
       }
@@ -1128,11 +1163,23 @@ const UI = (() => {
         showLogStep('log-clarify');
         return;
       }
+      /* A list longer than the splitter's ceiling. Somebody who pastes a
+         shopping list gets told where we stopped rather than silently
+         handed the first twenty — losing food from a meal total without
+         saying so is the same class of failure as counting a missing
+         nutrient as zero, and this app does not do that either. */
+      if (data.overflow) {
+        toast(COPY.unrecognised.overflow(data.items.length, data.overflow));
+      }
       buildReview(text, data.items);
     } catch (e) {
       $('#logPending').hidden = true;
       $('#analyzeBtn').disabled = false;
       showError(COPY.analyzeError);
+    } finally {
+      /* Released here and nowhere else, so no early return above can
+         leave the screen permanently unable to analyse again. */
+      analyzing = false;
     }
   }
 
@@ -1330,12 +1377,17 @@ const UI = (() => {
             sodium_high_mg: e.estimable ? e.sodium_high_mg : null,
             additive_phosphate_flag: false,
             salt_substitute_flag: false,
-            _basis: e.basis || ''
+            _basis: e.basis || '',
+            /* Carried so the row can ask "did you mean…?". These are
+               spelling candidates and nothing more — see
+               Resolve.nearMisses() for why they are never applied
+               without somebody reading the name and tapping it. */
+            _near: src.near || []
           });
         });
       } catch (err) {
         // The fallback failing is not a reason to invent numbers.
-        unmatched.forEach(u => items.push(uncountedItem(u.name, u.portion_text)));
+        unmatched.forEach(u => items.push(uncountedItem(u.name, u.portion_text, u.near)));
       }
     }
 
@@ -1349,13 +1401,14 @@ const UI = (() => {
     showLogStep('log-review');
   }
 
-  const uncountedItem = (name, portion) => ({
+  const uncountedItem = (name, portion, near) => ({
     name: name || 'Unidentified item', portion_text: portion || '',
     quantity_multiplier: 1, matched_anchor_id: null, source: 'uncounted',
     potassium_low_mg: null, potassium_high_mg: null,
     phosphorus_low_mg: null, phosphorus_high_mg: null,
     sodium_low_mg: null, sodium_high_mg: null,
-    additive_phosphate_flag: false, salt_substitute_flag: false
+    additive_phosphate_flag: false, salt_substitute_flag: false,
+    _near: near || []
   });
 
   function renderReview() {
@@ -1405,6 +1458,42 @@ const UI = (() => {
               aria-pressed="${it.photo_portion ? 'false' : Math.abs((it.quantity_multiplier || 1) - m) < 0.01}">${m}×</button>`
           ).join('') + `</div>`
         : '';
+
+      /* ── "Did you mean…?" ──
+         A row we could not price, next to the closest spellings in the
+         table. It appears ONLY on unpriced rows: a food that matched
+         needs no second-guessing, and offering alternatives beside a
+         confident number would suggest the number is in doubt.
+
+         Each is a button because accepting one is a decision. The app
+         will not apply a spelling correction on somebody's behalf —
+         "beet" and "beef" are one keystroke apart and four times apart
+         in potassium, so the person reads the name and chooses. */
+      const near = (it.source !== 'anchor' && Array.isArray(it._near)) ? it._near : [];
+      const suggestions = near.length
+        ? `<div class="itemrow__near">
+             <p class="itemrow__meta">${esc(COPY.didYouMean)}</p>
+             <div class="chiprow">${near.map(n =>
+               `<button type="button" class="chip chip--pick" data-near-item="${idx}"
+                        data-near-id="${esc(n.id)}">${esc(n.food_name)}</button>`
+             ).join('')}</div>
+           </div>`
+        /* Nothing close enough to offer. This is the sentence somebody
+           gets for "brocoli" when broccoli is not in the table at all,
+           and it has to do three things: say plainly that we do not know
+           it, say why without blaming the typing, and give somewhere to
+           go. A "not found" with no next step is where people stop. */
+        : (it.source === 'uncounted'
+          ? `<div class="itemrow__near">
+               <p class="itemrow__meta">${esc(COPY.unrecognised.one(it.name))}</p>
+               <p class="itemrow__meta">${esc(COPY.unrecognised.why)}</p>
+               <div class="chiprow">
+                 <button type="button" class="chip chip--pick" data-nav="foods">${esc(COPY.unrecognised.tryList)}</button>
+                 <button type="button" class="chip chip--pick" data-nav="label">${esc(COPY.unrecognised.tryLabel)}</button>
+               </div>
+               <p class="itemrow__meta">${esc(COPY.unrecognised.keepAnyway)}</p>
+             </div>`
+          : '');
 
       /* Where a photo-derived range came from, and how to make it
          narrower. This sentence is the whole reason estimating from a
@@ -1477,6 +1566,7 @@ const UI = (() => {
           ${it._note ? `<p class="itemrow__meta">${esc(it._note)}</p>` : ''}
           ${it._leached ? `<p class="itemrow__meta itemrow__meta--good">${esc(COPY.leachApplied)}</p>` : ''}
           ${photoNote}
+          ${suggestions}
           ${stepper}
           ${cooking}
           ${provenance}
@@ -3009,7 +3099,7 @@ const UI = (() => {
     // Global delegated clicks
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
-        '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
+        '[data-delete-meal],[data-remove-item],[data-near-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
         '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle],[data-foodsort]');
       if (!el) return;
 
@@ -3128,6 +3218,22 @@ const UI = (() => {
         renderReview();
         return;
       }
+      /* Accepting a spelling suggestion. This is the ONLY place a near
+         miss becomes a priced item, and it takes a deliberate tap on a
+         named food to get here — the matcher itself never crosses this
+         line. The portion the person typed is kept where they gave one;
+         it was never the part that was misspelled. */
+      if (el.dataset.nearItem !== undefined) {
+        const i = Number(el.dataset.nearItem);
+        const current = draft.items[i];
+        const picked = Resolve.fromPicker(el.dataset.nearId, 1);
+        if (!current || !picked) return;
+        if (current.portion_text) picked.portion_text = current.portion_text;
+        draft.items[i] = picked;
+        renderReview();
+        toast(COPY.didYouMeanApplied(picked.name));
+        return;
+      }
       if (el.dataset.stepItem !== undefined) {
         const i = Number(el.dataset.stepItem);
         const mult = Number(el.dataset.mult);
@@ -3213,7 +3319,7 @@ const UI = (() => {
     if (draftText) {
       mt.value = draftText;
       $('#mealCount').textContent = draftText.length;
-      $('#analyzeBtn').disabled = draftText.trim().length === 0;
+      $('#analyzeBtn').disabled = analyzing || draftText.trim().length === 0;
     }
     $('#analyzeBtn').addEventListener('click', () => analyze(mt.value.trim(), false));
     $('#toPickerBtn').addEventListener('click', () => { renderPicker(''); showLogStep('log-picker'); });

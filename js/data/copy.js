@@ -490,6 +490,43 @@ const COPY_EN = {
   emptyExtraction:
     "We didn't spot any foods in that. Try naming them one at a time — for example: chicken, rice, green beans.",
   uncountedItem: "Not counted — we didn't have enough detail to estimate this item.",
+
+  /* ── When the spelling is close but not close enough ──
+     Phrased as a question the app is asking, because that is exactly
+     what it is. The matcher will not apply a correction on somebody's
+     behalf: beet and beef are one keystroke apart and four times apart
+     in potassium, so a person reads the name and taps it. See
+     Resolve.nearMisses().
+
+     "Did you mean" and not "We think you meant" — the second sounds
+     like it has already decided and is being polite about it. */
+  didYouMean: 'Did you mean one of these?',
+  didYouMeanApplied: (name) => `Using ${name}. Change the portion below if it isn't right.`,
+
+  /* ── The dead end, and the way out of it ──
+     Three different nothings, and they are not the same nothing. A word
+     we do not stock, a word that is not a food, and more foods than one
+     entry can hold each need their own sentence and their own next
+     step — "we couldn't find that" with nowhere to go is where somebody
+     puts the phone down. */
+  unrecognised: {
+    one: (name) =>
+      `Sorry — we don't recognise "${name}", and we'd rather say so than guess at it.`,
+    /* The table is 55 foods. That is a real limit and pretending
+       otherwise by inventing a number would be worse than admitting it. */
+    why: 'It may be spelled differently here, or it may not be in our food list yet.',
+    /* Every route out is something that actually works right now. */
+    tryList: 'Browse the food list',
+    tryLabel: 'Check its label instead',
+    keepAnyway:
+      'You can still keep it in the meal — it will show as not counted, and the day is marked partial so nothing is quietly under-reported.',
+    /* Splitting a long entry has a ceiling. Somebody who pastes a
+       shopping list should be told where we stopped, not silently given
+       the first twenty. */
+    overflow: (shown, dropped) =>
+      `That was a long list — we took the first ${shown} foods and left ${dropped} out. ` +
+      `Log the rest as a second meal so nothing goes missing.`
+  },
   /* ── Photo portions ──
      A photograph does produce a milligram estimate now, and these
      sentences are why that is defensible. Each names the judgement the

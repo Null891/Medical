@@ -111,6 +111,160 @@ const Resolve = (() => {
     return { rows, how: 'substring' };
   }
 
+  /* ═══════════ NEAR MISSES — spelling, and why this only suggests ═══════════
+     Everything above is exact or substring. "potatoe", "brocoli",
+     "chiken" and "yoghurt" all fall straight through it to nothing,
+     which is most of what real typing looks like.
+
+     THIS NEVER RESOLVES ANYTHING. It returns candidates for a human to
+     confirm, and that restraint is the whole design. Edit distance
+     measures keyboard accidents; it knows nothing about food. In this
+     table alone, beet and beef are one edit apart and their potassium
+     differs by a factor of four. Silently correcting a spelling into the
+     wrong food would produce a confident, wrong number — the single
+     failure mode this app is built to not have. A suggestion the person
+     accepts is a different act entirely: they read the name.
+
+     THREE GUARDS, each closing a specific way this goes wrong:
+
+     1. BUDGET BY LENGTH, measured on the shorter word. Four letters or
+        fewer get zero edits — at that length one substitution is usually
+        a different word, not a typo (milk/silk, rice/ice, corn/cord).
+        Five to seven get one. Eight or more get two, because long words
+        are where people actually mistype and where a single edit is
+        overwhelmingly likely to be an accident.
+
+     2. THE FIRST LETTER MUST MATCH. Typos land in the middle and the end
+        far more often than on the first keystroke, and this one cheap
+        rule removes most cross-food collisions outright: beet/feet,
+        corn/born, pear/bear, milk/silk.
+
+     3. LENGTHS MUST BE CLOSE. Within two, so a short word cannot
+        collapse into a long one.
+
+     [NEEDS VERIFICATION — the thresholds are reasoned from the table's
+     own contents, not from measured typing data. They were chosen to
+     fail closed: a missed suggestion costs a person one more tap, a
+     wrong one costs them a wrong number.] */
+
+  /* Damerau-Levenshtein, bounded. Returns `max + 1` as soon as it knows
+     the answer exceeds the budget, so the common case — a word that is
+     nothing like this one — stops after a row or two rather than filling
+     a whole matrix for an answer nobody wants. */
+  function editDistance(a, b, max) {
+    if (a === b) return 0;
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    if (!a.length || !b.length) return Math.max(a.length, b.length);
+
+    let prev2 = null;
+    let prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      const cur = new Array(b.length + 1);
+      cur[0] = i;
+      let best = cur[0];
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        let v = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+        // the transposition case: "recieve" for "receive"
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+          v = Math.min(v, prev2[j - 2] + 1);
+        }
+        cur[j] = v;
+        if (v < best) best = v;
+      }
+      if (best > max) return max + 1;      // no cell can improve from here
+      prev2 = prev; prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  function budgetFor(len) {
+    if (len <= 4) return 0;
+    if (len <= 7) return 1;
+    return 2;
+  }
+
+  /* One word against one word, with all three guards applied. */
+  function nearWord(a, b) {
+    if (!a || !b) return null;
+    if (a[0] !== b[0]) return null;                       // guard 2
+    if (Math.abs(a.length - b.length) > 2) return null;   // guard 3
+    const budget = budgetFor(Math.min(a.length, b.length));
+    if (budget === 0) return a === b ? 0 : null;          // guard 1
+    const d = editDistance(a, b, budget);
+    return d <= budget ? d : null;
+  }
+
+  /* Words that describe how a food was prepared or how much of it there
+     is, rather than which food it is. They must never be the word a
+     suggestion rests on.
+
+     This is not tidiness. Scoring on the best single word pairing, the
+     first version of this offered SALMON as a distance-0 suggestion for
+     "grilled chiken breast" — because "grilled" is spelled correctly and
+     appears in "grilled salmon". A perfect score, on the one word that
+     carried no information about the food. Two of the table's aliases
+     share a preparation and that is enough to look like certainty. */
+  const NOT_INFORMATIVE = new Set(
+    MODIFIER_TOKENS.join(' ').split(' ').concat([
+      'with', 'without', 'and', 'the', 'some', 'skin', 'fat', 'free',
+      'large', 'small', 'medium', 'cup', 'cups', 'glass', 'slice', 'slices',
+      'piece', 'pieces', 'serving', 'servings', 'half', 'bowl', 'plate'
+    ])
+  );
+
+  /* Candidates for a query that matched nothing, best first.
+
+     Scored on the BEST single word pairing rather than on the whole
+     string, because the informative word is rarely the only one: in
+     "grilled chiken breast" two words are already spelled correctly and
+     averaging across them would bury the misspelled food under its
+     adjectives. The pairing has to be on a word that names a food. */
+  function nearMisses(key, limit) {
+    const norm = normalize(key);
+    if (!norm || norm.length < 3) return [];
+    const words = norm.split(' ')
+      .filter(w => w.length >= 3 && !NOT_INFORMATIVE.has(w));
+    if (!words.length) return [];
+
+    const seen = {};
+    const out = [];
+
+    ANCHOR_FOODS.forEach(f => {
+      let best = null;
+      (f.aliases || []).forEach(alias => {
+        const na = normalize(alias);
+        if (!na) return;
+        na.split(' ').forEach(aw => {
+          if (aw.length < 3 || NOT_INFORMATIVE.has(aw)) return;
+          words.forEach(qw => {
+            const d = nearWord(qw, aw);
+            if (d === null) return;
+            /* Prefer the shorter edit; break ties toward the longer
+               alias word, which is the more specific claim. */
+            if (best === null || d < best.d || (d === best.d && aw.length > best.len)) {
+              best = { d, len: aw.length, alias };
+            }
+          });
+        });
+      });
+      if (best === null) return;
+      // One row per base food — five spellings of potato is not a menu.
+      const bucket = f.base_food || f.id;
+      if (seen[bucket] !== undefined && out[seen[bucket]].distance <= best.d) return;
+      const entry = { id: f.id, food_name: f.food_name, base_food: f.base_food,
+                      distance: best.d, matched_alias: best.alias };
+      if (seen[bucket] === undefined) { seen[bucket] = out.length; out.push(entry); }
+      else out[seen[bucket]] = entry;
+    });
+
+    out.sort((a, b) => a.distance - b.distance ||
+                       a.food_name.localeCompare(b.food_name));
+    return out.slice(0, limit || 4);
+  }
+
   /* ── portion conversion ──
      "glass = 1 cup" and "can = 12 fl oz" are household conventions, not
      clinical figures. Anything unrecognized returns null, which routes
@@ -258,7 +412,14 @@ const Resolve = (() => {
       const key = [item.name, ...(item.modifiers || [])].join(' ');
       const { rows } = match(key);
 
-      if (!rows.length) { unmatched.push(item); return; }
+      /* An unmatched item leaves with its near misses attached, not
+         resolved by them. The suggestion is a question the UI asks; only
+         a tap answers it. See nearMisses() for why that separation is
+         not negotiable. */
+      if (!rows.length) {
+        unmatched.push(Object.assign({}, item, { near: nearMisses(key) }));
+        return;
+      }
 
       const bases = [...new Set(rows.map(r => r.base_food))];
       if (bases.length > 1) { unmatched.push(item); return; }  // never guess across foods
@@ -372,7 +533,7 @@ const Resolve = (() => {
   }
 
   return {
-    normalize, match, resolveItems, fromPicker, rescale,
+    normalize, match, nearMisses, editDistance, resolveItems, fromPicker, rescale,
     totals, confidence, sodiumConfidence, toAnchorUnits,
     CLAMP_MIN, CLAMP_MAX
   };
