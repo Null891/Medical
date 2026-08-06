@@ -150,8 +150,19 @@ async function scan(label, prepare) {
   R.Seed.runFull();
   R.Store.setSetting('refusalsSeen', true);
 
-  for (const screen of ['home', 'log', 'kitchen', 'labs', 'more', 'settings',
-                        'references', 'passport', 'label']) {
+  /* DERIVED from the router, not typed here. The literal list this
+     replaced silently stopped covering the Food List the moment that
+     screen shipped — a new screen would have gone un-scanned until
+     somebody noticed, which is the same drift that left three harnesses
+     loading a stale asset list.
+
+     Only the screens handled separately are excluded: onboarding and
+     the refusals have their own scans above, `detail` is reached by
+     opening a meal rather than by navigating, and `learn` is a
+     container that renders nothing until a card is chosen. */
+  const SEPARATE = ['onboarding', 'detail', 'learn'];
+  const screens = R.UI.SCREENS.filter(s => SEPARATE.indexOf(s) === -1);
+  for (const screen of screens) {
     await scan(`${screen} (with data)`, () => R.UI.go(screen));
   }
 

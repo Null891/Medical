@@ -1700,8 +1700,13 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
         const what = c.querySelector('.hub__what');
         return what && what.textContent.trim().length > 40;
       }), true);
+    /* Derived from the router, not a hand-typed whitelist. The literal
+       list this replaced went stale the moment a card was added — the
+       same drift that left three harnesses loading an asset list the
+       app had outgrown. */
     check('  ...and every card routes somewhere real',
-      hubCards.every(c => ['label','passport','references','settings'].includes(c.dataset.nav)), true);
+      hubCards.every(c => window.RenalRoute.UI.SCREENS.includes(c.dataset.nav)), true);
+    check('  ...including the food list', hubCards.some(c => c.dataset.nav === 'foods'), true);
 
     // The coverage panel — the strongest credibility card in the app —
     // moved out of Settings, where it sat between a text-size control
@@ -1903,6 +1908,75 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     click('#saveMealBtn'); await wait(60);
     check('the second meal gets no beat at all', vis('#firstMealCard'), false);
     check('  ...and the flag is what remembers', S.settings().firstMealDone, true);
+  }
+
+  /* ═══ 39. THE FOOD LIST ═══
+     searchFoods() existed but only inside the log flow, so checking a
+     food meant starting a meal you were not eating. The page is a view
+     over existing logic; what needed thinking about is the gaps, and
+     that is what most of these assert. */
+  console.log('\n═══ 39. THE FOOD LIST ═══');
+  {
+    window.RenalRoute.UI.go('foods'); await wait(40);
+    const A = window.RenalRoute.anchors;
+    const names = () => $$('#foodsList .foodrow__name').map(e => e.textContent);
+    const nums = () => $$('#foodsList .foodrow').map(r =>
+      r.querySelector('.foodrow__nums').textContent);
+
+    check('the food list opens', vis('#scr-foods'), true);
+    check('  ...showing every food by default', names().length, A.length);
+    check('  ...alphabetically', names()[0] < names()[1], true);
+    check('  ...and says how many', /Showing \d+ of \d+/.test($('#foodsCount').textContent), true);
+
+    /* RULE 1 — A FOOD WITH NO VALUE IS NEVER RANKED AMONG FOODS THAT
+       HAVE ONE. Sorting with `(a.k_high || 0) - (b.k_high || 0)` would
+       put every unpriced food at the TOP of the low-potassium list —
+       exactly where a CKD patient looks for something safe to eat. */
+    click('[data-foodsort="k"]'); await wait(30);
+    const ranked = $$('#foodsList .foodrow').map(r =>
+      r.querySelector('.foodrow__nums').textContent);
+    check('sorted by potassium, nothing unpriced is ranked',
+      ranked.every(t => !/K —/.test(t)), true);
+    check('  ...and the ranked ones ascend', (() => {
+      const v = ranked.map(t => parseInt((t.match(/K ([\d,]+)/) || [])[1] || '0', 10));
+      return v.every((n, i) => i === 0 || v[i - 1] <= n);
+    })(), true);
+    check('  ...the unpriced are named, not hidden',
+      /cannot rank for potassium/.test($('#foodsUnpriced').textContent), true);
+    check('  ...and counted', /^\d+ foods? we cannot rank/.test(
+      $('#foodsUnpriced h2').textContent), true);
+    check('  ...and said not to be zero',
+      /not zero|do not know/i.test($('#foodsUnpriced').textContent), true);
+
+    /* RULE 2 — NO BADGE WITHOUT DATA. Absence must never read as
+       reassurance. Same rule the picker already follows. */
+    const badged = $$('#foodsList .foodrow').filter(r => r.querySelector('.chip'));
+    check('some foods carry the lower-potassium badge', badged.length > 0, true);
+    check('  ...and NONE of them lack a potassium figure',
+      badged.filter(r => /K —/.test(r.querySelector('.foodrow__nums').textContent)).length, 0);
+
+    // Provenance at the point of use.
+    check('every row shows where its figures came from',
+      $$('#foodsList .foodrow__src').length, names().length);
+
+    // The filter, for somebody hunting options rather than browsing.
+    click('#foodsPricedOnly'); await wait(30);
+    check('the filter hides what cannot be ranked', $('#foodsUnpriced').innerHTML.trim(), '');
+    click('#foodsPricedOnly'); await wait(30);
+
+    // Search reuses searchFoods(), so this checks the wiring not the matcher.
+    type('#foodsSearch', 'potato'); await wait(30);
+    check('search narrows the list', names().length < A.length, true);
+    check('  ...to things that are actually potatoes',
+      names().every(n => /potato/i.test(n)), true);
+    type('#foodsSearch', 'zzzznothing'); await wait(30);
+    check('a search with no matches says so, without calling it an error',
+      /\berror\b/i.test($('#foodsList').textContent), false);
+    type('#foodsSearch', ''); await wait(30);
+
+    // A missing value renders as one em-dash, not a range between two.
+    check('a missing nutrient reads as one dash, not a broken range',
+      nums().some(t => /P —(?!–)/.test(t)), true);
   }
 
   console.log('\n═══ 21. NO ERRORS ANYWHERE ═══');

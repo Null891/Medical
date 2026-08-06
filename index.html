@@ -261,7 +261,7 @@
   <div class="modal modal--tall">
     <h1 class="modal__title" id="refusalsTitle"></h1>
     <div class="modal__body" id="refusalsBody"></div>
-    <button type="button" class="btn btn--primary btn--block" id="refusalsGo"></button>
+    <button type="button" class="btn btn--primary btn--block" id="refusalsGo">Got it</button>
   </div>
 </div>
 
@@ -695,6 +695,11 @@
           <span class="hub__what">Paste an ingredient list and RenalRoute names the phosphate additives, added potassium, and salt substitutes it recognises — the things that never appear on the nutrition panel.</span>
         </button>
 
+        <button type="button" class="hub__card m-stone" data-nav="foods">
+          <span class="hub__name">The food list</span>
+          <span class="hub__what">Every food RenalRoute can price, sorted by whichever nutrient you are watching. For checking a food without logging a meal you are not eating.</span>
+        </button>
+
         <button type="button" class="hub__card m-stone" data-nav="passport">
           <span class="hub__name">Health passport</span>
           <span class="hub__what">A card for an ambulance, a new doctor, or a pharmacy in another city. Conditions, medicines, allergies, who to call. Works offline and prints.</span>
@@ -717,6 +722,7 @@
         <li><button type="button" class="rowbtn" data-learn="medicines">Medicines and potassium<span aria-hidden="true">&rsaquo;</span></button></li>
         <li><button type="button" class="rowbtn" data-learn="warnings">Warning signs worth knowing<span aria-hidden="true">&rsaquo;</span></button></li>
         <li><button type="button" class="rowbtn" data-learn="leaching">Cooking tip: lowering potassium<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="cost">When the diet costs more than the budget<span aria-hidden="true">&rsaquo;</span></button></li>
         <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
       </ul>
 
@@ -758,7 +764,8 @@
         <h2 class="h2">About &amp; disclaimers</h2>
         <ul class="rowlist">
           <li><button type="button" class="rowbtn" id="readDisclaimerBtn">Read the full disclaimer<span aria-hidden="true">&rsaquo;</span></button></li>
-          <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
+          <li><button type="button" class="rowbtn" data-learn="cost">When the diet costs more than the budget<span aria-hidden="true">&rsaquo;</span></button></li>
+        <li><button type="button" class="rowbtn" data-learn="ai">How RenalRoute uses AI<span aria-hidden="true">&rsaquo;</span></button></li>
         </ul>
       </div>
       <!-- ═══════════ REFERENCE-BUILD CONTROLS ═══════════
@@ -961,6 +968,47 @@
       </div>
 
       <div id="kitchenBody"></div>
+    </section>
+
+    <!-- ───────── FOOD LIST ─────────
+         The table, browsable. searchFoods() already existed but only
+         inside the log flow, so the only way to ask "is cabbage low in
+         potassium?" was to start logging a meal you are not eating —
+         the wrong shape for the question, and it is the question
+         somebody actually has standing in a supermarket aisle.
+
+         The hard part of this screen is the gaps. Most rows are missing
+         at least one nutrient, and a sortable table of mostly blank
+         columns looks broken even when it is honest. Two rules keep it
+         straight, both enforced in renderFoods():
+
+           a food with no value for the sorted nutrient is never ranked
+           among the ones that have one — it is not "0 mg";
+
+           a food with no potassium value gets no low-potassium badge,
+           because absence of data must never read as reassurance. -->
+    <section class="screen" id="scr-foods" hidden>
+      <button type="button" class="linkbtn linkbtn--back" id="foodsBack">← Back</button>
+      <h1 class="h1" id="foodsTitle"></h1>
+      <p class="helper" id="foodsLede"></p>
+
+      <label class="field">
+        <span class="field__label" id="foodsSearchLabel"></span>
+        <input type="search" id="foodsSearch" autocomplete="off">
+      </label>
+
+      <div class="foods__controls">
+        <div class="chipset" role="radiogroup" aria-label="Sort by" id="foodsSort"></div>
+        <label class="foods__toggle">
+          <input type="checkbox" id="foodsPricedOnly">
+          <span id="foodsPricedLabel"></span>
+        </label>
+      </div>
+
+      <p class="note" id="foodsCount" role="status"></p>
+      <div id="foodsList"></div>
+      <div id="foodsUnpriced"></div>
+      <p class="note note--src" id="foodsFoot"></p>
     </section>
 
     <section class="screen" id="scr-references" hidden>

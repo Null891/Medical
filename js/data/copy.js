@@ -89,6 +89,34 @@ const COPY_EN = {
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
     'Educational use only — see Settings for exactly what this build does and does not know.',
 
+  /* The food table, browsable. Every string here has to hold one line:
+     a gap is a gap, never a zero and never a reassurance. */
+  foods: {
+    title: 'The food list',
+    lede:
+      'Every food RenalRoute can price, with the figures it uses and where each one came from. ' +
+      'Ranges, not single numbers — the honest ones are ranges.',
+    searchLabel: 'Search foods',
+    sortName: 'A–Z',
+    sortK: 'Potassium',
+    sortP: 'Phosphorus',
+    sortNa: 'Sodium',
+    pricedOnly: 'Only foods we can price for the sorted nutrient',
+    count: (shown, total) => `Showing ${shown} of ${total} foods.`,
+    none: 'Nothing matched. Try a simpler word — "potato" rather than "baked potato with skin".',
+    /* Named, not hidden. A food we cannot rank still exists and still
+       has whatever figures we do hold; burying it would be a different
+       kind of dishonesty from ranking it at zero. */
+    unpriced: (n, nutrient) =>
+      `${n} food${n === 1 ? '' : 's'} we cannot rank for ${nutrient}`,
+    unpricedWhy:
+      'No published figure for that nutrient in our table yet, so these are listed rather than ' +
+      'ordered. They are not zero — we simply do not know.',
+    foot:
+      'Figures are per the serving shown. Where a nutrient is blank, the table has no value for it ' +
+      'and the app leaves it out of your totals rather than counting it as nothing.'
+  },
+
   scenes: {
     change: 'Change',
     close: 'Done'
@@ -818,6 +846,42 @@ const COPY_EN = {
         'studies found, because counting too little potassium is the mistake that matters here.'
       ]
     },
+    /* ── Cost ──
+       Food insecurity is a real and under-discussed part of renal diet
+       adherence: the foods a kidney diet leans on — fresh produce,
+       lower-sodium versions of ordinary things, small frequent
+       shops — are the expensive ones, and "just buy fresh" is advice
+       that assumes a budget.
+
+       DELIBERATELY NOT GEOGRAPHIC. A version of this naming one
+       county's food bank was proposed, and it would be wrong or
+       useless for everybody outside it. Pointing at the finders people
+       can use wherever they live is both more honest and more useful.
+
+       And no cost model. This app has no idea what anybody's shopping
+       costs, so it does not claim to detect when a diet has become
+       unaffordable — it says the thing is common and names where help
+       is found. Inventing a trigger would mean inventing the data. */
+    cost: {
+      title: 'When the diet costs more than the budget',
+      body: [
+        'A kidney diet leans on the expensive end of the shop. Fresh vegetables, lower-sodium versions of ' +
+        'ordinary tins, smaller and more frequent trips — all of it costs more than the packaged food it ' +
+        'replaces, and none of the advice usually says so.',
+        'If that is where you are, it is common and it is worth saying out loud to your care team. Renal ' +
+        'dietitians know which swaps are cheap and which are not, and they can only work with what they ' +
+        'know about your week.',
+        'Food assistance exists and most people who qualify never claim it. In the United States, SNAP ' +
+        '(called CalFresh in California) covers groceries, and some states add a monthly fruit-and-vegetable ' +
+        'top-up on the same card. Feeding America lists the food bank covering any postcode, and many run ' +
+        'produce distributions specifically because fresh food is what a food parcel usually lacks.',
+        'RenalRoute does not know what your shopping costs and will never guess. It has no way to tell ' +
+        'whether a week was expensive, and a nutrition app announcing that you cannot afford your diet ' +
+        'would be both wrong and unwelcome. This card is here because the problem is common, not because ' +
+        'the app detected anything about you.'
+      ]
+    },
+
     ai: {
       title: 'How RenalRoute uses AI',
       body: [

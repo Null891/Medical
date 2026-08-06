@@ -1245,3 +1245,71 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
    instead of as a grade. */
 .ring__fill.is-partial,
 .ring__value.is-partial { stroke: var(--color-text-secondary); }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE FOOD LIST
+   ───────────────────────────────────────────────────────────────
+   A reference you can browse. The layout problem is that most rows
+   are missing at least one nutrient, so the three figures have to sit
+   comfortably beside an em-dash without the row looking broken —
+   which is why they are a flow of labelled values rather than a
+   table with empty cells.
+   ═══════════════════════════════════════════════════════════════ */
+.foods__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+/* 44px minimum, like every other target in the app. */
+.foods__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.foods__toggle input { width: 20px; height: 20px; }
+
+.foodrow {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.foodrow__head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.foodrow__name { font-size: var(--type-body); font-weight: 600; }
+.foodrow__serving {
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  margin: 2px 0 0;
+}
+.foodrow__nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
+}
+.foodrow__unit { color: var(--color-text-secondary); }
+/* Provenance at the point of use — the same argument the meal rows
+   make. A number with a visible source is a different object from a
+   number without one. */
+.foodrow__src {
+  font-size: var(--type-caption);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
+  opacity: 0.85;
+}
+
+/* The foods a sorted nutrient cannot rank. Set apart and named, not
+   hidden and not interleaved — they are not zero, we just do not
+   know. */
+.foods__unpriced {
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--color-hairline);
+}

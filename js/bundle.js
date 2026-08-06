@@ -94,6 +94,34 @@ const COPY_EN = {
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
     'Educational use only — see Settings for exactly what this build does and does not know.',
 
+  /* The food table, browsable. Every string here has to hold one line:
+     a gap is a gap, never a zero and never a reassurance. */
+  foods: {
+    title: 'The food list',
+    lede:
+      'Every food RenalRoute can price, with the figures it uses and where each one came from. ' +
+      'Ranges, not single numbers — the honest ones are ranges.',
+    searchLabel: 'Search foods',
+    sortName: 'A–Z',
+    sortK: 'Potassium',
+    sortP: 'Phosphorus',
+    sortNa: 'Sodium',
+    pricedOnly: 'Only foods we can price for the sorted nutrient',
+    count: (shown, total) => `Showing ${shown} of ${total} foods.`,
+    none: 'Nothing matched. Try a simpler word — "potato" rather than "baked potato with skin".',
+    /* Named, not hidden. A food we cannot rank still exists and still
+       has whatever figures we do hold; burying it would be a different
+       kind of dishonesty from ranking it at zero. */
+    unpriced: (n, nutrient) =>
+      `${n} food${n === 1 ? '' : 's'} we cannot rank for ${nutrient}`,
+    unpricedWhy:
+      'No published figure for that nutrient in our table yet, so these are listed rather than ' +
+      'ordered. They are not zero — we simply do not know.',
+    foot:
+      'Figures are per the serving shown. Where a nutrient is blank, the table has no value for it ' +
+      'and the app leaves it out of your totals rather than counting it as nothing.'
+  },
+
   scenes: {
     change: 'Change',
     close: 'Done'
@@ -823,6 +851,42 @@ const COPY_EN = {
         'studies found, because counting too little potassium is the mistake that matters here.'
       ]
     },
+    /* ── Cost ──
+       Food insecurity is a real and under-discussed part of renal diet
+       adherence: the foods a kidney diet leans on — fresh produce,
+       lower-sodium versions of ordinary things, small frequent
+       shops — are the expensive ones, and "just buy fresh" is advice
+       that assumes a budget.
+
+       DELIBERATELY NOT GEOGRAPHIC. A version of this naming one
+       county's food bank was proposed, and it would be wrong or
+       useless for everybody outside it. Pointing at the finders people
+       can use wherever they live is both more honest and more useful.
+
+       And no cost model. This app has no idea what anybody's shopping
+       costs, so it does not claim to detect when a diet has become
+       unaffordable — it says the thing is common and names where help
+       is found. Inventing a trigger would mean inventing the data. */
+    cost: {
+      title: 'When the diet costs more than the budget',
+      body: [
+        'A kidney diet leans on the expensive end of the shop. Fresh vegetables, lower-sodium versions of ' +
+        'ordinary tins, smaller and more frequent trips — all of it costs more than the packaged food it ' +
+        'replaces, and none of the advice usually says so.',
+        'If that is where you are, it is common and it is worth saying out loud to your care team. Renal ' +
+        'dietitians know which swaps are cheap and which are not, and they can only work with what they ' +
+        'know about your week.',
+        'Food assistance exists and most people who qualify never claim it. In the United States, SNAP ' +
+        '(called CalFresh in California) covers groceries, and some states add a monthly fruit-and-vegetable ' +
+        'top-up on the same card. Feeding America lists the food bank covering any postcode, and many run ' +
+        'produce distributions specifically because fresh food is what a food parcel usually lacks.',
+        'RenalRoute does not know what your shopping costs and will never guess. It has no way to tell ' +
+        'whether a week was expensive, and a nutrition app announcing that you cannot afford your diet ' +
+        'would be both wrong and unwelcome. This card is here because the problem is common, not because ' +
+        'the app detected anything about you.'
+      ]
+    },
+
     ai: {
       title: 'How RenalRoute uses AI',
       body: [
@@ -7377,7 +7441,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen', 'more'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'foods', 'kitchen', 'more'];
 
   /* ═══════════ the back button ═══════════
      This app had no history integration at all. Every screen change
@@ -7441,6 +7505,7 @@ const UI = (() => {
     if (name === 'references') renderReferences();
     if (name === 'kitchen') renderKitchen();
     if (name === 'more') renderMore();
+    if (name === 'foods') renderFoods();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
         name !== 'passport' && name !== 'references' && name !== 'kitchen') {
@@ -9019,6 +9084,114 @@ const UI = (() => {
      the reader's own terms, because a one-word label only works for
      somebody who already knows what is behind it — and the people this
      app is built for are meeting every one of these for the first time. */
+  /* ═══════════ the food list ═══════════
+     A view over ANCHOR_FOODS, not new logic: searchFoods() does the
+     matching, Clinical.isLowPotassiumServing() applies the AKF
+     threshold, Clinical.fmt() renders a null as an em-dash. What is new
+     is that the table is browsable at all — it was reachable only from
+     inside the log flow, so checking a food meant starting a meal.
+
+     TWO RULES, and they are the whole reason this screen needed
+     thinking about rather than just listing rows.
+
+     1. A FOOD WITH NO VALUE IS NEVER RANKED AMONG FOODS THAT HAVE ONE.
+        Sorting by potassium with `(a.k_high || 0) - (b.k_high || 0)`
+        would put every unpriced food at the top of the low-potassium
+        list — the exact place a CKD patient looks for something safe to
+        eat, filled with foods we know nothing about. They go in a named
+        group at the end instead.
+
+     2. NO BADGE WITHOUT DATA. Absence of a potassium figure must never
+        render as "lower potassium". Same rule the picker already
+        follows; carried over verbatim rather than reinvented. */
+  let foodsSort = 'name';
+  let foodsPricedOnly = false;
+
+  const FOOD_SORTS = [
+    { key: 'name', label: () => COPY.foods.sortName, field: null },
+    { key: 'k',    label: () => COPY.foods.sortK,    field: 'k_high',  word: 'potassium' },
+    { key: 'p',    label: () => COPY.foods.sortP,    field: 'p_high',  word: 'phosphorus' },
+    { key: 'na',   label: () => COPY.foods.sortNa,   field: 'na_high', word: 'sodium' }
+  ];
+
+  function foodRow(f) {
+    /* No potassium figure, no badge. */
+    const lowK = Clinical.isLowPotassiumServing(f.k_high);
+    /* A missing value is ONE em-dash, not a range between two of them.
+       "—–—" is noise that reads as a broken row; "—" reads as "we do
+       not have this", which is what it means. A range collapses to a
+       single figure too when both ends agree. */
+    const val = (lo, hi) => {
+      if (lo === null || lo === undefined) return '—';
+      return lo === hi ? Clinical.fmt(lo) : `${Clinical.fmt(lo)}–${Clinical.fmt(hi)}`;
+    };
+    return `<div class="foodrow">
+      <div class="foodrow__head">
+        <strong class="foodrow__name">${esc(f.food_name)}</strong>
+        ${lowK ? `<span class="chip chip--ok chip--tiny"
+          title="${esc(COPY.picker.lowKTitle)}">Lower potassium</span>` : ''}
+      </div>
+      <p class="foodrow__serving">${esc(f.serving_text)}</p>
+      <p class="foodrow__nums">
+        <span>K ${val(f.k_low, f.k_high)}</span>
+        <span>P ${val(f.p_low, f.p_high)}</span>
+        <span>Na ${val(f.na_low, f.na_high)}</span>
+        <span class="foodrow__unit">mg</span>
+      </p>
+      ${f.source ? `<p class="foodrow__src">${esc(f.source)}</p>` : ''}
+    </div>`;
+  }
+
+  function renderFoods() {
+    const c = COPY.foods;
+    $('#foodsTitle').textContent = c.title;
+    $('#foodsLede').textContent = c.lede;
+    $('#foodsSearchLabel').textContent = c.searchLabel;
+    $('#foodsPricedLabel').textContent = c.pricedOnly;
+    $('#foodsFoot').textContent = c.foot;
+
+    $('#foodsSort').innerHTML = FOOD_SORTS.map(s =>
+      `<button type="button" class="chip-opt${s.key === foodsSort ? ' is-on' : ''}"
+        role="radio" aria-checked="${s.key === foodsSort}"
+        data-foodsort="${s.key}">${esc(s.label())}</button>`).join('');
+    $('#foodsPricedOnly').checked = foodsPricedOnly;
+
+    const q = Resolve.normalize($('#foodsSearch').value || '');
+    // searchFoods caps at 12 for the picker; browsing wants everything.
+    let rows = q ? searchFoods(q) : ANCHOR_FOODS.slice();
+
+    const sort = FOOD_SORTS.find(s => s.key === foodsSort);
+
+    /* THE SPLIT. Everything the sorted nutrient can rank, and everything
+       it cannot — separated before ordering, so a null can never land
+       between two real numbers. */
+    let priced = rows, unpriced = [];
+    if (sort.field) {
+      priced = rows.filter(f => f[sort.field] !== null && f[sort.field] !== undefined);
+      unpriced = rows.filter(f => f[sort.field] === null || f[sort.field] === undefined);
+      priced.sort((a, b) => a[sort.field] - b[sort.field]);
+    } else {
+      priced.sort((a, b) => a.food_name.localeCompare(b.food_name));
+    }
+
+    if (foodsPricedOnly) unpriced = [];
+
+    const shown = priced.length + unpriced.length;
+    $('#foodsCount').textContent = c.count(shown, ANCHOR_FOODS.length);
+
+    $('#foodsList').innerHTML = priced.length
+      ? priced.map(foodRow).join('')
+      : `<p class="note">${esc(c.none)}</p>`;
+
+    $('#foodsUnpriced').innerHTML = unpriced.length
+      ? `<div class="foods__unpriced">
+           <h2 class="h3">${esc(c.unpriced(unpriced.length, sort.word))}</h2>
+           <p class="note">${esc(c.unpricedWhy)}</p>
+           ${unpriced.map(foodRow).join('')}
+         </div>`
+      : '';
+  }
+
   function renderMore() {
     $('#moreDisclaimer').textContent = COPY.footerDisclaimer;
     // The coverage panel moves here: "what this build doesn't know" is
@@ -10249,7 +10422,7 @@ const UI = (() => {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
         '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
-        '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle]');
+        '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle],[data-foodsort]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
@@ -10321,6 +10494,7 @@ const UI = (() => {
         }
         return;
       }
+      if (el.dataset.foodsort) { foodsSort = el.dataset.foodsort; renderFoods(); return; }
       if (el.dataset.scenetoggle) {
         scenesOpen = !scenesOpen;
         renderScenePicker();
@@ -10744,6 +10918,15 @@ const UI = (() => {
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
+
+    /* The food list. Search re-renders as you type — the table is small
+       enough that debouncing would add latency rather than remove it. */
+    $('#foodsBack').addEventListener('click', () => go(lastScreen));
+    $('#foodsSearch').addEventListener('input', renderFoods);
+    $('#foodsPricedOnly').addEventListener('change', (e) => {
+      foodsPricedOnly = e.target.checked;
+      renderFoods();
+    });
     $('#vitSave').addEventListener('click', saveVitals);
     $('#apptSave').addEventListener('click', saveAppointment);
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));

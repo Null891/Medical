@@ -29,7 +29,7 @@ const UI = (() => {
 
   /* ═══════════ routing ═══════════ */
 
-  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'kitchen', 'more'];
+  const SCREENS = ['onboarding', 'home', 'log', 'detail', 'labs', 'settings', 'learn', 'label', 'passport', 'references', 'foods', 'kitchen', 'more'];
 
   /* ═══════════ the back button ═══════════
      This app had no history integration at all. Every screen change
@@ -93,6 +93,7 @@ const UI = (() => {
     if (name === 'references') renderReferences();
     if (name === 'kitchen') renderKitchen();
     if (name === 'more') renderMore();
+    if (name === 'foods') renderFoods();
     // Depth-2 screens are somewhere you visit, not somewhere you live.
     if (name !== 'learn' && name !== 'detail' && name !== 'label' &&
         name !== 'passport' && name !== 'references' && name !== 'kitchen') {
@@ -1671,6 +1672,114 @@ const UI = (() => {
      the reader's own terms, because a one-word label only works for
      somebody who already knows what is behind it — and the people this
      app is built for are meeting every one of these for the first time. */
+  /* ═══════════ the food list ═══════════
+     A view over ANCHOR_FOODS, not new logic: searchFoods() does the
+     matching, Clinical.isLowPotassiumServing() applies the AKF
+     threshold, Clinical.fmt() renders a null as an em-dash. What is new
+     is that the table is browsable at all — it was reachable only from
+     inside the log flow, so checking a food meant starting a meal.
+
+     TWO RULES, and they are the whole reason this screen needed
+     thinking about rather than just listing rows.
+
+     1. A FOOD WITH NO VALUE IS NEVER RANKED AMONG FOODS THAT HAVE ONE.
+        Sorting by potassium with `(a.k_high || 0) - (b.k_high || 0)`
+        would put every unpriced food at the top of the low-potassium
+        list — the exact place a CKD patient looks for something safe to
+        eat, filled with foods we know nothing about. They go in a named
+        group at the end instead.
+
+     2. NO BADGE WITHOUT DATA. Absence of a potassium figure must never
+        render as "lower potassium". Same rule the picker already
+        follows; carried over verbatim rather than reinvented. */
+  let foodsSort = 'name';
+  let foodsPricedOnly = false;
+
+  const FOOD_SORTS = [
+    { key: 'name', label: () => COPY.foods.sortName, field: null },
+    { key: 'k',    label: () => COPY.foods.sortK,    field: 'k_high',  word: 'potassium' },
+    { key: 'p',    label: () => COPY.foods.sortP,    field: 'p_high',  word: 'phosphorus' },
+    { key: 'na',   label: () => COPY.foods.sortNa,   field: 'na_high', word: 'sodium' }
+  ];
+
+  function foodRow(f) {
+    /* No potassium figure, no badge. */
+    const lowK = Clinical.isLowPotassiumServing(f.k_high);
+    /* A missing value is ONE em-dash, not a range between two of them.
+       "—–—" is noise that reads as a broken row; "—" reads as "we do
+       not have this", which is what it means. A range collapses to a
+       single figure too when both ends agree. */
+    const val = (lo, hi) => {
+      if (lo === null || lo === undefined) return '—';
+      return lo === hi ? Clinical.fmt(lo) : `${Clinical.fmt(lo)}–${Clinical.fmt(hi)}`;
+    };
+    return `<div class="foodrow">
+      <div class="foodrow__head">
+        <strong class="foodrow__name">${esc(f.food_name)}</strong>
+        ${lowK ? `<span class="chip chip--ok chip--tiny"
+          title="${esc(COPY.picker.lowKTitle)}">Lower potassium</span>` : ''}
+      </div>
+      <p class="foodrow__serving">${esc(f.serving_text)}</p>
+      <p class="foodrow__nums">
+        <span>K ${val(f.k_low, f.k_high)}</span>
+        <span>P ${val(f.p_low, f.p_high)}</span>
+        <span>Na ${val(f.na_low, f.na_high)}</span>
+        <span class="foodrow__unit">mg</span>
+      </p>
+      ${f.source ? `<p class="foodrow__src">${esc(f.source)}</p>` : ''}
+    </div>`;
+  }
+
+  function renderFoods() {
+    const c = COPY.foods;
+    $('#foodsTitle').textContent = c.title;
+    $('#foodsLede').textContent = c.lede;
+    $('#foodsSearchLabel').textContent = c.searchLabel;
+    $('#foodsPricedLabel').textContent = c.pricedOnly;
+    $('#foodsFoot').textContent = c.foot;
+
+    $('#foodsSort').innerHTML = FOOD_SORTS.map(s =>
+      `<button type="button" class="chip-opt${s.key === foodsSort ? ' is-on' : ''}"
+        role="radio" aria-checked="${s.key === foodsSort}"
+        data-foodsort="${s.key}">${esc(s.label())}</button>`).join('');
+    $('#foodsPricedOnly').checked = foodsPricedOnly;
+
+    const q = Resolve.normalize($('#foodsSearch').value || '');
+    // searchFoods caps at 12 for the picker; browsing wants everything.
+    let rows = q ? searchFoods(q) : ANCHOR_FOODS.slice();
+
+    const sort = FOOD_SORTS.find(s => s.key === foodsSort);
+
+    /* THE SPLIT. Everything the sorted nutrient can rank, and everything
+       it cannot — separated before ordering, so a null can never land
+       between two real numbers. */
+    let priced = rows, unpriced = [];
+    if (sort.field) {
+      priced = rows.filter(f => f[sort.field] !== null && f[sort.field] !== undefined);
+      unpriced = rows.filter(f => f[sort.field] === null || f[sort.field] === undefined);
+      priced.sort((a, b) => a[sort.field] - b[sort.field]);
+    } else {
+      priced.sort((a, b) => a.food_name.localeCompare(b.food_name));
+    }
+
+    if (foodsPricedOnly) unpriced = [];
+
+    const shown = priced.length + unpriced.length;
+    $('#foodsCount').textContent = c.count(shown, ANCHOR_FOODS.length);
+
+    $('#foodsList').innerHTML = priced.length
+      ? priced.map(foodRow).join('')
+      : `<p class="note">${esc(c.none)}</p>`;
+
+    $('#foodsUnpriced').innerHTML = unpriced.length
+      ? `<div class="foods__unpriced">
+           <h2 class="h3">${esc(c.unpriced(unpriced.length, sort.word))}</h2>
+           <p class="note">${esc(c.unpricedWhy)}</p>
+           ${unpriced.map(foodRow).join('')}
+         </div>`
+      : '';
+  }
+
   function renderMore() {
     $('#moreDisclaimer').textContent = COPY.footerDisclaimer;
     // The coverage panel moves here: "what this build doesn't know" is
@@ -2901,7 +3010,7 @@ const UI = (() => {
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-nav],[data-learn],[data-meal],[data-edit-meal],' +
         '[data-delete-meal],[data-remove-item],[data-step-item],[data-pick],[data-unpick],[data-scene],[data-onb],[data-scanok],[data-kitchen],[data-cook],[data-lang],[data-symptom],[data-vitdel],[data-aptdel],[data-demo],' +
-        '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle]');
+        '[data-del-lab],[data-repeat],[data-leach],[data-scenetoggle],[data-foodsort]');
       if (!el) return;
 
       if (el.dataset.nav) { go(el.dataset.nav); return; }
@@ -2973,6 +3082,7 @@ const UI = (() => {
         }
         return;
       }
+      if (el.dataset.foodsort) { foodsSort = el.dataset.foodsort; renderFoods(); return; }
       if (el.dataset.scenetoggle) {
         scenesOpen = !scenesOpen;
         renderScenePicker();
@@ -3396,6 +3506,15 @@ const UI = (() => {
        half-filled emergency cards happen. */
     $('#passportBack').addEventListener('click', () => go(lastScreen));
     $('#refsBack').addEventListener('click', () => go(lastScreen));
+
+    /* The food list. Search re-renders as you type — the table is small
+       enough that debouncing would add latency rather than remove it. */
+    $('#foodsBack').addEventListener('click', () => go(lastScreen));
+    $('#foodsSearch').addEventListener('input', renderFoods);
+    $('#foodsPricedOnly').addEventListener('change', (e) => {
+      foodsPricedOnly = e.target.checked;
+      renderFoods();
+    });
     $('#vitSave').addEventListener('click', saveVitals);
     $('#apptSave').addEventListener('click', saveAppointment);
     $('#kitchenBack').addEventListener('click', () => go(lastScreen));
