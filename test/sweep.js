@@ -37,8 +37,28 @@ function check(label, ok, detail) {
 
 const html = read('index.html');
 const cssFiles = Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)).map(m => m[1]);
-const css = cssFiles.map(read).join('\n');
 const scripts = Array.from(html.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)).map(m => m[1]);
+
+/* ── AUTHORED CSS, not shipped CSS ──
+   This read the stylesheet index.html links, which was the same text
+   until the bundle started being minified. Now it is not: comments are
+   gone, whitespace is collapsed, and every check in this file that
+   looks for an authored pattern — the reduced-motion blocks, the text-
+   size tokens, the declared tap-target sizes — was pattern-matching
+   compressed output and quietly failing on formatting rather than on
+   substance.
+
+   These checks are about what the CSS SAYS, so they read the sources.
+   That is safe precisely because section 0 proves the shipped bundle
+   was generated from these exact files: the fingerprint it carries is
+   recomputed from them on every run, so "the sources say X" and "the
+   bundle ships X" cannot drift apart without the suite going red.
+
+   Checks about the shipped ARTEFACT — that it shrank, that it still
+   names its own regeneration command — read the bundle directly, in
+   section 0 where they belong. */
+const css = require(path.join(ROOT, 'tools/build-assets.js')).CSS_ORDER
+  .map(read).join('\n');
 
 /* ═══════════════════════════════════════════════════════════════
    1 · NO HORIZONTAL OVERFLOW — source-level
@@ -154,27 +174,51 @@ console.log('\n═══ 0. THE BUNDLES MATCH THEIR SOURCES ═══');
     missed.length === 0,
     'not bundled and not deliberately excluded: ' + missed.join(', '));
 
-  const expectCss = builder.joinFiles(src.css, 'CSS');
-  const expectJs = builder.joinFiles(src.js, 'JS');
+  /* ── STALENESS, now that the bundles are minified ──
+     This used to re-join the sources and byte-compare. It cannot any
+     more: the shipped file is compressed output, not a concatenation.
+     What has to be guaranteed is unchanged though — that the bundle was
+     built from THESE sources and not an older set — so the bundle
+     carries a fingerprint of its inputs and this recomputes it.
+
+     Equally strong, and it catches the same failure: edit a source,
+     forget to rebuild, and the hashes diverge. It does NOT require the
+     test to run a minifier, which would make the suite slow and tie it
+     to a terser version. */
   const actualCss = read(builder.CSS_BUNDLE);
   const actualJs = read(builder.JS_BUNDLE);
+  const stamped = (text) => (text.match(/sources sha256:([0-9a-f]+)/) || [])[1] || null;
 
-  check('css/bundle.css is exactly its sources joined',
-    actualCss === expectCss,
-    'STALE — run: node tools/build-assets.js');
-  check('js/bundle.js is exactly its sources joined',
-    actualJs === expectJs,
-    'STALE — run: node tools/build-assets.js');
+  const wantCss = builder.fingerprint(builder.joinFiles(src.css, 'CSS'));
+  const wantJs = builder.fingerprint(builder.joinFiles(src.js, 'JS'));
 
-  /* Concatenation, not transformation. If these byte counts ever drift
-     apart, something is minifying or rewriting, and the claim that
-     behaviour is unchanged stops being true. */
+  check('css/bundle.css was built from the current sources',
+    stamped(actualCss) === wantCss,
+    `STALE — run: node tools/build-assets.js  (has ${stamped(actualCss)}, want ${wantCss})`);
+  check('js/bundle.js was built from the current sources',
+    stamped(actualJs) === wantJs,
+    `STALE — run: node tools/build-assets.js  (has ${stamped(actualJs)}, want ${wantJs})`);
+
+  /* And it really is minified. The load event was measured at ~2.3 s
+     with 512 KB of JS to parse; shipping the raw join again would put
+     that back silently, so the size relationship is asserted rather
+     than assumed. Generous thresholds — this is a smoke test for "the
+     minifier ran", not a byte budget. */
   const rawCss = src.css.reduce((n, p) => n + Buffer.byteLength(read(p)), 0);
   const rawJs = src.js.reduce((n, p) => n + Buffer.byteLength(read(p)), 0);
-  check('  ...and nothing was minified out of the CSS',
-    Buffer.byteLength(actualCss) >= rawCss, `${Buffer.byteLength(actualCss)} < ${rawCss}`);
-  check('  ...nor out of the JS',
-    Buffer.byteLength(actualJs) >= rawJs, `${Buffer.byteLength(actualJs)} < ${rawJs}`);
+  check('  ...and the CSS actually shrank',
+    Buffer.byteLength(actualCss) < rawCss * 0.75,
+    `${Buffer.byteLength(actualCss)} vs ${rawCss} raw — did the minifier run?`);
+  check('  ...and the JS actually shrank',
+    Buffer.byteLength(actualJs) < rawJs * 0.75,
+    `${Buffer.byteLength(actualJs)} vs ${rawJs} raw — did the minifier run?`);
+
+  /* The provenance banner has to survive minification, or the sources
+     become genuinely unfindable from the shipped file. */
+  check('  ...and each bundle still says how to regenerate it',
+    /Regenerate: node tools\/build-assets\.js/.test(actualCss) &&
+    /Regenerate: node tools\/build-assets\.js/.test(actualJs),
+    'the banner comment was stripped — format.comments must keep /^!/');
 
   // theme.js must stay out: it is blocking in <head> by design.
   check('  ...and js/theme.js is not swallowed into the bundle',
@@ -312,13 +356,13 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
 
   // And it must actually reach the screen.
   check('  ...and the markup has a slot for it',
-    /id="devBannerText"/.test(html), '');
+    /id="noticeBarText"/.test(html), '');
   check('  ...that app.js fills from COPY',
-    /devBannerText'\)\.textContent = COPY\.dataNotice/.test(read('js/app.js')), '');
+    /noticeBarText'\)\.textContent = COPY\.dataNotice/.test(read('js/app.js')), '');
   /* EVERY DEPLOYED FILE, not a window around the banner.
 
      The first version of this check read 400 characters near
-     #devBanner and passed — while the HTML comment explaining the fix
+     #noticeBar and passed — while the HTML comment explaining the fix
      sat further up, quoting the exact phrase it was removing. The live
      page still carried it. The second version checked the whole
      document and passed — while the JS bundle carried it seven times,
@@ -339,6 +383,49 @@ console.log('\n═══ 0a. THE DATA NOTICE DESCRIBES DATA, NOT A DEPLOYMENT �
   });
   check('  ...and appears in NO file the browser downloads',
     offending.length === 0, offending.slice(0, 3).join('  |  '));
+
+  /* ═══ AND NEITHER DO THE IDENTIFIERS ═══
+     This check exists because the prose check above passed for a week
+     while the finding kept coming back, and the reason was not prose at
+     all. The notice was `id="devBanner" class="dev-banner"`. Its TEXT
+     had already been rewritten to name no environment — the words a
+     reviewer READS were clean — but the DOM a reviewer INSPECTS said
+     "dev banner" on a live app, next to a sentence about values not
+     being clinically verified.
+
+     A machine reading markup does not distinguish an identifier from a
+     sentence. Both are strings in the served file, and an id is often
+     the more candid of the two, because nobody edits it for tone. So
+     the guard covers names as well as copy — every id, class and
+     setting key the browser can see. */
+  const ENV_IDENTS = /\bdev[-_]?banner\b|["'.#]dev[-_](?:build|mode|only)|\bis[-_]?dev\b|\bstaging[-_]/i;
+  const named = [];
+  DEPLOYED.forEach(f => {
+    if (!fs.existsSync(path.join(ROOT, f))) return;
+    read(f).split('\n').forEach((line, i) => {
+      if (ENV_IDENTS.test(line)) named.push(`${f}:${i + 1} ${line.trim().slice(0, 50)}`);
+    });
+  });
+  check('  ...and no id, class or key NAMES a development artefact',
+    named.length === 0, named.slice(0, 3).join('  |  '));
+
+  /* The demo strip states a fact about a person. Worded as a fact about
+     DATA — "example data" — it stacked with the notice above it and the
+     pair read as one claim about the software rather than two about the
+     content. Both halves still have to be true: it must name the
+     persona, and it must say they are not real. */
+  {
+    /* Read as source, not evaluated. sweep.js is a text-level audit and
+       has no COPY binding — assuming one here crashed the suite on the
+       first run, which is the better half of that mistake: the version
+       of this that silently passes is the one that costs a week. */
+    const b = (read('js/data/copy.js').match(/banner:\s*\(who\)\s*=>\s*`([^`]*)`/) || [])[1] || '';
+    check('the demo strip has a banner string', b.length > 0, '');
+    check('  ...that names the person, not the data',
+      /\$\{who\}/.test(b) && !/\b(test|sample|dummy|fake) data\b/i.test(b), b);
+    check('  ...and still says they are not a real person',
+      /not a real|fictional|made up|example patient/i.test(b), b);
+  }
 
   /* THE ENTRANCE IS THE FRONT DOOR, and it used to open "This is a
      demonstration entrance" — written when it was reachable only at

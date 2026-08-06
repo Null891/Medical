@@ -488,8 +488,15 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
     check('a banner says so for the whole session', a.vis('#demoBanner'), true);
     check('  ...naming whose data it is',
       /Frank/.test(a.$('#demoBannerText').textContent), true);
-    check('  ...and saying it is not a real patient',
-      /not a real patient/i.test(a.$('#demoBannerText').textContent), true);
+    /* The PROPERTY, not one phrasing of it. This pinned the exact words
+       "not a real patient", so rewording the strip — to name the person
+       rather than the data, which is what stopped an independent scan
+       reading two stacked bars as a test deployment — failed a test that
+       had no quarrel with the change. The requirement is that the strip
+       says the person is not real; how it says so is copy's business. */
+    check('  ...and saying they are not a real person',
+      /not a real|fictional|made up|example patient/i
+        .test(a.$('#demoBannerText').textContent), true);
     check('  ...and it survives navigation', (() => {
       a.click('.tabbar [data-nav="kitchen"]');
       return a.vis('#demoBanner');

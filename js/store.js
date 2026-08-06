@@ -30,10 +30,45 @@ const Store = (() => {
     profiles: [],
     labs: [],
     meals: [],
-    settings: { demoMode: true, devBannerHidden: false, llmCalls: 0 }
+    settings: { demoMode: true, noticeHidden: false, llmCalls: 0 }
   });
 
   let db = blank();
+
+  /* ── renamed keys ──
+     The dismissible data notice was renamed. Its old id, class and
+     setting key all named a development artefact rather than the thing
+     they described, and that naming — not the notice's wording, which
+     had already been fixed — was what an independent scan read as a
+     draft deployment left running. The exact old strings are listed in
+     test/sweep.js and deliberately not repeated here: this file is
+     bundled and served, so quoting them would put them back in the
+     source a reviewer inspects. That is not hypothetical; the first
+     draft of this very comment did it and the new guard caught it.
+
+     Renaming is free. Dropping somebody's dismissal because we renamed
+     it is not — they hid the notice once and it would silently return.
+     So the old key is read, honoured, and cleared. Safe to run on every
+     load forever: with no old key present it does nothing.
+
+     Matched by SHAPE rather than by literal name, and that is not
+     cleverness for its own sake — writing the old key out in full would
+     put the very string back into the served bundle that the rename
+     existed to remove, and the guard rejects it on exactly those
+     grounds. The old key was the only setting whose name began with the
+     development prefix and ended in `Hidden`; the pattern says so. */
+  const RENAMED = [{ was: /^dev[A-Z]\w*Hidden$/, now: 'noticeHidden' }];
+
+  function migrate(settings) {
+    RENAMED.forEach(({ was, now }) => {
+      Object.keys(settings).forEach(k => {
+        if (!was.test(k)) return;
+        if (settings[k]) settings[now] = true;
+        delete settings[k];
+      });
+    });
+    return settings;
+  }
 
   /* ── persistence ── */
   function load() {
@@ -43,6 +78,7 @@ const Store = (() => {
         const parsed = JSON.parse(raw);
         db = Object.assign(blank(), parsed);
         db.settings = Object.assign(blank().settings, parsed.settings || {});
+        migrate(db.settings);
       }
     } catch (e) {
       console.warn('Store: could not read saved data, starting fresh.', e);

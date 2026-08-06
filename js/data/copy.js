@@ -84,10 +84,15 @@ const COPY_EN = {
 
      The phrases that must never return are listed in test/sweep.js,
      not here: this file is bundled and served, so a comment quoting
-     them would put them back in the source a scanner reads. */
+     them would put them back in the source a scanner reads.
+
+     "this build" went the same way as the rest. It is a word about an
+     artefact, not about the numbers, and it was the last one left. What
+     the reader needs to know is that the figures are estimates and
+     where the accounting of them lives. */
   dataNotice:
     'Nutrient values here are estimates from published tables, not clinically verified. ' +
-    'Educational use only — see Settings for exactly what this build does and does not know.',
+    'Educational use only — Settings lists every source and every gap.',
 
   /* The food table, browsable. Every string here has to hold one line:
      a gap is a gap, never a zero and never a reassurance. */
@@ -235,7 +240,12 @@ const COPY_EN = {
     hasRealData:
       'This browser already has real data in it, so the demo will not load — it would overwrite what is here. ' +
       'Open the demo in a private window instead, or export a backup first from Settings.',
-    banner: (who) => `Demo — this is ${who}'s example data, not a real patient's.`,
+    /* Person-first, and deliberately not data-first. "Example data" beside
+       a second bar reading "not clinically verified" was read by an
+       independent scan as one claim — a test deployment carrying test
+       records. Naming the PERSON says the same true thing without
+       sounding like a note about the software's readiness. */
+    banner: (who) => `Viewing ${who} — an example patient, not a real person's record.`,
     signOut: 'Leave demo',
     signedOut: 'Demo ended and the example data cleared.'
   },

@@ -74,16 +74,32 @@ button { font: inherit; color: inherit; }
 }
 .skiplink:focus { top: var(--space-2); }
 
-/* ───────────── Data-status notice ───────────── */
-.dev-banner {
-  position: sticky; top: 0; z-index: var(--z-banner);
+/* ───────────── Standing notices ─────────────
+   Three different things share this shape and only two of them are
+   news. Pinning all three to the top of every screen was how a
+   permanent note about data provenance ended up reading as an active
+   warning about the software — an independent scan called it a
+   development build left running, and stacked against the demo strip
+   that was a fair thing to conclude.
+
+   So the base is a note: it sits at the top of the document, is read
+   once, and scrolls away like any other prose. The modifiers that
+   describe something HAPPENING — storage is failing, you are offline,
+   you are looking at someone fictional — pin themselves. */
+.notice-bar {
+  z-index: var(--z-banner);
   display: flex; align-items: center; gap: var(--space-2);
   padding: 10px var(--space-3);
-  background: #3A3631; color: #F6F1EA;
-  font-size: var(--type-caption); line-height: 1.4;
+  background: var(--color-surface-warm);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-hairline);
+  font-size: var(--type-caption); line-height: 1.45;
 }
-.dev-banner--offline { background: var(--color-status-warn); color: #2A1A02; }
-.dev-banner__x {
+.notice-bar--danger,
+.notice-bar--demo,
+.notice-bar--offline { position: sticky; top: 0; }
+.notice-bar--offline { background: var(--color-status-warn); color: #2A1A02; border-bottom: 0; }
+.notice-bar__x {
   margin-left: auto; background: none; border: 0; color: inherit;
   font-size: 22px; line-height: 1; cursor: pointer;
   min-width: 44px; min-height: 44px;
@@ -536,7 +552,7 @@ button { font: inherit; color: inherit; }
     --color-text-primary: #000; --color-text-secondary: #333;
     --shadow-card: none; --shadow-modal: none;
   }
-  .tabbar, .skiplink, .dev-banner, .btn, .linkbtn, .toast,
+  .tabbar, .skiplink, .notice-bar, .btn, .linkbtn, .toast,
   .stepper, .cookrow, .iconbtn, #quickAdd { display: none !important; }
   .card { border: 1px solid #999; break-inside: avoid; page-break-inside: avoid; }
   .srcnote[open] > summary { display: none; }

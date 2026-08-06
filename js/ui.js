@@ -3002,8 +3002,8 @@ const UI = (() => {
     if (!Store.storageWorks()) renderStorageBanner(Store.storageState());
     $('#consentAccept').addEventListener('click', acceptConsent);
 
-    $('#devBannerClose').addEventListener('click', () => {
-      $('#devBanner').hidden = true; Store.setSetting('devBannerHidden', true);
+    $('#noticeBarClose').addEventListener('click', () => {
+      $('#noticeBar').hidden = true; Store.setSetting('noticeHidden', true);
     });
 
     // Global delegated clicks

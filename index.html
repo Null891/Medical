@@ -173,7 +173,7 @@
      because a crash is visible. This is the only banner in the app
      that cannot be dismissed: dismissing it would restore exactly the
      silence it exists to break. -->
-<div id="storageBanner" class="dev-banner dev-banner--danger" role="alert" hidden>
+<div id="storageBanner" class="notice-bar notice-bar--danger" role="alert" hidden>
   <span id="storageBannerText"></span>
 </div>
 
@@ -182,14 +182,14 @@
      chooser closed, nothing on screen said the data was fictional —
      somebody handed the phone mid-walkthrough would have been looking
      at Frank's week believing it was a real patient's. -->
-<div id="demoBanner" class="dev-banner dev-banner--demo" role="status" hidden>
+<div id="demoBanner" class="notice-bar notice-bar--demo" role="status" hidden>
   <span id="demoBannerText"></span>
-  <button type="button" class="dev-banner__x" id="demoSignOut">Leave demo</button>
+  <button type="button" class="notice-bar__x" id="demoSignOut">Leave demo</button>
 </div>
 
 <!-- Connectivity. Nothing here needs the network except meal parsing,
      so this says what still works rather than just "you are offline". -->
-<div id="offlineBanner" class="dev-banner dev-banner--offline m-glass" role="status" hidden>
+<div id="offlineBanner" class="notice-bar notice-bar--offline m-glass" role="status" hidden>
   <span><strong>You're offline.</strong> Logging still works — use the food list instead of typing a meal.</span>
 </div>
 
@@ -216,9 +216,9 @@
 
      Filled from COPY so it translates like everything else; it was the
      last user-facing string hard-coded in this file. -->
-<div id="devBanner" class="dev-banner" role="note">
-  <span id="devBannerText"></span>
-  <button type="button" class="dev-banner__x" id="devBannerClose" aria-label="Hide this notice">&times;</button>
+<div id="noticeBar" class="notice-bar" role="note">
+  <span id="noticeBarText"></span>
+  <button type="button" class="notice-bar__x" id="noticeBarClose" aria-label="Hide this notice">&times;</button>
 </div>
 
 <!-- ═══════════ CONSENT MODAL (M2 · G.7 Placement 1) ═══════════ -->

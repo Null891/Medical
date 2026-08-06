@@ -6,8 +6,10 @@
     "test": "node verify.js && node e2e.js && node probe.js && node headers.js && node wiring.js && node sweep.js && node journey.js && node forms.js && node a11y.js"
   },
   "devDependencies": {
+    "axe-core": "^4.12.1",
+    "clean-css": "^5.3.3",
     "jsdom": "^30.0.0",
-    "axe-core": "^4.12.1"
+    "terser": "^5.49.2"
   },
   "dependencies": {
     "axe-core": "^4.12.1"
