@@ -4,8 +4,8 @@ Working log for the RenalRoute / Chroniccal push after the Aug 5 ArgosX
 cycles. Written to be picked up cold: every item says what changed, where,
 and what would prove it.
 
-**State at the last commit:** 1,498 assertions across ten suites, all green.
-Zero axe violations across fourteen screens.
+**State:** 1,498 assertions across ten suites, all green. Zero axe violations
+across sixteen screens. Deployed and verified against live bytes.
 
 ---
 
@@ -147,25 +147,35 @@ Two real findings from finishing it:
 
 ---
 
-## LEFT TO DO
-
-### 1C · Publish our own accessibility evidence
+### 1C · Our own accessibility evidence, published ✅
 Their scanner injects axe-core inline; `script-src 'self'` blocks it. With
 hashes present `'unsafe-inline'` is *ignored* by browsers anyway, so the only
 way to unblock them is to drop both hashes **and** add `'unsafe-inline'` —
 which re-opens stored XSS in a free-text meal note. **Decided: not doing
 that.**
 
-Instead: `test/a11y.js` writes a small JSON artefact (axe version, rule set,
-screen list, violation counts, date) and a Settings page renders it. Real,
-dated, checkable evidence — their own report routes exactly this to a human.
+Instead, Settings → Accessibility report renders an artefact
+`test/a11y.js` generates from the run that just happened: axe version, rule
+set, the 16 screens, violation count, date. It names what it does *not*
+cover too. Only rewritten when the **result** changes — the file is bundled
+and the bundle carries a source fingerprint, so a date rewritten every run
+would dirty the tree daily and fail the next run's staleness guard on
+nothing.
 
-### Final deploy + live verification
-- `node tools/build-assets.js`, commit, push.
-- Verify **live bytes, not local bytes** — the CRLF/CSP-hash bug was
-  invisible until the deployed file was read. `curl -I` for HSTS + CSP, then
-  fetch the served `index.html` and both bundles and re-run the dev-signal
-  grep against *those*.
+### Deployed and verified live ✅
+Verified against **served bytes**, not local ones:
+
+- HSTS present; CSP intact, both hashes, no `unsafe-inline`.
+- Bundle fingerprint on the live file **matches the local build exactly**.
+- Dev-signal grep across `/`, both bundles, `theme.js`, `404.html` and all
+  three language files → **0 hits**.
+- Wire: document 21 KB, CSS 16 KB, JS 82 KB brotli — **~120 KB total, down
+  from ~226 KB**, on top of 55% less to parse.
+- `/no-such-route` → real 404, branded page.
+
+---
+
+## LEFT TO DO
 
 ### For you, not me — Vercel Bot Protection
 The 403 that blanked two of the three scans is **Vercel Bot Protection /
