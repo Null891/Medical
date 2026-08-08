@@ -321,6 +321,49 @@ console.log('\n═══ 0-404. A MISTYPED URL IS NOT A DEAD END ═══');
     !/\b(invalid|forbidden|illegal|error 404)\b/i.test(nf), '');
 }
 
+console.log('\n═══ 0c. ONE CANONICAL HOST, SAID THE SAME WAY EVERY TIME ═══');
+
+/* This app answers on two hostnames — chroniccal.vercel.app and
+   chronic-ca.vercel.app are the same deployment. rel=canonical exists
+   precisely for that, and naming one of them is correct.
+
+   What is NOT safe is the host being copy-pasted into five tags with
+   nothing holding them together: canonical, og:url, og:image,
+   twitter:image and the JSON-LD url. Change the domain and miss one and
+   you ship a canonical pointing at host A with a preview image on host
+   B, which is worse than either being wrong on its own — a scraper
+   follows the canonical and then fails to fetch the image.
+
+   So: pull every absolute self-referencing URL out of the document and
+   assert they share a host. */
+{
+  const SELF = /https:\/\/[a-z0-9-]+\.vercel\.app/gi;
+  const hosts = (html.match(SELF) || []).map(u => u.toLowerCase());
+
+  check('the document declares absolute self-URLs', hosts.length >= 4,
+    `found ${hosts.length}`);
+
+  const distinct = [...new Set(hosts)];
+  check('  ...and every one of them names the same host',
+    distinct.length === 1,
+    distinct.join('  vs  ') + ' — canonical, og:url, og:image, twitter:image ' +
+    'and the JSON-LD url must agree');
+
+  /* The canonical tag specifically, because it is the one that decides
+     which of the two the others have to match. */
+  const canon = (html.match(/<link rel="canonical" href="(https:\/\/[^"]+)"/) || [])[1];
+  check('  ...including the canonical tag itself',
+    !!canon && distinct.length === 1 && canon.toLowerCase().indexOf(distinct[0]) === 0,
+    `canonical is ${canon || 'MISSING'}`);
+
+  /* The preview image has to be a path that exists on disk, or the
+     share unfurls empty and nothing in the app ever says so. */
+  const ogImage = (html.match(/property="og:image" content="https:\/\/[^\/]+\/([^"]+)"/) || [])[1];
+  check('  ...and the og:image points at a file that exists',
+    !!ogImage && fs.existsSync(path.join(ROOT, ogImage)),
+    `og:image resolves to ${ogImage || 'MISSING'}`);
+}
+
 console.log('\n═══ 0b. DELEGATION SELECTORS ARE A NAMESPACE ═══');
 
 /* The delegated click handler resolves targets with

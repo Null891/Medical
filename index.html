@@ -19,6 +19,21 @@
      deserves. The image is the app's own mark rather than a
      screenshot: a screenshot of a health dashboard shared into a group
      chat shows somebody's numbers, even fictional ones. -->
+<!-- ═══════════ THE CANONICAL HOST ═══════════
+     This app answers on more than one hostname — chroniccal.vercel.app
+     and chronic-ca.vercel.app are the same deployment. That is fine,
+     and it is exactly the situation rel=canonical exists for: pick ONE
+     and point everything at it, so a search engine or a social scraper
+     is never guessing which of two identical pages is the real one.
+
+     The host appears five times below, and it must be the SAME five
+     times. test/sweep.js derives the set of absolute self-referencing
+     URLs from this file and fails if they disagree — because changing
+     the domain by hand is how you end up with a canonical on one host
+     and an og:image on another, which is worse than either alone.
+
+     Change the domain here and the guard will name every line that
+     still needs to follow. -->
 <link rel="canonical" href="https://chroniccal.vercel.app/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RenalRoute">
@@ -154,9 +169,32 @@
       <circle cx="16" cy="16" r="12.5" class="boot__mark-fill" stroke-width="3"
               stroke-dasharray="47 78.5" stroke-linecap="round" transform="rotate(-77 16 16)"/>
     </svg>
-    <p class="boot__word">RenalRoute</p>
+    <!-- An h1, not a paragraph, and the reason is not the scan that
+         caught it. At first paint #app is hidden and all three modals
+         are hidden, so every one of this document's other headings is
+         invisible — which leaves the page with no level-one heading at
+         all for as long as boot lasts, and FOREVER if scripts never
+         arrive. The wordmark was already acting as the page heading; it
+         simply was not marked as one.
+
+         .boot__word pins its own size, weight and margin, so promoting
+         the tag cannot move the boot layout. -->
+    <h1 class="boot__word">RenalRoute</h1>
     <p class="boot__lede">An educational wellness tool — not a medical device.</p>
     <p class="boot__slow">Still starting. If this stays, check your connection and reload.</p>
+
+    <!-- Without this, somebody with scripts disabled reads "check your
+         connection" forever, which is a wrong explanation rather than a
+         missing one. The <noscript> only renders when it is true, so the
+         two can never contradict each other on screen. -->
+    <noscript>
+      <p class="boot__noscript">
+        RenalRoute needs JavaScript to run. Everything it does — reading a meal,
+        pricing it against the reference table, keeping your record — happens in
+        this browser, on this device, and none of it can start without scripts
+        enabled. Nothing you have logged before is affected.
+      </p>
+    </noscript>
   </div>
 </div>
 

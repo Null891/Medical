@@ -84,6 +84,80 @@ doc.head.appendChild(axeEl);
 
 const R = window.RenalRoute;
 
+/* ═══════════ THE DOCUMENT BEFORE THE APP'S SCRIPTS ARRIVE ═══════════
+   A SEPARATE DOM, and it has to be separate for two reasons.
+
+   This scan did not exist, and its absence is why an outside scanner
+   found something eleven suites of ours did not. Every case below
+   reveals #app, or renders a modal, before axe looks — so none of them
+   had ever examined the state a visitor actually meets FIRST: #app
+   hidden, all three modals hidden, only the boot screen on screen. In
+   that state this document has eighteen h1 elements and not one of them
+   is visible, and page-has-heading-one fires. Correctly.
+
+   Why not just scan the main DOM before touching it: the app's scripts
+   are already loaded there, boot has already run, and js/app.js removes
+   #boot two hundred milliseconds in — comfortably before axe finishes
+   its first pass. The first attempt at this check did exactly that and
+   failed on a node that had been deleted out from under it, which
+   proves the point rather than the bug.
+
+   So: the same markup and the same stylesheets, with the app's scripts
+   deliberately NOT injected. That is the document a fetcher receives.
+   It is not a hypothetical window either — if the bundle 404s or
+   scripts are disabled, this IS the application, permanently. */
+async function scanPreBoot() {
+  const bare = new JSDOM(html, {
+    url: 'https://renalroute.test/',
+    runScripts: 'dangerously',      // for axe itself; no app script is added
+    virtualConsole: vc,
+    pretendToBeVisual: true
+  });
+  const bdoc = bare.window.document;
+
+  const bst = bdoc.createElement('style');
+  bst.textContent = cssFiles.map(read).join('\n');
+  bdoc.head.appendChild(bst);
+
+  const bAxe = bdoc.createElement('script');
+  bAxe.textContent = axe.source;
+  bdoc.head.appendChild(bAxe);
+  await new Promise(r => setTimeout(r, 30));
+
+  const results = await bare.window.axe.run(bdoc, {
+    rules: OFF,
+    resultTypes: ['violations'],
+    runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] }
+  });
+  const serious = results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious');
+  check('pre-boot document: no critical or serious violations', serious.length === 0,
+    serious.map(v => `${v.id} — ${v.help}`).join('; '));
+
+  /* ── AND THE HEADING, CHECKED STRUCTURALLY, BECAUSE AXE CANNOT ──
+     The obvious assertion here is "results contain no
+     page-has-heading-one". It was written that way first, and it PASSED
+     with the wordmark reverted to a <p> — which makes it an assertion
+     that cannot fail, the one kind this project keeps getting caught by.
+
+     The reason is jsdom: page-has-heading-one only counts VISIBLE
+     headings, visibility is a question about layout, and jsdom does not
+     lay out. The eighteen headings inside hidden containers look
+     reachable to axe here and do not to a real browser. So the rule is
+     inert in this harness and was quietly reporting a pass it had not
+     earned.
+
+     This is the structural fact underneath the rule, and it has teeth:
+     the only element on screen before scripts arrive is #boot, so #boot
+     is where the page's h1 has to be. Verified by reverting the tag —
+     axe stayed green and this went red. */
+  check('  ...and the boot screen carries the page heading',
+    !!bdoc.querySelector('#boot h1'),
+    'before scripts run, #app and all three modals are hidden — the boot ' +
+    'wordmark is the only heading anybody can see, so it must be the h1');
+
+  bare.window.close();
+}
+
 /* Rules that need layout are disabled explicitly rather than left to
    fail silently, so nobody reads a green run as covering them.
    Contrast is measured arithmetically in sweep.js from the tokens. */
@@ -125,7 +199,9 @@ async function scan(label, prepare) {
   console.log('\n═══ AXE-CORE, RUN LOCALLY (their scanner was blocked by our CSP) ═══');
   console.log(`  axe-core ${axe.version}, WCAG 2.1 A + AA + best-practice`);
 
-  // 1 · The first thing anybody sees, including a scanner.
+  await scanPreBoot();
+
+  /* 1 · The first thing anybody sees once the app is up. */
   await scan('consent gate', () => {});
 
   // 2 · The demo chooser.
@@ -198,6 +274,8 @@ async function scan(label, prepare) {
   console.log('\nNot covered here (needs a real browser with layout):');
   console.log('  · colour contrast — measured arithmetically in sweep.js instead');
   console.log('  · rendered tap-target size — declared sizes checked in sweep.js');
+  console.log('  · page-has-heading-one — needs layout to judge visibility, so it');
+  console.log('    cannot fire here; the pre-boot heading is asserted structurally');
   /* ═══════════ THE REPORT ═══════════
      An independent scan reported "accessibility could not be verified —
      this is NOT a pass", because our CSP blocked it from injecting

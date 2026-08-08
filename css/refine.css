@@ -1005,12 +1005,39 @@ input, select, textarea { font-size: max(16px, var(--type-body)); }
 .boot__mark-fill  { stroke: var(--color-accent); fill: none;
                     transform-box: view-box; transform-origin: 50% 50%; }
 
+/* This is an <h1>, and every property a browser's default stylesheet
+   would otherwise supply for one is pinned here on purpose: font-size,
+   font-weight, line-height and margin. It was a <p> until the document
+   was scanned in the state a visitor actually first sees it — #app
+   hidden, all modals hidden, so not one of the other eighteen headings
+   visible and no level-one heading on the page at all.
+
+   Promoting the tag is free only while these stay explicit. Remove any
+   of them and the UA defaults move the boot layout. */
 .boot__word {
   font-size: var(--type-title);
   font-weight: 640;
+  line-height: 1.2;
   letter-spacing: -0.015em;
   color: var(--color-text-primary);
   margin: 0 0 var(--space-1);
+}
+
+/* Only ever rendered when it is true. The line above it says "check
+   your connection", which is the wrong explanation for a browser with
+   scripts turned off — so this one supplies the right one, and the two
+   cannot both be on screen. */
+.boot__noscript {
+  max-width: 34em;
+  margin: var(--space-3) auto 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-warm);
+  font-size: var(--type-caption);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  text-align: left;
 }
 
 /* The honest line, first on screen rather than buried in a footer. */
