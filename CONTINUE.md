@@ -4,8 +4,8 @@ Working log for the RenalRoute / Chroniccal push after the Aug 5 ArgosX
 cycles. Written to be picked up cold: every item says what changed, where,
 and what would prove it.
 
-**State:** 1,498 assertions across ten suites, all green. Zero axe violations
-across sixteen screens. Deployed and verified against live bytes.
+**State:** 1,504 assertions across ten suites, all green, plus `npm run live` at
+22/22 against both hostnames. Zero axe violations across seventeen scans.
 
 ---
 
@@ -175,7 +175,94 @@ Verified against **served bytes**, not local ones:
 
 ---
 
+### The Aug 7 report (87/100) — triaged ✅
+
+An ArgosX cycle scored `chronic-ca.vercel.app` **87**, down from 95, with 11
+findings. **`chronic-ca` and `chroniccal` are the same deployment.**
+
+**Nine were artefacts of one thing:** their fetcher got a 403 challenge, and a
+Vercel challenge is served at the edge *without the project's headers on it*. So
+all six "missing security header" findings, the 403, the aborted
+`request-challenge` POST, the blocked content checks and the "broken link" are one
+cause. All six headers verified present; `/` returns 200 from every user agent I
+tried. **Security 100 → 72 and Functional 97 → 86 are regressions in the scan, not
+the app.**
+
+**Two were real:**
+
+- **No visible `h1` at first paint.** 18 `h1` elements, every one inside a hidden
+  container; the only thing on screen was the boot wordmark, a `<p>`. Now an `h1`,
+  with `.boot__word` pinning the properties a UA stylesheet would otherwise supply.
+  Plus a `<noscript>` — without it, a reader with scripts off is told to check
+  their connection, which is the wrong explanation rather than a missing one.
+- **The canonical host copy-pasted into five tags** with nothing holding them
+  together. `sweep.js` §0c now derives every absolute self-URL and fails if they
+  disagree.
+
+**And the gap that hid the first one:** `test/a11y.js` revealed `#app` before its
+first scan, so eleven suites had never examined the document a visitor actually
+meets. It now scans a separate script-free DOM first.
+
+That check needed rewriting before it was worth anything. The obvious form — "axe
+reports no `page-has-heading-one`" — **passed with the wordmark reverted to a
+`<p>`**, because the rule counts *visible* headings, visibility is a question about
+layout, and jsdom does not lay out. An assertion that could not fail. Replaced with
+the structural fact underneath it and verified by reverting the tag: axe stayed
+green, the new one went red.
+
+### `test/live.js` — declared is not served ✅
+
+Refuting six false findings took a person running `curl`. `test/headers.js` reads
+**`vercel.json`** — it validates the policy we *wrote* and had never looked at a
+response.
+
+`npm run live` asks the deployment: every declared header present, the CSP still
+refusing `unsafe-inline`, a real branded 404, the `og:image` actually fetching so a
+share does not unfurl empty, and the served bundle's fingerprint matching the local
+build. It **skips loudly** rather than passing when it cannot connect.
+
+**Not in `npm test`** — it verifies a deployment, so running it beforehand is a
+category error and the fingerprint check would leave the suite permanently red.
+
+```
+npm test        # 10 suites, offline, against the working copy
+npm run live    # this, against what is now serving
+npm run verify  # both, in order
+```
+
+---
+
 ## LEFT TO DO
+
+### For you — find out what actually blocked the scanner
+
+**I could not reproduce the 403.** Ten requests across five user agents — `curl`,
+`python-requests`, an ArgosX-style bot UA, `HeadlessChrome`, a real Chrome string —
+with cache-busting, on both hosts: **200 every time.** If Attack Challenge Mode were
+on globally it would have challenged me too.
+
+The likely cause is Vercel's automatic bot mitigation reacting to the scanner's IP
+range — their executor runs on AWS App Runner, datacentre space that reputation
+systems routinely challenge. So I am not going to promise a switch fixes it.
+
+1. **Dashboard → project → Settings → Firewall.** If *Attack Challenge Mode* is on,
+   turn it off. (Probably already off, given the above.)
+2. **Firewall → the traffic/observability view.** Filter to Aug 6–7 and look for
+   blocked or challenged requests. **This is the definitive diagnostic and only you
+   can see it** — it names the rule that fired.
+3. **Settings → Deployment Protection.** Confirm production is public.
+4. If it is automatic mitigation, the only lever is a Firewall allow rule for that
+   UA or IP range — a paid-plan feature. If that is unavailable, this scanner will
+   keep scoring the challenge page, and that is worth stating rather than chasing.
+
+Prove any change with:
+
+```
+curl -s -o /dev/null -w "%{http_code}
+" -A "python-requests/2.31" https://chroniccal.vercel.app/
+```
+
+
 
 ### For you, not me — Vercel Bot Protection
 The 403 that blanked two of the three scans is **Vercel Bot Protection /
